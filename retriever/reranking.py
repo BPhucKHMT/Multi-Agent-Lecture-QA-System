@@ -2,6 +2,13 @@ import torch
 from typing import List
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
 
+'''
+hybrid_retrievr = HybridSearch(vector_retriever, keyword_retriever).get_retriever()
+docs = hybrid_retrievr.get_relevant_documents(query)
+reranker = CrossEncoderReranker()
+
+--> TARGET: reranked_docs = reranker.rerank(docs, query, top_k=10) 
+'''
 class CrossEncoderReranker:
     def __init__(self, model_name: str = "BAAI/bge-reranker-base", device: str = None):
         self.device = device or ("cuda" if torch.cuda.is_available() else "cpu")
