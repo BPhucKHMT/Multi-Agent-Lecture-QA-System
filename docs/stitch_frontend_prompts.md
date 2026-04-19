@@ -16,17 +16,22 @@
 ---
 
 ## Reusable UI Catalog (không đổi tên giữa các trang)
-- `TopBar`: user info, global actions, search nhẹ.
-- `ChatPanel`: sidebar conversations + message area + input.
-- `SummaryPanel`: summary content area với trạng thái.
-- `VideoRail`: danh sách video bên phải (thumbnail/title/duration/selected).
-- `ContextPill`: hiển thị ngữ cảnh video/timestamp trong Chatspace.
+- `TopBar`: user info, global actions, search nhẹ (full width, cố định ở trên).
+- `SidebarNav` (trái): 15% width cố định, chứa 2 option: "Chatspace Agent" và "Summary Hub", có active state rõ.
+- `ChatPanel`: sidebar hội thoại (trong 85% main) + message area + input.
+- `SummaryPanel`: summary content area với trạng thái (trong 60% main khi ở Summary Hub).
+- `VideoRail`: sidebar phải 25% width khi ở Summary Hub mode (danh sách video: thumbnail/title/duration/selected).
+- `ContextPill`: hiển thị ngữ cảnh video/timestamp trong Chatspace khi user từ Summary Hub.
 
 ### Shared states
 - `default`
 - `progress` (loading hoặc streaming)
 - `result`
 - `error` (kèm retry)
+
+### Layout modes
+- **Chatspace Agent**: TopBar + SidebarNav (15%) + ChatPanel (85%)
+- **Summary Hub**: TopBar + SidebarNav (15%) + SummaryPanel (60%) + VideoRail (25%)
 
 ---
 
@@ -44,44 +49,44 @@
 
 Preserve all previous context unless explicitly changed.
 
-Thiết kế màn hình đăng nhập high-fidelity desktop cho sản phẩm học tập AI: nền sáng tươi (Blue/Cyan/Mint), card login ở giữa gồm logo, tiêu đề, email, password, nút Sign in chính và link phụ; sau khi đăng nhập thành công hiển thị ngay lựa chọn vào workspace với 2 lựa chọn lớn cạnh nhau: Chatspace Agent (TopBar bên trái) và Summary Hub (TopBar bên phải), nhấn vào lựa chọn nào thì điều hướng vào workspace tương ứng và set `active_workspace` context.
+Thiết kế màn hình đăng nhập high-fidelity desktop cho sản phẩm học tập AI: nền sáng tươi (Blue/Cyan/Mint), card login ở giữa gồm logo, tiêu đề, email, password, nút Sign in chính và link phụ; sau khi đăng nhập thành công hiển thị ngay lựa chọn vào workspace với 2 lựa chọn lớn cạnh nhau: "Chatspace Agent" bên trái và "Summary Hub" bên phải, nhấn vào lựa chọn nào thì điều hướng vào workspace tương ứng và set `active_workspace` context.
 
 ---
 
-### P2_Workspace_Default_50_50
+### P2_Chatspace_Agent_Mode
 
 Preserve all previous context unless explicitly changed.
 
-Thiết kế màn hình workspace sau login với layout chia đôi 50/50: bên trái là ChatPanel (sidebar hội thoại + vùng chat mặc định), bên phải là SummaryPanel (khu tóm tắt mặc định + danh sách video), cả hai cùng nhìn thấy rõ, có TopBar chung với tên user, search nhẹ và nút settings; style high-fidelity desktop sáng, hiện đại, dễ đọc.
+Thiết kế màn hình workspace sau chọn "Chatspace Agent" từ login gateway: layout 3 vùng: TopBar (toàn chiều rộng, user info + settings), Sidebar trái (15% width, cố định): hiển thị 2 option "Chatspace Agent" (active/highlighted) và "Summary Hub" (inactive), Main content (85% width): ChatPanel (sidebar hội thoại + vùng chat mặc định). Style high-fidelity desktop sáng, hiện đại, dễ đọc, transition mượt khi chuyển qua Summary Hub.
 
 ---
 
-### P3_Workspace_Chatspace_Focus_60_40
+### P3_Chatspace_Agent_States
 
 Preserve all previous context unless explicitly changed.
 
-Delta: Trạng thái hover/focus vào Chatspace - panel trái (ChatPanel) mở rộng thành 60%, panel phải (SummaryPanel) còn 40% và được dim nhẹ (opacity ~70%). ChatPanel có các trạng thái rõ ràng gồm default, progress (streaming indicator), result, và error (kèm retry); giữ visual hierarchy mạnh cho luồng chat nhưng vẫn thấy SummaryPanel để chuyển lại nhanh.
+Delta: Trong Chatspace Agent mode, ChatPanel hiển thị các trạng thái rõ ràng gồm default (welcome message), progress (streaming indicator khi đang reply), result (message + citation), và error (thông báo lỗi + nút retry). Sidebar trái vẫn cố định 15%, Chatspace Agent vẫn active state.
 
 ---
 
-### P4_Workspace_SummaryHub_Focus_40_60
+### P4_Summary_Hub_Mode
 
 Preserve all previous context unless explicitly changed.
 
-Delta: Trạng thái hover/focus vào Summary Hub - panel phải (SummaryPanel) mở rộng thành 60%, panel trái (ChatPanel) còn 40% và dim nhẹ (opacity ~70%); trong SummaryPanel có vùng nội dung tóm tắt trung tâm và VideoRail bên phải lấy từ database (thumbnail, title, duration, selected state), hỗ trợ các trạng thái default, progress (loading), result, error kèm retry.
+Delta: User nhấn "Summary Hub" từ sidebar trái → switch sang Summary Hub mode. Layout: TopBar (cố định), Sidebar trái (15%): "Summary Hub" active, "Chatspace Agent" inactive, Main content (60%): SummaryPanel (nội dung tóm tắt + key points), Sidebar phải (25%): VideoRail (danh sách video từ database: thumbnail/title/duration/selected state). SummaryPanel hỗ trợ trạng thái default, progress (loading), result, error kèm retry.
 
 ---
 
-### P5_SummaryHub_Result_To_Discuss
+### P5_Summary_Hub_Video_Selected
 
 Preserve all previous context unless explicitly changed.
 
-Delta: User đã chọn một video từ VideoRail (set `selected_video` context). Hiển thị tiêu đề video, key points, mốc thời gian quan trọng, trạng thái confidence trong SummaryPanel, và CTA nổi bật "Thảo luận trong Chatspace". Khi bấm CTA thì tạo transition rõ ràng sang Chatspace, mang theo context `selected_video`, `summary_highlights`, `timestamp_refs`.
+Delta: User đã chọn một video từ VideoRail (set `selected_video` context, video item trong rail có selected visual state). Hiển thị tiêu đề video, key points, mốc thời gian quan trọng, trạng thái confidence trong SummaryPanel, và CTA nổi bật "Thảo luận trong Chatspace". Layout vẫn giữ: 15% sidebar trái + 60% SummaryPanel + 25% VideoRail.
 
 ---
 
-### P6_Chatspace_Ask_WithSummaryContext
+### P6_Chatspace_WithContext_From_Summary
 
 Preserve all previous context unless explicitly changed.
 
-Delta: Chatspace đã nhận context từ P5 (`selected_video`, `summary_highlights`, `timestamp_refs`). Ở đầu khung nhập có ContextPill hiển thị (video title + timestamp range). Khu chat hiển thị câu hỏi user liên quan nội dung vừa tóm tắt, assistant trả lời có citation rõ; thể hiện đủ 4 trạng thái: default, progress (streaming), result, error; vẫn giữ panel SummaryPanel nhỏ ở phải (40%) để người dùng quay lại hoặc chọn video khác.
+Delta: User bấm "Thảo luận trong Chatspace" từ P5 → switch sang Chatspace Agent mode nhưng vẫn giữ context. Ở đầu khung nhập chat có ContextPill hiển thị (video title + timestamp range từ `selected_video`). Khu chat hiển thị opening message kèm context của video vừa tóm tắt, user có thể gửi câu hỏi liên quan, assistant trả lời có citation rõ. Thể hiện đủ 4 trạng thái: default, progress (streaming), result, error. Sidebar trái vẫn 15%, ChatPanel 85%.
