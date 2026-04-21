@@ -1,0 +1,16 @@
+============================= test session starts =============================
+platform win32 -- Python 3.12.9, pytest-7.4.4, pluggy-1.0.0 -- C:\Users\ADMIN\anaconda3\python.exe
+cachedir: .pytest_cache
+rootdir: C:\uit_HK5\CS431\final_project
+plugins: anyio-4.11.0, langsmith-0.3.45, typeguard-4.4.4
+collecting ... collected 7 items
+
+tests/api/test_chat_stream.py::test_generate_stream_returns_error_metadata_when_streaming_fails PASSED [ 14%]
+tests/rag_core/test_lang_graph_rag.py::test_node_supervisor_parses_tool_arguments_shape PASSED [ 28%]
+tests/rag_core/test_lang_graph_rag.py::test_workflow_routes_quiz_from_tool_arguments_payload PASSED [ 42%]
+tests/rag_core/test_quiz_json_parsing.py::test_extract_quiz_json_payload_parses_fenced_json PASSED [ 57%]
+tests/rag_core/test_quiz_json_parsing.py::test_extract_quiz_json_payload_parses_prefixed_text PASSED [ 71%]
+tests/rag_core/tools/test_sandbox.py::test_execute_python_code_success PASSED [ 85%]
+tests/rag_core/tools/test_sandbox.py::test_execute_python_code_security PASSED [100%]
+
+============================= 7 passed in 12.72s ==============================
