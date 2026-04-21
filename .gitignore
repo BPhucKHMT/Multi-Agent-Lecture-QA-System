@@ -1,10 +1,64 @@
+# Environmental variables
 .env
-venv/
-venv
-venv/*
+.env.bak
+.env.example.bak
 
+# Virtual Environments
+venv/
+.venv/
+env/
+ENV/
+.conda/
+
+# Python
 __pycache__/
-*.pyc
-*.pyo
-*.pyd
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+.pytest_cache/
+.coverage
+.cache
+.tox/
+.nox/
+.hypothesis/
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Frontend (Vite/React)
+frontend/node_modules/
+frontend/dist/
+frontend/.env
+frontend/.env.local
+frontend/.env.*.local
+
+# Project Specific Artifacts (Local Data & Storage)
+artifacts/
+database_semantic/
+saved_conversations/
+*.sqlite3
+*.log
+
+# IDEs & System
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+.sixth/
 .worktrees/
+.pytest_cache/

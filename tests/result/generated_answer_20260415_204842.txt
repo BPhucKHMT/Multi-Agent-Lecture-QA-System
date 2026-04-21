@@ -1,0 +1,7 @@
+**Quiz: Kiến thức cơ bản về Convolutional Neural Network (CNN)**  
+
+| Câu | Nội dung câu hỏi | A | B | C | D | Đáp án | Giải thích ngắn |
+|-----|------------------|---|---|---|---|--------|-----------------|
+| 1 | Trong một lớp **Convolution**, tham số nào quyết định kích thước vùng ảnh mà kernel “nhìn” được? | Stride (bước nhảy) | Padding (đệm) | **Kernel size (kích thước kernel)** | Number of filters (số lượng filter) | C | Kernel size xác định kích thước cửa sổ (ví dụ 3×3, 5×5) mà filter áp dụng lên mỗi vị trí của ảnh. |
+| 2 | Khi áp dụng **padding** “same” trong TensorFlow/Keras, đầu ra của lớp Conv2D sẽ: | Lu⚠️ Có lỗi xảy ra: Response ended prematurely
+

@@ -1,0 +1,120 @@
+from langgraph.graph import StateGraph, START, END
+from langchain_core.messages import HumanMessage, AIMessage
+from typing import List
+from pydantic import BaseModel, Field
+
+from src.generation.llm_model import get_llm
+from src.rag_core.state import State
+from src.rag_core.agents.tutor import node_tutor
+from src.rag_core.agents.quiz import node_quiz
+from src.rag_core.agents.coding import build_coding_subgraph
+from src.rag_core.agents.math import build_math_subgraph
+
+# Define Tools for Supervisor
+class AskTutor(BaseModel):
+    query: str = Field(description="Truy vấn tìm kiếm thông tin về môn học.")
+
+class CodeAssistant(BaseModel):
+    query: str = Field(description="Yêu cầu liên quan đến viết code hoặc fix bug Python.")
+
+class MathSolver(BaseModel):
+    query: str = Field(description="Bài toán cần giải quyết bằng Python (như giải phương trình, đạo hàm...).")
+
+class GenerateQuiz(BaseModel):
+    query: str = Field(description="Chủ đề và yêu cầu sinh bài trắc nghiệm.")
+
+llm = get_llm()
+supervisor_agent = llm.bind_tools([AskTutor, CodeAssistant, MathSolver, GenerateQuiz])
+
+def node_supervisor(state: State):
+    messages = state.get("messages", [])
+    system_prompt = "Bạn là người điều phối (Supervisor) của một hệ thống hỗ trợ sinh viên đa năng.\nBạn có các công cụ: Học tập lý thuyết (AskTutor), Lập trình (CodeAssistant), Giải Toán (MathSolver), và Sinh trắc nghiệm (GenerateQuiz).\nHãy phân tích yêu cầu của người dùng và gọi ĐÚNG MỘT công cụ phù hợp nhất. Nếu người dùng chỉ nói chuyện giao tiếp (ví dụ: chào), không gọi công cụ nào và trả lời trực tiếp.\nHãy dùng tiếng Việt."
+    
+    response = supervisor_agent.invoke([{"role": "system", "content": system_prompt}] + messages)
+    return {"messages": [response]}
+
+def node_direct_answer(state: State):
+    messages = state.get("messages", [])
+    last_message = messages[-1]
+    
+    data = {
+        "text": last_message.content,
+        "video_url": [],
+        "title": [],
+        "filename": [],
+        "start_timestamp": [],
+        "end_timestamp": [],
+        "confidence": [],
+        "type": "direct"
+    }
+    return {"response": data}
+
+def router(state: State) -> str:
+    messages = state.get("messages", [])
+    last_message = messages[-1]
+    
+    if hasattr(last_message, "tool_calls") and last_message.tool_calls:
+        tool_call = last_message.tool_calls[0]
+        if tool_call["name"] == "AskTutor": return "tutor"
+        elif tool_call["name"] == "CodeAssistant": return "coding"
+        elif tool_call["name"] == "MathSolver": return "math"
+        elif tool_call["name"] == "GenerateQuiz": return "quiz"
+    
+    return "direct"
+
+# Prepare subgraphs
+coding_subgraph = build_coding_subgraph()
+math_subgraph = build_math_subgraph()
+
+def node_coding_wrapper(state: State):
+    last_message = state["messages"][-1]
+    query = last_message.tool_calls[0]["args"].get("query", "") if hasattr(last_message, "tool_calls") and last_message.tool_calls else ""
+    res = coding_subgraph.invoke({"query": query, "retry_count": 0})
+    return {"response": res.get("response", {})}
+
+def node_math_wrapper(state: State):
+    last_message = state["messages"][-1]
+    query = last_message.tool_calls[0]["args"].get("query", "") if hasattr(last_message, "tool_calls") and last_message.tool_calls else ""
+    res = math_subgraph.invoke({"query": query})
+    return {"response": res.get("response", {})}
+
+
+graph = StateGraph(State)
+
+graph.add_node("supervisor", node_supervisor)
+graph.add_node("tutor", node_tutor)
+graph.add_node("quiz", node_quiz)
+graph.add_node("coding", node_coding_wrapper)
+graph.add_node("math", node_math_wrapper)
+graph.add_node("direct", node_direct_answer)
+
+graph.add_edge(START, "supervisor")
+graph.add_conditional_edges("supervisor", router, {
+    "tutor": "tutor",
+    "coding": "coding",
+    "math": "math",
+    "quiz": "quiz",
+    "direct": "direct"
+})
+graph.add_edge("tutor", END)
+graph.add_edge("coding", END)
+graph.add_edge("math", END)
+graph.add_edge("quiz", END)
+graph.add_edge("direct", END)
+
+workflow = graph.compile()
+
+def call_agent(chat_history: List[dict]) -> dict:
+    """
+    Chạy hệ thống Multi-Agent Supervisor với lịch sử chat.
+    """
+    langchain_messages = []
+    for msg in chat_history:
+        if msg["role"] == "user":
+            langchain_messages.append(HumanMessage(content=msg["content"]))
+        elif msg["role"] == "assistant":
+            langchain_messages.append(AIMessage(content=msg["content"]))
+            
+    initial_state = {"messages": langchain_messages}
+    final_state = workflow.invoke(initial_state)
+    return final_state["response"]

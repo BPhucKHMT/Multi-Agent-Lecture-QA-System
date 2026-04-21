@@ -1,0 +1,319 @@
+# JSON Parsing Robustness Analysis - Quiz/Tool Outputs
+# Final Project (C:\uit_HK5\CS431\final_project)
+
+## 1. HANDLED SHAPES / EXPECTED MODEL OUTPUTS
+
+### 1.1 Quiz Agent (quiz.py)
+**QuizOutput model** - Top-level container:
+```python
+class QuizQuestion(BaseModel):
+    question: str
+    options: List[str]  # Exactly 4 items expected
+    correct_answer: str  # Must match one of options
+    explanation: str
+    video_url: str
+    timestamp: str  # Format: HH:MM:SS
+
+class QuizOutput(BaseModel):
+    quizzes: List[QuizQuestion]  # Array of questions
+```
+
+**Handled input formats by _extract_quiz_json_payload():**
+✅ Plain JSON: `{"quizzes": [...]}`
+✅ Fenced JSON: ` ```json {...}``` `
+✅ Text-prefixed JSON: `Prefix text\n{...}`
+✅ JSON with newlines: `{\n"quizzes": [\n...]}`
+✅ Escaped newlines: `{"text": "line1\\nline2"}`
+✅ Unicode content: Tiếng Việt characters handled
+✅ Nested JSON in fields: `{"explanation": "{"nested": "obj"}"}`
+
+**Parsing chain (line 156-163):**
+1. Try: `chain.invoke()` → JsonOutputParser → QuizOutput validation
+2. Except: Extract raw content from chain input
+3. Fallback: `_extract_quiz_json_payload()` → manual JSON extraction
+4. Fallback: `QuizOutput.model_validate(repaired)` → Pydantic validation
+
+### 1.2 Supervisor Tool Calls (lang_graph_rag.py)
+**Tool shape variations handled by _normalize_tool_call_payload():**
+✅ tool_calls array: `{"tool_calls": [{"name": "X", "args": {...}}]}`
+✅ Single tool_call: `{"tool_call": {"name": "X", "args": {...}}}`
+✅ tool/args: `{"tool": "X", "args": {...}}`
+✅ tool/arguments: `{"tool": "X", "arguments": {...}}`
+✅ name/args: `{"name": "X", "args": {...}}`
+✅ name/arguments: `{"name": "X", "arguments": {...}}`
+
+**Output:** Returns normalized list `[{"name": str, "args": dict}]`
+
+### 1.3 Tutor Agent (tutor.py)
+**VideoAnswer model:**
+```python
+class VideoAnswer(BaseModel):
+    text: str  # Main response
+    filename: List[str]  # Must align with other arrays
+    video_url: List[str]  # Must align with other arrays
+    title: List[str]     # Must align with other arrays
+    start_timestamp: List[str]  # Must align with other arrays
+    end_timestamp: List[str]    # Must align with other arrays
+    confidence: List[str]  # "high"|"medium"|"low"|"zero"
+```
+
+**Key constraint:** All arrays MUST have same length!
+
+**Parsing logic (tutor.py line 66-76):**
+1. Try fenced JSON: ` ```json {...}``` `
+2. Fallback to bare JSON: `{...}` in text
+3. Fallback to entire string as JSON
+4. Catch JSONDecodeError → returns error object
+
+
+## 2. UNHANDLED EDGE CASES (MISSING/FRAGILE SHAPES)
+
+### 2.1 Streaming Incomplete JSON
+**Problem:** When LLM returns JSON via streaming, chunks arrive incomplete
+**Test case:** `{"quizzes": [{"question": "Q1", ...` (missing closing braces)
+**Current behavior:** _extract_quiz_json_payload() returns NONE
+**Impact:** Chain.invoke() throws exception → caught and re-raised if repaired is None
+**Result:** OUTPUT_PARSING_FAILURE
+
+### 2.2 Trailing Comma in JSON
+**Problem:** LLM generates JSON with trailing comma
+**Test case:** `{"quizzes": [{...},]}`
+**Current behavior:** json.loads() fails → returns NONE
+**Impact:** Not recovered by fallback parser
+
+### 2.3 Empty Required Arrays → Validation Failure
+**Problem:** Empty "quizzes" array passes JSON parse but fails Pydantic
+**Current behavior:** Result = {"quizzes": []} → model_validate OK
+**But:** If "quizzes" key is MISSING: model_validate fails with validation error
+**Impact:** Empty object `{}` → JSON parse OK but Pydantic rejects it
+
+### 2.4 Type Mismatches in Nested Objects
+**Problem:** LLM generates wrong types for required fields
+**Examples:**
+- options: "ABCD" instead of ["A","B","C","D"]
+- timestamp: 120 instead of "00:02:00"
+- video_url: {url: "..."} instead of "..."
+**Current behavior:** JSON parse OK → Pydantic validation fails silently
+**Impact:** Falls through to error handler without hint
+
+### 2.5 Array Instead of Object
+**Problem:** LLM returns `[{...}]` instead of `{"quizzes": [...]}`
+**Test case:** `[{"question": "Q1", ...}]`
+**Current behavior:** Regex matches `[...]` → json.loads() succeeds but model_validate fails
+**Impact:** Accepted by parser, rejected by Pydantic
+
+### 2.6 Supervisor Tool Call Shape Mismatches
+**Fragile case:** args/arguments is not a dict
+**Example:** `{"name": "GenerateQuiz", "args": "not_a_dict"}`
+**Current behavior:** Normalized to `{"name": "...", "args": {}}` (coerced to empty dict)
+**Impact:** Query/topic lost silently
+
+### 2.7 Multiple JSON Objects in Text
+**Problem:** LLM generates multiple JSON objects
+**Example:** `{...quiz1...} {... quiz2...}`
+**Current behavior:** Regex captures first `{...}` only
+**Impact:** Second object ignored without warning
+
+### 2.8 Non-Matching Array Lengths in VideoAnswer
+**Problem:** Tutor returns mismatched arrays
+**Example:** 
+```json
+{
+  "text": "...",
+  "video_url": ["url1", "url2"],
+  "filename": ["file1"],  # MISMATCH!
+  ...
+}
+```
+**Current behavior:** JSON parse OK → But violates documented constraint
+**Impact:** Frontend rendering breaks when accessing by index
+
+### 2.9 Unescaped Newlines in JSON Strings
+**Problem:** LLM embeds literal newline in JSON string value
+**Example:** `{"text": "line1\nline2"}` where \n is actual newline
+**Current behavior:** json.loads() fails
+**Impact:** Silently rejected
+
+### 2.10 Markdown Code Block Typos
+**Problem:** Case sensitivity or extra spaces in fence
+**Examples:** ` ```Json ` (capital J), ` ``` json ` (space before json)
+**Current behavior:** _extract_quiz_json_payload() regex is case-insensitive but may miss
+**Impact:** Falls back to bare JSON extraction
+
+
+## 3. FALLBACK PARSER ROBUSTNESS
+
+### 3.1 _extract_quiz_json_payload() Analysis (lines 43-64)
+```python
+def _extract_quiz_json_payload(raw: str):
+    if not isinstance(raw, str):
+        return None  # ISSUE: type error silently returns None
+    
+    text = raw.strip()
+    fenced_match = re.search(r"```json\s*(\{[\s\S]*?\})\s*```", text, re.IGNORECASE)
+    if fenced_match:
+        text = fenced_match.group(1).strip()
+    
+    try:
+        return json.loads(text)
+    except Exception:
+        pass  # Silent fail - no logging
+    
+    obj_match = re.search(r"(\{[\s\S]*\})", text)
+    if not obj_match:
+        return None
+    
+    try:
+        return json.loads(obj_match.group(1))
+    except Exception:
+        return None  # Silent fail
+```
+
+**Issues with fallback parser:**
+1. Greedy regex: `(\{[\s\S]*\})` matches FIRST `{` to LAST `}`
+   - Risk: If text contains multiple JSON objects, includes all
+   - Example: `{obj1} some text {obj2}` → extracts `{obj1} some text {obj2}` → fails
+   
+2. No validation after extraction
+   - Accepts malformed but-technically-parseable JSON
+   - Example: `{"quizzes": [{"question": "Q1"}]}` (missing fields) passes extraction
+   - Pydantic catches it but error info is lost
+
+3. Silent exceptions
+   - No logging of what failed
+   - Makes debugging streaming issues hard
+
+
+## 4. STREAMING SCENARIO VULNERABILITIES
+
+### 4.1 Streaming Output Path (chat_service.py lines 84-91)
+```python
+async for event in workflow.astream_events(initial_state, version="v2"):
+    if event.get("event") == "on_chat_model_stream":
+        chunk = event.get("data", {}).get("chunk")
+        if chunk and hasattr(chunk, "content") and chunk.content:
+            yield f"data: {json.dumps({'type': 'token', 'content': chunk.content})}\n\n"
+
+final_state = await workflow.ainvoke(initial_state)  # FULL invoke after stream
+response = final_state.get("response", {})
+```
+
+**Critical issue:** 
+- Stream phase doesn't parse JSON (just emits tokens)
+- Full invoke happens AFTER streaming completes
+- If JsonOutputParser fails during invoke, exception caught at line 93
+- Falls back to error response (no repaired JSON attempt!)
+
+### 4.2 Quiz Agent Streaming Vulnerability
+**quiz.py line 156-163:**
+```python
+try:
+    result = chain.invoke(invoke_input)  # chain includes JsonOutputParser
+except Exception:
+    raw_result = llm_chain.invoke(invoke_input)  # Get raw LLM output
+    raw_content = raw_result.content if hasattr(raw_result, "content") else str(raw_result)
+    repaired = _extract_quiz_json_payload(raw_content)
+    if not repaired:
+        raise  # RE-RAISE if can't repair
+    result = QuizOutput.model_validate(repaired).model_dump()
+```
+
+**Streaming breaks this fallback:**
+- During streaming, LLM output is partial and incomplete
+- Fallback parser called on partial JSON → returns NONE
+- Re-raises exception → OUTPUT_PARSING_FAILURE error in response
+- User sees no response metadata, just "error"
+
+
+## 5. MINIMAL TEST MATRIX FOR REGRESSION
+
+### 5.1 Quiz Parsing Tests
+Category: Basic functionality
+- [x] Valid complete JSON
+- [x] Fenced JSON with markdown
+- [x] Text-prefixed JSON
+
+Category: Edge cases (MISSING)
+- [ ] Streaming incomplete JSON
+- [ ] Trailing comma in JSON
+- [ ] Empty required arrays
+- [ ] Wrong field types (string vs array, number vs string)
+- [ ] Extra/unknown fields
+- [ ] Unicode Tiếng Việt content in streaming
+- [ ] Very long option strings
+- [ ] Malformed timestamps (not HH:MM:SS)
+- [ ] options array != 4 elements
+
+### 5.2 Supervisor Tool Parsing Tests
+Category: Basic functionality  
+- [x] tool_calls array shape
+- [x] Single tool_call shape
+- [x] Different field names (tool/name, args/arguments)
+
+Category: Edge cases (MISSING)
+- [ ] Partial JSON from streaming
+- [ ] Invalid tool name (name field is empty string)
+- [ ] args is empty dict (query/topic lost)
+- [ ] args is not a dict (validation bypass)
+- [ ] Unknown tool names (routing still happens)
+- [ ] tool_calls array with multiple items
+
+### 5.3 Tutor Parsing Tests
+Category: Basic functionality
+- [x] Fenced JSON
+- [x] Text-prefixed JSON
+
+Category: Edge cases (MISSING)
+- [ ] Array length mismatch
+- [ ] Missing optional fields vs required fields
+- [ ] Unescaped newlines in text field
+- [ ] Nested JSON in explanation field
+- [ ] confidence field with invalid value (not in enum)
+- [ ] Streaming scenario with fenced JSON
+
+### 5.4 Streaming Scenario Tests (MISSING - CRITICAL)
+- [ ] Incremental JSON chunks accumulation
+- [ ] Streaming stops mid-field-value
+- [ ] Streaming stops mid-array
+- [ ] Text prefix in stream + fenced JSON
+- [ ] Exception during stream → fallback behavior
+- [ ] Timeout during stream accumulation
+- [ ] Empty content chunks mixed in stream
+
+
+## 6. ROOT CAUSE HYPOTHESIS FOR STREAMING INVALID JSON ERROR
+
+**Most likely root cause chain:**
+1. Streaming sends JSON incrementally via `astream_events()`
+   - Chunk 0: `{"quizzes": [`
+   - Chunk 1: `{"question": "Q1",...`  (partial - missing fields)
+   - Chunk 2: (more fields)
+   - etc.
+
+2. JsonOutputParser tries to parse at some point
+   - Receives incomplete JSON: `{"quizzes": [...` (no closing)
+   - Regex in JsonOutputParser fails
+   - Raises OutputParsingError/exception
+
+3. Exception caught in quiz.py except block (line 157)
+   - Calls llm_chain.invoke() to get raw content
+   - But raw_content from streaming is PARTIAL
+   - _extract_quiz_json_payload(partial_json) returns NONE
+   - Condition "if not repaired" is True
+   - Re-raises exception → OUTPUT_PARSING_FAILURE
+
+4. Error propagates to user
+   - No recovery attempted
+   - Chat returns error response with no metadata
+
+**Why it happens:**
+- JsonOutputParser expects COMPLETE JSON
+- Streaming sends INCOMPLETE JSON to parser
+- Fallback parser designed for text extraction, not streaming repair
+- No streaming-aware JSON parser/accumulator exists
+
+**Evidence:**
+- Works with streaming=False in supervisor (line 35 in llm_model.py)
+- Fails with streaming=True for generation (line 17)
+- No special handling for streaming JSON in quiz.py chain
+

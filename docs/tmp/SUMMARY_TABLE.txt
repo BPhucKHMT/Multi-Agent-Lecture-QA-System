@@ -1,0 +1,121 @@
+SUMMARY TABLE: JSON PARSING EDGE CASES
+
+════════════════════════════════════════════════════════════════════════════════
+
+1. CURRENTLY HANDLED (by _extract_quiz_json_payload):
+   ✅ Plain JSON: {"quizzes": [...]}
+   ✅ Fenced JSON: ```json {...}```
+   ✅ Text-prefixed: "Prefix\n{...}"
+   ✅ JSON with newlines/Unicode
+   ✅ Nested JSON in field values
+
+2. CURRENTLY UNHANDLED - IMMEDIATE FAILURES:
+   ❌ Incomplete JSON (streaming scenario)
+       Status: Returns None → exception re-raised
+       Example: {"quizzes": [{"question": "Q1"
+   
+   ❌ Trailing comma: {"quizzes": [{...},]}
+       Status: json.loads() fails silently
+   
+   ❌ Unescaped newlines in string value
+       Status: json.loads() fails silently
+
+3. CURRENTLY UNHANDLED - SILENT PASSES THEN VALIDATION FAILS:
+   ⚠️ Empty object: {}
+       Parser: OK (JSON valid)
+       Validator: FAILS (missing "quizzes" field)
+   
+   ⚠️ Wrong types: {"quizzes": [{..., "options": "ABCD"}]}
+       Parser: OK (JSON valid, all keys present)
+       Validator: FAILS (expects array not string)
+   
+   ⚠️ Array instead of object: [{...}]
+       Parser: Matches as JSON, loads OK
+       Validator: FAILS (expects {"quizzes": [...]})
+   
+   ⚠️ Wrong element count: {"quizzes": []} (valid but empty)
+       Parser: OK → model_validate OK
+       Result: Valid but useless output
+
+4. SUPERVISOR TOOL PARSING - ROBUSTNESS ISSUES:
+   ⚠️ Non-dict args: {"name": "X", "args": "string"}
+       Result: Silently coerced to {} → loses query parameter
+   
+   ⚠️ tool_calls with multiple items: [{"name": "A"}, {"name": "B"}]
+       Result: Only first item processed (queue loss)
+
+5. TUTOR PARSING - ROBUSTNESS ISSUES:
+   ⚠️ Array length mismatch: video_url=[2 items], filename=[1 item]
+       Parser: OK (JSON valid)
+       Result: Frontend crashes on index access
+
+6. STREAMING SCENARIO - ROOT CAUSE:
+   🔴 CRITICAL: Incomplete JSON during streaming
+       Why: JsonOutputParser receives partial JSON from stream
+       When: astream_events() yields chunks during LLM generation
+       Result: Parser exception → Fallback gets partial JSON → Returns None → Error
+       
+       Flow:
+       astream_events() [partial JSON] 
+         → JsonOutputParser.parse() [fails on incomplete]
+         → Fallback _extract_quiz_json_payload(partial_json)
+         → Returns None (can't fix streaming fragment)
+         → Re-raises exception
+         → User sees OUTPUT_PARSING_FAILURE
+
+
+════════════════════════════════════════════════════════════════════════════════
+
+MISSING REGRESSION TESTS (Priority order):
+
+TIER 1 - STREAMING SCENARIOS (Critical):
+  [ ] Test_streaming_incomplete_json_missing_closing_brace
+  [ ] Test_streaming_json_stops_mid_array
+  [ ] Test_streaming_json_stops_mid_field_value
+  [ ] Test_streaming_partial_object_recovery
+
+TIER 2 - TYPE VALIDATION (High):
+  [ ] Test_quiz_options_wrong_type_string_not_array
+  [ ] Test_quiz_empty_quizzes_array
+  [ ] Test_quiz_missing_required_field_in_object
+  [ ] Test_supervisor_tool_name_empty_string
+  [ ] Test_supervisor_args_not_dict_coercion
+
+TIER 3 - EDGE CASES (Medium):
+  [ ] Test_quiz_trailing_comma_in_json
+  [ ] Test_quiz_multiple_json_objects_in_text
+  [ ] Test_quiz_unescaped_newlines_in_string
+  [ ] Test_tutor_array_length_mismatch
+  [ ] Test_tutor_unicode_content_in_streaming
+  [ ] Test_supervisor_tool_calls_array_multiple_items
+
+TIER 4 - RARE CASES (Low):
+  [ ] Test_quiz_very_long_option_strings
+  [ ] Test_quiz_malformed_timestamp
+  [ ] Test_quiz_options_not_exactly_4_elements
+  [ ] Test_quiz_nested_json_in_explanation
+
+
+════════════════════════════════════════════════════════════════════════════════
+
+KEY FILES INVOLVED:
+
+1. src/rag_core/agents/quiz.py (Lines 43-64)
+   - _extract_quiz_json_payload() [fallback parser]
+   - node_quiz() (Lines 156-163) [exception handling]
+
+2. src/rag_core/lang_graph_rag.py (Lines 31-57)
+   - _normalize_tool_call_payload() [supervisor tool parsing]
+   - node_supervisor() (Lines 79-129) [extraction logic]
+
+3. src/rag_core/agents/tutor.py (Lines 66-76)
+   - JSON parsing with regex extraction
+
+4. src/api/services/chat_service.py (Lines 84-106)
+   - generate_stream() [streaming entry point]
+
+5. src/generation/llm_model.py
+   - streaming=True for generation LLM
+   - streaming=False for supervisor LLM
+
+════════════════════════════════════════════════════════════════════════════════
