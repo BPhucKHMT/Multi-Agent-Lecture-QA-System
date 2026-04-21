@@ -1,0 +1,6 @@
+**Quiz: Kiến thức cơ bản về Mạng Nơ-ron Chập (CNN)**  
+
+| Câu | Nội dung câu hỏi | A | B | C | D | Đáp án | Giải thích ngắn |
+|-----|------------------|---|---|---|---|--------|-----------------|
+| 1 | Trong một lớp **convolution** (chập), tham số nào quyết định kích thước vùng cảm nhận (receptive field) của mỗi neuron? | Kích thước kernel (filter) | Số lượng filter | Stride (bước dịch) | Padding | **A** | Kernel (ví dụ 3×3, 5×5) xác định số pixel mà mỗi neuron “nhìn” vào trong ảnh đầu vào. |
+| 2 | Vai trò chính của **layer pooling** (lớp gộp) trong CNN là gì? | Tăng số lượng tham số | Giảm độ phân giải không

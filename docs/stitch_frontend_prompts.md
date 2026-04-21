@@ -19,8 +19,8 @@
 - `TopBar`: user info, global actions, search nhẹ (full width, cố định ở trên).
 - `SidebarNav` (trái): 15% width cố định, chứa 2 option: "Chatspace Agent" và "Summary Hub", có active state rõ.
 - `ChatPanel`: sidebar hội thoại (trong 85% main) + message area + input.
-- `SummaryPanel`: summary content area với trạng thái (trong 60% main khi ở Summary Hub).
-- `VideoRail`: sidebar phải 25% width khi ở Summary Hub mode (danh sách video: thumbnail/title/duration/selected).
+- `SummaryPanel`: summary content area với trạng thái (trong 70% main khi ở Summary Hub).
+- `VideoRail`: sidebar phải 30% width khi ở Summary Hub mode (danh sách video: thumbnail/title/duration/selected).
 - `ContextPill`: hiển thị ngữ cảnh video/timestamp trong Chatspace khi user từ Summary Hub.
 
 ### Shared states
@@ -31,7 +31,7 @@
 
 ### Layout modes
 - **Chatspace Agent**: TopBar + SidebarNav (15%) + ChatPanel (85%)
-- **Summary Hub**: TopBar + SidebarNav (15%) + SummaryPanel (60%) + VideoRail (25%)
+- **Summary Hub**: TopBar + SidebarNav (15%) + SummaryPanel (70%) + VideoRail (30%)
 
 ---
 
@@ -73,7 +73,7 @@ Delta: Trong Chatspace Agent mode, ChatPanel hiển thị các trạng thái rõ
 
 Preserve all previous context unless explicitly changed.
 
-Delta: User nhấn "Summary Hub" từ sidebar trái → switch sang Summary Hub mode. Layout: TopBar (cố định), Sidebar trái (15%): "Summary Hub" active, "Chatspace Agent" inactive, Main content (60%): SummaryPanel (nội dung tóm tắt + key points), Sidebar phải (25%): VideoRail (danh sách video từ database: thumbnail/title/duration/selected state). SummaryPanel hỗ trợ trạng thái default, progress (loading), result, error kèm retry.
+Delta: User nhấn "Summary Hub" từ sidebar trái → switch sang Summary Hub mode. Layout: TopBar (cố định), Sidebar trái (15%): "Summary Hub" active, "Chatspace Agent" inactive, Main content (70%): SummaryPanel (nội dung tóm tắt + key points), Sidebar phải (30%): VideoRail (danh sách video từ database: thumbnail/title/duration/selected state). SummaryPanel hỗ trợ trạng thái default, progress (loading), result, error kèm retry.
 
 ---
 
@@ -81,7 +81,7 @@ Delta: User nhấn "Summary Hub" từ sidebar trái → switch sang Summary Hub 
 
 Preserve all previous context unless explicitly changed.
 
-Delta: User đã chọn một video từ VideoRail (set `selected_video` context, video item trong rail có selected visual state). Hiển thị tiêu đề video, key points, mốc thời gian quan trọng, trạng thái confidence trong SummaryPanel, và CTA nổi bật "Thảo luận trong Chatspace". Layout vẫn giữ: 15% sidebar trái + 60% SummaryPanel + 25% VideoRail.
+Delta: User đã chọn một video từ VideoRail (set `selected_video` context, video item trong rail có selected visual state). Hiển thị tiêu đề video, key points, mốc thời gian quan trọng, trạng thái confidence trong SummaryPanel, và CTA nổi bật "Thảo luận trong Chatspace". Layout vẫn giữ: 15% sidebar trái + 70% SummaryPanel + 30% VideoRail.
 
 ---
 

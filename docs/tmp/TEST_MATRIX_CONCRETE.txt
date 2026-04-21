@@ -1,0 +1,352 @@
+# MINIMAL CONCRETE TEST MATRIX FOR STREAMING JSON PARSING ROBUSTNESS
+
+## Context
+Project: C:\uit_HK5\CS431\final_project
+Current tests: tests/rag_core/test_quiz_json_parsing.py (2 tests)
+Missing: Streaming scenarios, validation edge cases, fallback robustness
+
+## Streaming Scenario Deep Dive
+
+### Why Streaming Breaks JSON Parsing:
+
+The system uses `workflow.astream_events()` which:
+1. Calls LLM with streaming=True (llm_model.py line 17)
+2. Receives tokens one by one via astream_events()
+3. Each token is a PARTIAL JSON fragment
+4. JsonOutputParser.parse() tries to parse INCOMPLETE JSON
+5. Fails immediately (can't parse `{"quizzes": [{"question"` - incomplete)
+6. Fallback parser called on partial JSON
+7. Returns None (can't extract valid JSON from fragment)
+8. Exception re-raised → OUTPUT_PARSING_FAILURE
+
+## Test Matrix
+
+### GROUP 1: STREAMING INCOMPLETE JSON (HIGHEST PRIORITY)
+Location: tests/rag_core/test_quiz_json_parsing.py
+
+Test 1: Streaming stops after opening brace
+```python
+def test_extract_quiz_json_payload_handles_streaming_fragment_missing_closing():
+    # Simulate LLM streaming stopping mid-transmission
+    raw = '{"quizzes": [{"question": "Q1"'  # No closing braces
+    result = quiz._extract_quiz_json_payload(raw)
+    assert result is None  # Expected: graceful None return
+```
+Current: FAILS (exception handling works, but parsing chain breaks)
+Expected: None returned, no exception
+
+Test 2: Streaming stops inside string value
+```python
+def test_extract_quiz_json_payload_handles_streaming_inside_string():
+    raw = '{"quizzes": [{"question": "Explain '  # Stop mid-string
+    result = quiz._extract_quiz_json_payload(raw)
+    assert result is None
+```
+Current: FAILS
+Expected: None
+
+Test 3: Streaming stops inside array
+```python
+def test_extract_quiz_json_payload_handles_streaming_incomplete_array():
+    raw = '{"quizzes": [{"question": "Q1", "options": ["A"'  # Missing ]]}
+    result = quiz._extract_quiz_json_payload(raw)
+    assert result is None
+```
+Current: FAILS
+Expected: None
+
+Test 4: Streaming stops after first question only
+```python
+def test_extract_quiz_json_payload_handles_streaming_incomplete_first_item():
+    raw = '{"quizzes": [{"question": "Q1", "options": ["A","B","C","D"], "correct_answer": "A", "explanation": "E", "video_url": "url", "timestamp": "00:00:01"}'
+    # Missing: closing bracket for array, closing brace for object
+    result = quiz._extract_quiz_json_payload(raw)
+    assert result is None
+```
+Current: FAILS
+Expected: None
+
+Test 5: Streaming chunk boundary in field name
+```python
+def test_extract_quiz_json_payload_handles_streaming_chunk_boundary_in_fieldname():
+    raw = '{"quizzes": [{"quest'  # Field name split across chunks
+    result = quiz._extract_quiz_json_payload(raw)
+    assert result is None
+```
+Current: FAILS
+Expected: None
+
+
+### GROUP 2: JSON SYNTAX ERRORS (HIGH PRIORITY)
+
+Test 6: Trailing comma in array
+```python
+def test_extract_quiz_json_payload_rejects_trailing_comma():
+    raw = '{"quizzes": [{"question": "Q1", "options": ["A","B","C","D"], "correct_answer": "A", "explanation": "E", "video_url": "url", "timestamp": "00:00:01"},]}'
+    result = quiz._extract_quiz_json_payload(raw)
+    assert result is None  # json.loads() fails, should return None gracefully
+```
+Current: RETURNS_NONE ✓
+Expected: RETURNS_NONE
+
+Test 7: Unescaped newline in string value
+```python
+def test_extract_quiz_json_payload_handles_unescaped_newlines():
+    raw = '''{"quizzes": [{"question": "Multi
+line question", "options": ["A","B","C","D"], "correct_answer": "A", "explanation": "E", "video_url": "url", "timestamp": "00:00:01"}]}'''
+    result = quiz._extract_quiz_json_payload(raw)
+    assert result is None  # json.loads() fails on literal newline
+```
+Current: RETURNS_NONE ✓
+Expected: RETURNS_NONE
+
+Test 8: Multiple JSON objects concatenated
+```python
+def test_extract_quiz_json_payload_with_multiple_json_objects():
+    raw = '{"quizzes": [{"question": "Q1", "options": ["A","B","C","D"], "correct_answer": "A", "explanation": "E", "video_url": "url", "timestamp": "00:00:01"}]} {"quizzes": [{"question": "Q2", "options": ["A","B","C","D"], "correct_answer": "B", "explanation": "E", "video_url": "url", "timestamp": "00:00:02"}]}'
+    result = quiz._extract_quiz_json_payload(raw)
+    # Should extract FIRST object only (greedy regex from first { to last })
+    assert result is not None
+    assert len(result.get("quizzes", [])) == 1
+```
+Current: PROBLEMATIC (regex matches first { to last }, includes both objects)
+Expected: First object only
+
+
+### GROUP 3: VALIDATION FAILURES (HIGH PRIORITY)
+
+Test 9: Missing required field (no explanation)
+```python
+def test_extract_quiz_json_payload_parses_but_model_validates():
+    raw = '{"quizzes": [{"question": "Q1", "options": ["A","B","C","D"], "correct_answer": "A", "video_url": "url", "timestamp": "00:00:01"}]}'
+    # Missing: "explanation" field
+    result = quiz._extract_quiz_json_payload(raw)
+    assert result is not None  # Parser OK
+    with pytest.raises(Exception):  # Pydantic validation should fail
+        QuizOutput.model_validate(result)
+```
+Current: PARSE_OK but Pydantic fails
+Expected: Clear error on validation
+
+Test 10: Wrong type for options
+```python
+def test_extract_quiz_json_payload_wrong_type_for_options():
+    raw = '{"quizzes": [{"question": "Q1", "options": "ABCD", "correct_answer": "A", "explanation": "E", "video_url": "url", "timestamp": "00:00:01"}]}'
+    # options is string, not array
+    result = quiz._extract_quiz_json_payload(raw)
+    assert result is not None  # Parser OK (valid JSON)
+    with pytest.raises(Exception):  # Pydantic should reject
+        QuizOutput.model_validate(result)
+```
+Current: PARSE_OK but Pydantic fails
+Expected: Clear error message
+
+Test 11: Empty quizzes array passes but is useless
+```python
+def test_extract_quiz_json_payload_empty_quizzes_array():
+    raw = '{"quizzes": []}'
+    result = quiz._extract_quiz_json_payload(raw)
+    assert result is not None
+    validated = QuizOutput.model_validate(result)  # This PASSES
+    assert len(validated.quizzes) == 0  # But no questions
+```
+Current: VALID (empty array accepted)
+Expected: Empty array accepted but flagged in consuming code
+
+Test 12: Missing quizzes key entirely
+```python
+def test_extract_quiz_json_payload_missing_quizzes_key():
+    raw = '{"data": [{"question": "Q1", "options": ["A","B","C","D"], "correct_answer": "A", "explanation": "E", "video_url": "url", "timestamp": "00:00:01"}]}'
+    result = quiz._extract_quiz_json_payload(raw)
+    assert result is not None  # Parser OK
+    with pytest.raises(Exception):
+        QuizOutput.model_validate(result)  # Pydantic fails: missing "quizzes"
+```
+Current: PARSE_OK but Pydantic fails
+Expected: Clear error
+
+
+### GROUP 4: SUPERVISOR TOOL PARSING EDGE CASES
+
+Location: tests/rag_core/test_lang_graph_rag.py
+
+Test 13: Tool call with empty query
+```python
+def test_normalize_tool_call_payload_empty_args():
+    parsed = {"name": "GenerateQuiz", "args": {}}
+    result = lang_graph_rag._normalize_tool_call_payload(parsed)
+    assert result is not None
+    assert result[0]["args"] == {}  # Empty but valid
+```
+Current: VALID ✓
+Expected: VALID but consuming code should handle empty
+
+Test 14: Tool call with non-dict args
+```python
+def test_normalize_tool_call_payload_args_not_dict():
+    parsed = {"name": "GenerateQuiz", "args": "invalid_string"}
+    result = lang_graph_rag._normalize_tool_call_payload(parsed)
+    assert result is not None
+    assert result[0]["args"] == {}  # Coerced to empty dict - ISSUE!
+```
+Current: COERCED_TO_EMPTY (silent data loss)
+Expected: Either rejected or logged
+
+Test 15: tool_calls array with multiple items
+```python
+def test_normalize_tool_call_payload_multiple_tool_calls():
+    parsed = {"tool_calls": [
+        {"name": "GenerateQuiz", "args": {"topic": "CNN"}},
+        {"name": "CodeAssistant", "args": {"query": "fix bug"}}
+    ]}
+    result = lang_graph_rag._normalize_tool_call_payload(parsed)
+    assert result is not None
+    assert len(result) == 2  # Both should be returned
+```
+Current: BOTH_RETURNED ✓
+Expected: Both returned
+
+
+### GROUP 5: TUTOR PARSING EDGE CASES
+
+Location: tests/rag_core/test_tutor.py (NEW FILE NEEDED)
+
+Test 16: Array length mismatch
+```python
+def test_tutor_parse_response_array_length_mismatch():
+    raw = '''{"text": "Response", "video_url": ["url1", "url2"], "filename": ["file1"], "title": ["t1", "t2"], "start_timestamp": ["00:00:01"], "end_timestamp": ["00:01:00"], "confidence": ["high", "high"]}'''
+    # Mismatched lengths: video_url=2, filename=1, title=2, start=1, end=1, confidence=2
+    result = json.loads(raw)  # Parser OK
+    with pytest.raises(Exception):
+        VideoAnswer.model_validate(result)  # Pydantic should validate array lengths
+```
+Current: PARSE_OK but no validation of array alignment
+Expected: Validation error or constraint enforcement
+
+Test 17: Tutor response with unicode in streaming
+```python
+def test_tutor_parse_response_streaming_unicode():
+    raw = '{"text": "ResNet50 là một mạng '  # Streaming stops mid-Tiếng Việt
+    result = json.loads(raw) if '{' in raw else None
+    assert result is None or not valid_json_from_partial(raw)
+```
+Current: INVALID_JSON
+Expected: Graceful handling
+
+
+### GROUP 6: INTEGRATION STREAMING TESTS
+
+Location: tests/api/test_chat_stream.py (EXTEND EXISTING)
+
+Test 18: Streaming quiz generation with incomplete JSON
+```python
+@pytest.mark.asyncio
+async def test_generate_stream_handles_incomplete_json_from_llm(monkeypatch):
+    # Mock workflow.ainvoke() to return incomplete JSON
+    async def mock_ainvoke(state):
+        return {
+            "response": {
+                "text": "Error: Could not parse quiz response",
+                "type": "error"
+            }
+        }
+    monkeypatch.setattr(lang_graph_rag.workflow, "ainvoke", mock_ainvoke)
+    
+    chunks = await collect_stream(chat_service.generate_stream([], "generate quiz"))
+    # Should NOT have OUTPUT_PARSING_FAILURE error
+    # Should have graceful error response
+    metadata_chunk = [c for c in chunks if 'metadata' in c][0]
+    body = json.loads(metadata_chunk[6:])  # Remove "data: " prefix
+    assert body["response"]["type"] == "error"
+    assert "OUTPUT_PARSING_FAILURE" not in body["response"]["text"]
+```
+Current: FAILS (streaming breaks fallback parser)
+Expected: Graceful error message
+
+
+## Test Implementation Template
+
+```python
+# tests/rag_core/test_quiz_json_parsing_streaming.py
+
+import pytest
+import json
+from src.rag_core.agents.quiz import _extract_quiz_json_payload, QuizOutput
+
+class TestStreamingIncompleteJSON:
+    """Test suite for streaming incomplete JSON edge cases"""
+    
+    def test_streaming_incomplete_missing_closing(self):
+        """Streaming stops before final closing braces"""
+        raw = '{"quizzes": [{"question": "Q1", "options": ["A"'
+        result = _extract_quiz_json_payload(raw)
+        assert result is None, "Should return None for incomplete JSON"
+    
+    def test_streaming_incomplete_inside_string(self):
+        """Streaming stops inside a string value"""
+        raw = '{"quizzes": [{"question": "Incomplete question'
+        result = _extract_quiz_json_payload(raw)
+        assert result is None
+    
+    def test_streaming_incomplete_after_first_question(self):
+        """Streaming provides complete first question but incomplete wrapper"""
+        raw = '{"quizzes": [{"question": "Q1", "options": ["A","B","C","D"], "correct_answer": "A", "explanation": "E", "video_url": "url", "timestamp": "00:00:01"}'
+        result = _extract_quiz_json_payload(raw)
+        assert result is None, "Should not parse incomplete wrapper"
+
+
+class TestJSONSyntaxErrors:
+    """Test JSON syntax errors LLM might produce"""
+    
+    def test_trailing_comma_in_array(self):
+        """JSON with trailing comma after last array element"""
+        raw = '{"quizzes": [{"question": "Q1", "options": ["A","B","C","D"], "correct_answer": "A", "explanation": "E", "video_url": "url", "timestamp": "00:00:01"},]}'
+        result = _extract_quiz_json_payload(raw)
+        assert result is None
+    
+    def test_multiple_json_objects(self):
+        """Text contains multiple JSON objects"""
+        raw = '{"quizzes": [...]} some text {"quizzes": [...]}'
+        result = _extract_quiz_json_payload(raw)
+        # Should extract ONE valid object, not concatenation
+        if result:
+            assert isinstance(result.get("quizzes"), list)
+
+
+class TestValidationErrors:
+    """Test cases that parse as JSON but fail Pydantic validation"""
+    
+    def test_wrong_type_options_array(self):
+        """options field is string instead of array"""
+        raw = '{"quizzes": [{"question": "Q1", "options": "ABCD", "correct_answer": "A", "explanation": "E", "video_url": "url", "timestamp": "00:00:01"}]}'
+        result = _extract_quiz_json_payload(raw)
+        assert result is not None  # Parser succeeds
+        with pytest.raises(Exception):
+            QuizOutput.model_validate(result)  # Validation fails
+    
+    def test_missing_required_field(self):
+        """Missing explanation field"""
+        raw = '{"quizzes": [{"question": "Q1", "options": ["A","B","C","D"], "correct_answer": "A", "video_url": "url", "timestamp": "00:00:01"}]}'
+        result = _extract_quiz_json_payload(raw)
+        assert result is not None
+        with pytest.raises(Exception):
+            QuizOutput.model_validate(result)
+```
+
+
+## Success Criteria
+
+A test is considered PASSING if:
+1. Incomplete JSON returns None (not exception)
+2. Syntax errors return None (not exception)
+3. Validation failures are caught by Pydantic (not silently accepted)
+4. Streaming scenarios don't break the entire response chain
+5. Error messages are clear enough to debug LLM behavior
+
+
+## Expected Outcome After Tests Pass
+
+- Streaming JSON incompleteness handled gracefully
+- Type validation errors detected early
+- Fallback parser robust to 95%+ of real LLM outputs
+- User sees meaningful error messages instead of generic OUTPUT_PARSING_FAILURE

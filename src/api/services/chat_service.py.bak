@@ -1,0 +1,57 @@
+from datetime import datetime
+from typing import Any, Dict
+
+from src.rag_core.lang_graph_rag import call_agent
+
+from src.api.schemas import ChatRequest, ChatResponse
+
+
+# In-memory conversation store
+conversations_store: Dict[str, Dict[str, Any]] = {}
+
+
+def process_chat(request: ChatRequest) -> ChatResponse:
+    """Xử lý hội thoại, gọi RAG và lưu lịch sử trong bộ nhớ."""
+    doc = conversations_store.get(request.conversation_id)
+    if not doc:
+        now = datetime.now().isoformat()
+        doc = {
+            "conversation_id": request.conversation_id,
+            "title": "Cuộc trò chuyện mới",
+            "messages": [{"role": "assistant", "content": "Bạn muốn hỏi gì hôm nay?"}],
+            "created_at": now,
+            "updated_at": now,
+        }
+        conversations_store[request.conversation_id] = doc
+
+    messages = doc.get("messages", [])
+    messages.append({"role": "user", "content": request.user_message})
+
+    chat_history = []
+    for message in messages:
+        content = message["content"]
+        # Đảm bảo tương thích với kết quả trả về đa dạng của mạng Supervisor
+        if isinstance(content, dict):
+            content = content.get("text", str(content))
+        chat_history.append({"role": message["role"], "content": content})
+
+    response = call_agent(chat_history)
+    messages.append({"role": "assistant", "content": response})
+
+    title = doc["title"]
+    if title == "Cuộc trò chuyện mới" and len(messages) > 1:
+        first_user_msg = next((msg["content"] for msg in messages if msg["role"] == "user"), "")
+        if isinstance(first_user_msg, str):
+            title = first_user_msg[:35] + ("..." if len(first_user_msg) > 35 else "")
+
+    now = datetime.now().isoformat()
+    doc["title"] = title
+    doc["messages"] = messages
+    doc["updated_at"] = now
+    conversations_store[request.conversation_id] = doc
+
+    return ChatResponse(
+        conversation_id=request.conversation_id,
+        response=response,
+        updated_at=now,
+    )

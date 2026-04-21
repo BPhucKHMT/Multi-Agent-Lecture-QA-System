@@ -1,0 +1,212 @@
+from typing import TypedDict
+from langgraph.graph import StateGraph, START, END
+from src.generation.llm_model import get_llm
+from src.rag_core.tools.sandbox import execute_python_code, is_long_running
+from langchain_core.prompts import ChatPromptTemplate
+import re
+
+
+class CodingState(TypedDict):
+    query: str
+    code: str
+    output: str
+    error: str
+    retry_count: int
+    success: bool
+    is_heavy: bool
+    response: dict
+    references: list
+
+
+def extract_code(text: str) -> str:
+    fence_pattern = re.compile(r"```[ \t]*([^\r\n`]*)[ \t]*\r?\n?(.*?)```", re.DOTALL)
+    matches = list(fence_pattern.finditer(text))
+    if not matches:
+        return text
+
+    for match in matches:
+        language = match.group(1).strip().lower()
+        if language in {"python", "py", "python3"}:
+            return match.group(2).strip("\r\n")
+
+    return matches[0].group(2).strip("\r\n")
+
+
+def generate_code(state: CodingState):
+    from src.rag_core.agents.coding_retrieval import should_use_rag, retrieve_lecture_context
+
+    llm = get_llm()
+    query = state.get("query", "")
+    lecture_context = ""
+    references = []
+    if should_use_rag(query):
+        lecture_context, references = retrieve_lecture_context(query)
+
+    if lecture_context:
+        prompt = ChatPromptTemplate.from_template("""
+Bạn là chuyên gia lập trình Python, đang hỗ trợ sinh viên học tập.
+
+Tham khảo nội dung bài giảng liên quan:
+{context}
+
+Yêu cầu: {query}
+Hãy viết code Python giải quyết yêu cầu trên, bám sát thuật ngữ và cách tiếp cận trong bài giảng nếu có.
+Chỉ trả về code trong block ```python...```. Đảm bảo in ra kết quả (print).
+""")
+        res = llm.invoke(prompt.format(query=query, context=lecture_context))
+    else:
+        prompt = ChatPromptTemplate.from_template("""
+Bạn là một chuyên gia lập trình Python. Hãy viết code Python để giải quyết yêu cầu sau:
+Yêu cầu: {query}
+Chỉ trả về code Python trong block ```python...```. Đảm bảo in ra kết quả chạy (print).
+""")
+        res = llm.invoke(prompt.format(query=query))
+    code = extract_code(res.content)
+    return {"code": code, "retry_count": state.get("retry_count", 0), "references": references}
+
+
+def classify_code(state: CodingState):
+    """Nhận diện code heavy (training DL) để skip sandbox và trả hướng dẫn chạy local."""
+    return {"is_heavy": is_long_running(state["code"])}
+
+
+def execute_code_node(state: CodingState):
+    code = state["code"]
+    res = execute_python_code(code)
+    return {
+        "success": res["success"],
+        "output": res["stdout"],
+        "error": res["stderr"],
+    }
+
+
+def fix_code(state: CodingState):
+    llm = get_llm()
+    prompt = ChatPromptTemplate.from_template("""
+Bạn đã viết đoạn code sau:
+```python
+{code}
+```
+Khi chạy gặp lỗi sau:
+{error}
+Cả kết quả stdout:
+{output}
+
+Hãy sửa lại code giúp tôi. Yêu cầu: {query}. TRẢ VỀ ĐOẠN CODE ĐÃ ĐƯỢC SỬA TRONG BLOCK ```python...```. Đảm bảo dùng print để xuất kết quả.
+""")
+    res = llm.invoke(prompt.format(
+        code=state["code"],
+        error=state["error"],
+        output=state["output"],
+        query=state["query"]
+    ))
+    code = extract_code(res.content)
+    return {"code": code, "retry_count": state["retry_count"] + 1}
+
+
+def explain_heavy_code(state: CodingState):
+    """Gọi LLM giải thích từng phần code cho sinh viên."""
+    llm = get_llm()
+    prompt = ChatPromptTemplate.from_template("""
+Giải thích ngắn gọn từng phần chính của đoạn code Python sau bằng tiếng Việt.
+Viết theo góc độ dạy học: tại sao làm vậy, không chỉ là làm gì.
+Không lặp lại code. Chỉ trả về phần giải thích.
+
+```python
+{code}
+```
+""")
+    res = llm.invoke(prompt.format(code=state["code"]))
+    return {"output": res.content}
+
+
+def format_heavy_response(state: CodingState):
+    """Trả hướng dẫn chạy local thay vì lỗi timeout, khi code cần train model DL."""
+    explanation = state.get("output", "")
+    text = (
+        f"### Code giải quyết yêu cầu của bạn\n\n"
+        f"```python\n{state['code']}\n```\n\n"
+    )
+    if explanation.strip():
+        text += f"### 📖 Giải thích từng phần\n\n{explanation}\n\n"
+    text += (
+        f"⚠️ **Code này cần chạy ở local** — quá trình train model "
+        f"cần nhiều thời gian hơn sandbox cho phép.\n\n"
+        f"**Hướng dẫn chạy:**\n"
+        f"1. Cài dependencies cần thiết (ví dụ: `pip install tensorflow` hoặc `pip install torch`)\n"
+        f"2. Lưu code vào file `solution.py`\n"
+        f"3. Chạy bằng lệnh: `python solution.py`\n\n"
+        f"**Lưu ý khi train:** Điều chỉnh `epochs` và `batch_size` phù hợp với tài nguyên máy."
+    )
+    refs = state.get("references", [])
+    return {"response": {
+        "text": text,
+        "video_url": [r.get("video_url", "") for r in refs],
+        "title": [r.get("title", "") for r in refs],
+        "filename": [r.get("filename", "") for r in refs],
+        "start_timestamp": [r.get("start_timestamp", "") for r in refs],
+        "end_timestamp": [r.get("end_timestamp", "") for r in refs],
+        "confidence": ["high"] * len(refs),
+        "type": "coding",
+    }}
+
+
+def format_response(state: CodingState):
+    text = f"Dưới đây là đoạn code thực thi yêu cầu của bạn:\n```python\n{state['code']}\n```\n\n"
+    if state['success']:
+        text += f"✅ **Console Output:**\n```output\n{state['output']}\n```"
+    else:
+        text += f"❌ **Execution Error:**\n```error\n{state['error']}\n```"
+
+    refs = state.get("references", [])
+    return {"response": {
+        "text": text,
+        "video_url": [r.get("video_url", "") for r in refs],
+        "title": [r.get("title", "") for r in refs],
+        "filename": [r.get("filename", "") for r in refs],
+        "start_timestamp": [r.get("start_timestamp", "") for r in refs],
+        "end_timestamp": [r.get("end_timestamp", "") for r in refs],
+        "confidence": ["high"] * len(refs),
+        "type": "coding",
+    }}
+
+
+def build_coding_subgraph():
+    graph = StateGraph(CodingState)
+
+    graph.add_node("generate", generate_code)
+    graph.add_node("classify", classify_code)
+    graph.add_node("execute", execute_code_node)
+    graph.add_node("fix", fix_code)
+    graph.add_node("explain_heavy", explain_heavy_code)
+    graph.add_node("format_heavy", format_heavy_response)
+    graph.add_node("format_response", format_response)
+
+    graph.add_edge(START, "generate")
+    graph.add_edge("generate", "classify")
+
+    def route_classify(state: CodingState):
+        return "heavy" if state.get("is_heavy", False) else "execute"
+
+    graph.add_conditional_edges("classify", route_classify, {
+        "heavy": "explain_heavy",
+        "execute": "execute",
+    })
+    graph.add_edge("explain_heavy", "format_heavy")
+    graph.add_edge("format_heavy", END)
+
+    def route_execute(state: CodingState):
+        if state.get("success", False):
+            return "end"
+        if state.get("retry_count", 0) >= 3:
+            return "end"
+        return "fix"
+
+    graph.add_conditional_edges("execute", route_execute, {
+        "fix": "fix",
+        "end": "format_response",
+    })
+    graph.add_edge("fix", "classify")
+    graph.add_edge("format_response", END)
+
+    return graph.compile()

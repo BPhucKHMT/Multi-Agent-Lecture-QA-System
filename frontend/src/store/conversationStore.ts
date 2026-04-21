@@ -1,0 +1,240 @@
+import { createContext, createElement, useCallback, useContext, useMemo, useRef, useState, type ReactNode } from "react";
+import { postChat, streamChat } from "../lib/api/chat";
+import type { ChatMessage } from "../types/api";
+import type { ChatRequest } from "../types/api";
+import type { RagResponse } from "../types/rag";
+import { normalizeRagResponse } from "../lib/api/chat";
+
+type ConversationMessage = {
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+  response?: RagResponse;
+  tempContext?: any[];
+};
+
+
+type ConversationStoreValue = {
+  conversationId: string;
+  messages: ConversationMessage[];
+  isLoading: boolean;
+  error: string | null;
+  canRetryLastFailedPrompt: boolean;
+  sendPrompt: (prompt: string) => Promise<void>;
+  retryLastFailedPrompt: () => Promise<void>;
+  clearConversation: () => void;
+  clearError: () => void;
+  addMessage: (message: Omit<ConversationMessage, "id">) => void;
+};
+
+type FailedPromptState = {
+  prompt: string;
+  payload: ChatRequest;
+};
+
+const ConversationStoreContext = createContext<ConversationStoreValue | null>(null);
+
+export function rollbackOptimisticMessage(
+  messages: ConversationMessage[],
+  optimisticMessageId: string,
+): ConversationMessage[] {
+  return messages.filter((message) => message.id !== optimisticMessageId);
+}
+
+export function buildFailedPromptState(prompt: string, payload: ChatRequest): FailedPromptState {
+  return { prompt, payload };
+}
+
+function toApiMessages(messages: ConversationMessage[]): ChatMessage[] {
+  return messages.map(({ role, content }) => ({ role, content }));
+}
+
+function createMessageId(role: "user" | "assistant"): string {
+  return `${role}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function createConversationId(): string {
+  const cryptoApi = globalThis.crypto;
+  if (cryptoApi && typeof cryptoApi.randomUUID === "function") {
+    return cryptoApi.randomUUID();
+  }
+  return `conversation-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+export function ConversationStoreProvider({ children }: { children: ReactNode }) {
+  const [conversationId, setConversationId] = useState(() => createConversationId());
+  const [messages, setMessages] = useState<ConversationMessage[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [failedPromptState, setFailedPromptState] = useState<FailedPromptState | null>(null);
+  const inFlightLockRef = useRef(false);
+  const requestTokenRef = useRef(0);
+
+  const sendPrompt = useCallback(
+    async (prompt: string, retryPayload?: ChatRequest) => {
+      const userPrompt = prompt.trim();
+      if (!userPrompt || inFlightLockRef.current) {
+        return;
+      }
+
+      inFlightLockRef.current = true;
+      const requestToken = ++requestTokenRef.current;
+
+      const optimisticUserMessage: ConversationMessage = {
+        id: createMessageId("user"),
+        role: "user",
+        content: userPrompt,
+      };
+
+      const nextMessages = [...messages, optimisticUserMessage];
+      const payload: ChatRequest = retryPayload ?? {
+        conversation_id: conversationId,
+        user_message: userPrompt,
+        messages: toApiMessages(nextMessages),
+      };
+
+      const assistantMessageId = createMessageId("assistant");
+      const optimisticAssistantMessage: ConversationMessage = {
+        id: assistantMessageId,
+        role: "assistant",
+        content: "",
+      };
+
+      // Thêm message user và assistant trống vào store
+      setMessages([...nextMessages, optimisticAssistantMessage]);
+      setError(null);
+      setFailedPromptState(null);
+      setIsLoading(true);
+
+      try {
+        let isFirstToken = true;
+
+        await streamChat(
+          payload,
+          (token) => {
+            if (requestToken !== requestTokenRef.current) return;
+            
+            if (isFirstToken) {
+              setIsLoading(false);
+              isFirstToken = false;
+            }
+
+            setMessages((prev) =>
+              prev.map((msg) =>
+                msg.id === assistantMessageId 
+                  ? { ...msg, content: msg.content + token } 
+                  : msg
+              )
+            );
+          },
+          (metadata, serverConvId) => {
+            if (requestToken !== requestTokenRef.current) return;
+            
+            if (serverConvId) setConversationId(serverConvId);
+            
+            setMessages((prev) =>
+              prev.map((msg) =>
+                msg.id === assistantMessageId 
+                  ? { 
+                      ...msg, 
+                      response: metadata, 
+                      content: (metadata.text && metadata.text.length > 0) ? metadata.text : msg.content 
+                    } 
+                  : msg
+              )
+            );
+          },
+          (docs) => {
+            if (requestToken !== requestTokenRef.current) return;
+            setMessages((prev) =>
+              prev.map((msg) =>
+                msg.id === assistantMessageId 
+                  ? { ...msg, tempContext: docs } 
+                  : msg
+              )
+            );
+          },
+
+
+          (error) => {
+             throw error;
+          }
+        );
+      } catch (requestError) {
+        if (requestToken !== requestTokenRef.current) {
+          return;
+        }
+        // Rollback cả user message và assistant message trống nếu lỗi ngay lập tức
+        setMessages((prev) => prev.filter(m => m.id !== optimisticUserMessage.id && m.id !== assistantMessageId));
+        setFailedPromptState(buildFailedPromptState(userPrompt, payload));
+        setError(requestError instanceof Error ? requestError.message : "Không thể gửi câu hỏi.");
+      } finally {
+        if (requestToken === requestTokenRef.current) {
+          inFlightLockRef.current = false;
+          setIsLoading(false);
+        }
+      }
+    },
+    [conversationId, messages],
+  );
+
+  const retryLastFailedPrompt = useCallback(async () => {
+    if (!failedPromptState || inFlightLockRef.current) {
+      return;
+    }
+    await sendPrompt(failedPromptState.prompt, failedPromptState.payload);
+  }, [failedPromptState, sendPrompt]);
+
+  const clearConversation = useCallback(() => {
+    requestTokenRef.current += 1;
+    inFlightLockRef.current = false;
+    setMessages([]);
+    setIsLoading(false);
+    setError(null);
+    setFailedPromptState(null);
+    setConversationId(createConversationId());
+  }, []);
+
+  const clearError = useCallback(() => {
+    setError(null);
+  }, []);
+
+  const addMessage = useCallback((message: Omit<ConversationMessage, "id">) => {
+    setMessages((prev) => [
+      ...prev,
+      {
+        ...message,
+        id: createMessageId(message.role),
+      },
+    ]);
+  }, []);
+
+  const value = useMemo(
+    () => ({
+      conversationId,
+      messages,
+      isLoading,
+      error,
+      canRetryLastFailedPrompt: Boolean(failedPromptState),
+      sendPrompt: (prompt: string) => sendPrompt(prompt),
+      retryLastFailedPrompt,
+      clearConversation,
+      clearError,
+      addMessage,
+    }),
+    [clearConversation, clearError, conversationId, error, failedPromptState, isLoading, messages, retryLastFailedPrompt, sendPrompt, addMessage],
+  );
+
+  return createElement(ConversationStoreContext.Provider, { value }, children);
+}
+
+export function useConversationStore(): ConversationStoreValue {
+  const context = useContext(ConversationStoreContext);
+  if (!context) {
+    throw new Error("useConversationStore must be used within ConversationStoreProvider");
+  }
+
+  return context;
+}
+
+export type { ConversationMessage };
