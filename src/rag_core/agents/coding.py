@@ -32,7 +32,7 @@ def extract_code(text: str) -> str:
     return matches[0].group(2).strip("\r\n")
 
 
-def generate_code(state: CodingState):
+async def generate_code(state: CodingState):
     from src.rag_core.agents.coding_retrieval import should_use_rag, retrieve_lecture_context
 
     llm = get_llm()
@@ -53,14 +53,14 @@ Yêu cầu: {query}
 Hãy viết code Python giải quyết yêu cầu trên, bám sát thuật ngữ và cách tiếp cận trong bài giảng nếu có.
 Chỉ trả về code trong block ```python...```. Đảm bảo in ra kết quả (print).
 """)
-        res = llm.invoke(prompt.format(query=query, context=lecture_context))
+        res = await llm.ainvoke(prompt.format(query=query, context=lecture_context))
     else:
         prompt = ChatPromptTemplate.from_template("""
 Bạn là một chuyên gia lập trình Python. Hãy viết code Python để giải quyết yêu cầu sau:
 Yêu cầu: {query}
 Chỉ trả về code Python trong block ```python...```. Đảm bảo in ra kết quả chạy (print).
 """)
-        res = llm.invoke(prompt.format(query=query))
+        res = await llm.ainvoke(prompt.format(query=query))
     code = extract_code(res.content)
     return {"code": code, "retry_count": state.get("retry_count", 0), "references": references}
 
@@ -80,7 +80,7 @@ def execute_code_node(state: CodingState):
     }
 
 
-def fix_code(state: CodingState):
+async def fix_code(state: CodingState):
     llm = get_llm()
     prompt = ChatPromptTemplate.from_template("""
 Bạn đã viết đoạn code sau:
@@ -94,7 +94,7 @@ Cả kết quả stdout:
 
 Hãy sửa lại code giúp tôi. Yêu cầu: {query}. TRẢ VỀ ĐOẠN CODE ĐÃ ĐƯỢC SỬA TRONG BLOCK ```python...```. Đảm bảo dùng print để xuất kết quả.
 """)
-    res = llm.invoke(prompt.format(
+    res = await llm.ainvoke(prompt.format(
         code=state["code"],
         error=state["error"],
         output=state["output"],
@@ -104,7 +104,7 @@ Hãy sửa lại code giúp tôi. Yêu cầu: {query}. TRẢ VỀ ĐOẠN CODE �
     return {"code": code, "retry_count": state["retry_count"] + 1}
 
 
-def explain_heavy_code(state: CodingState):
+async def explain_heavy_code(state: CodingState):
     """Gọi LLM giải thích từng phần code cho sinh viên."""
     llm = get_llm()
     prompt = ChatPromptTemplate.from_template("""
@@ -116,7 +116,7 @@ Không lặp lại code. Chỉ trả về phần giải thích.
 {code}
 ```
 """)
-    res = llm.invoke(prompt.format(code=state["code"]))
+    res = await llm.ainvoke(prompt.format(code=state["code"]))
     return {"output": res.content}
 
 

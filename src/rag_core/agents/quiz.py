@@ -44,7 +44,7 @@ def _extract_quiz_json_payload(raw: str):
     except Exception:
         return None
 
-def node_quiz(state: State):
+async def node_quiz(state: State):
     """
     RAG-based Quiz Agent: Tìm kiếm nội dung bài giảng trước khi tạo câu hỏi.
     Đảm bảo câu hỏi bám sát kiến thức thực tế và có trích dẫn nguồn.
@@ -88,7 +88,10 @@ def node_quiz(state: State):
 
     # BƯỚC 1: RETRIEVAL CONTEXT (dùng lazy singleton)
     retriever, reranker = resource_manager.get_quiz_resources()
-    docs = retriever.get_relevant_documents(query)
+    if hasattr(retriever, "ainvoke"):
+        docs = await retriever.ainvoke(query)
+    else:
+        docs = await retriever.aget_relevant_documents(query)
     
     # Rerank để lấy 5 đoạn sát nhất
     reranked_docs = reranker.rerank(docs, query)[:5]
@@ -136,10 +139,10 @@ TRẢ VỀ JSON NGUYÊN THỦY PHẢI CHỨA OBJECT THEO FORMAT, KHÔNG DÙNG ``
     }
     
     try:
-        result = chain.invoke(invoke_input)
+        result = await chain.ainvoke(invoke_input)
     except Exception as parse_error:
         try:
-            raw_result = llm_chain.invoke(invoke_input)
+            raw_result = await llm_chain.ainvoke(invoke_input)
             raw_content = raw_result.content if hasattr(raw_result, "content") else str(raw_result)
             repaired = _extract_quiz_json_payload(raw_content)
             if not repaired:
