@@ -1,0 +1,222 @@
+from pydantic import BaseModel, Field
+from typing import List
+from langchain_core.output_parsers import JsonOutputParser
+from langchain_core.prompts import ChatPromptTemplate
+from src.generation.llm_model import get_llm
+from src.rag_core.state import State
+import json
+import re
+import torch
+
+# Lazy singleton để tránh khởi tạo lại model nặng mỗi request
+_quiz_retriever = None
+_quiz_reranker = None
+
+def _get_quiz_retriever():
+    global _quiz_retriever
+    if _quiz_retriever is None:
+        from src.storage.vectorstore import VectorDB
+        vector_db = VectorDB()
+        _quiz_retriever = vector_db.get_retriever()
+    return _quiz_retriever
+
+def _get_quiz_reranker():
+    global _quiz_reranker
+    if _quiz_reranker is None:
+        from src.retrieval.reranking import CrossEncoderReranker
+        device = "cuda" if torch.cuda.is_available() else "cpu"
+        _quiz_reranker = CrossEncoderReranker(device=device)
+    return _quiz_reranker
+
+class QuizQuestion(BaseModel):
+    question: str = Field(description="Nội dung câu hỏi trắc nghiệm")
+    options: List[str] = Field(description="Mảng chứa đúng 4 lựa chọn (A, B, C, D) dưới dạng chuỗi")
+    correct_answer: str = Field(description="Lựa chọn đúng (chỉ nội dung lựa chọn)")
+    explanation: str = Field(description="Giải thích ngắn gọn bám sát nội dung trong video transcript")
+    video_url: str = Field(description="URL video tương ứng với kiến thức trong câu hỏi")
+    timestamp: str = Field(description="Thời điểm (format HH:MM:SS) trong video nói về kiến thức này")
+
+class QuizOutput(BaseModel):
+    quizzes: List[QuizQuestion] = Field(description="Danh sách các câu trắc nghiệm")
+
+
+def _extract_quiz_json_payload(raw: str):
+    if not isinstance(raw, str):
+        return None
+
+    text = raw.strip()
+    fenced_match = re.search(r"```json\s*(\{[\s\S]*?\})\s*```", text, re.IGNORECASE)
+    if fenced_match:
+        text = fenced_match.group(1).strip()
+
+    try:
+        return json.loads(text)
+    except Exception:
+        pass
+
+    obj_match = re.search(r"(\{[\s\S]*\})", text)
+    if not obj_match:
+        return None
+
+    try:
+        return json.loads(obj_match.group(1))
+    except Exception:
+        return None
+
+def node_quiz(state: State):
+    """
+    RAG-based Quiz Agent: Tìm kiếm nội dung bài giảng trước khi tạo câu hỏi.
+    Đảm bảo câu hỏi bám sát kiến thức thực tế và có trích dẫn nguồn.
+    """
+    messages = state.get("messages", [])
+    if not messages:
+        return {"response": {}}
+        
+    last_message = messages[-1]
+    query = ""
+    
+    # Lấy query từ tool call hoặc message cuối
+    tool_calls = state.get("tool_calls")
+    if not tool_calls and hasattr(last_message, "tool_calls"):
+        tool_calls = last_message.tool_calls
+
+    if tool_calls:
+        for tool_call in tool_calls:
+            if tool_call.get("name") == "GenerateQuiz":
+                args = tool_call.get("args", {})
+                query = args.get("query", "")
+                if not query:
+                    topic = args.get("topic", "")
+                    num_questions = args.get("num_questions")
+                    difficulty = args.get("difficulty", "")
+                    if topic:
+                        query = f"Tạo quiz về {topic}"
+                        if num_questions:
+                            query += f", {num_questions} câu"
+                        if difficulty:
+                            query += f", độ khó {difficulty}"
+                break
+                
+    if not query:
+        for m in reversed(messages):
+            if m.type == "human":
+                query = m.content
+                break
+        if not query:
+            query = last_message.content
+
+    # BƯỚC 1: RETRIEVAL CONTEXT (dùng lazy singleton)
+    retriever = _get_quiz_retriever()
+    docs = retriever.get_relevant_documents(query)
+    
+    # Rerank để lấy 5 đoạn sát nhất
+    reranker = _get_quiz_reranker()
+    reranked_docs = reranker.rerank(docs, query)[:5]
+    
+    context_list = []
+    for doc in reranked_docs:
+        context_list.append({
+            "content": doc.page_content,
+            "url": doc.metadata.get("video_url", ""),
+            "timestamp": doc.metadata.get("start_timestamp", "")
+        })
+    
+    context_str = json.dumps(context_list, ensure_ascii=False)
+
+    # BƯỚC 2: GENERATION CÓ CONTEXT
+    llm = get_llm()
+    parser = JsonOutputParser(pydantic_object=QuizOutput)
+    
+    prompt = ChatPromptTemplate.from_template("""
+Bạn là chuyên gia khảo thí bài giảng. Hãy dùng thông tin từ VIDEO TRANSCRIPT dưới đây để tạo một bộ câu hỏi trắc nghiệm (3-5 câu).
+Yêu cầu:
+1. Chỉ được ra câu hỏi dựa trên nội dung có trong Transcript.
+2. Với mỗi câu hỏi, phải đính kèm ĐÚNG 'video_url' và 'timestamp' từ đoạn transcript tương ứng mà bạn đã dùng để ra đề.
+3. Giải thích đáp án phải bám sát lời giảng trong transcript.
+4. Ngôn ngữ câu hỏi và đáp án: Tiếng Việt.
+
+DỮ LIỆU TRANSCRIPT:
+{context}
+
+Yêu cầu cụ thể của người dùng: {query}
+
+{format_instructions}
+TRẢ VỀ JSON NGUYÊN THUY CHỈ CHỨA OBJECT THEO FORMAT, KHÔNG DÙNG ```json.
+""")
+
+    llm_chain = prompt | llm
+    chain = llm_chain | parser
+    invoke_input = {
+        "context": context_str,
+        "query": query,
+        "format_instructions": parser.get_format_instructions()
+    }
+    
+    try:
+        result = chain.invoke(invoke_input)
+    except Exception as parse_error:
+        try:
+            raw_result = llm_chain.invoke(invoke_input)
+            raw_content = raw_result.content if hasattr(raw_result, "content") else str(raw_result)
+            repaired = _extract_quiz_json_payload(raw_content)
+            if not repaired:
+                raise ValueError("Invalid json output")
+            result = QuizOutput.model_validate(repaired).model_dump()
+        except Exception as fallback_error:
+            data = {
+                "text": f"Lỗi tạo quiz: {str(fallback_error or parse_error)}",
+                "video_url": [],
+                "title": [],
+                "filename": [],
+                "start_timestamp": [],
+                "end_timestamp": [],
+                "confidence": [],
+                "type": "error",
+            }
+            return {"response": data}
+    
+    try:
+        
+        md_text = f"### 📝 Bộ câu hỏi Trắc Nghiệm dựa trên Bài Giảng:\n\n"
+        urls = []
+        titles = []
+        timestamps = []
+        
+        for i, q in enumerate(result['quizzes']):
+            md_text += f"**Câu {i+1}:** {q['question']}\n\n"
+            for z, opt in enumerate(q['options']):
+                md_text += f"- {opt}\n"
+            
+            # Citation cho mỗi câu hỏi
+            md_text += f"\n> 📖 *Gợi ý: Xem lại bài giảng tại [{q['timestamp']}]({q['video_url']}&t={q['timestamp'].replace(':', 'm', 1).replace(':', 's') if ':' in q['timestamp'] else q['timestamp']})*\n"
+            
+            md_text += f"\n<details><summary><b>Xem đáp án & Giải thích</b></summary>\n"
+            md_text += f"<br><b>Đáp án đúng:</b> {q['correct_answer']}\n\n"
+            md_text += f"<b>Giải thích:</b> {q['explanation']}\n"
+            md_text += f"</details>\n\n---\n"
+            
+            # Thu thập metadata để Frontend render danh sách nguồn bên dưới (nếu cần)
+            if q['video_url'] not in urls:
+                urls.append(q['video_url'])
+                titles.append(f"Video bài giảng cho câu {i+1}")
+                timestamps.append(q['timestamp'])
+            
+        data = {
+            "text": md_text,
+            "video_url": urls,
+            "title": titles,
+            "filename": ["quiz_source"] * len(urls),
+            "start_timestamp": timestamps,
+            "end_timestamp": timestamps,
+            "confidence": ["high"] * len(urls),
+            "type": "quiz"
+        }
+    except Exception as e:
+        data = {
+             "text": f"Lỗi tạo quiz: {str(e)}",
+             "video_url": [], "title": [], "filename": [],
+             "start_timestamp": [], "end_timestamp": [], "confidence": [],
+             "type": "error"
+        }
+    
+    return {"response": data}

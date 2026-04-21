@@ -1,0 +1,109 @@
+from typing import Annotated, TypedDict, List
+from langgraph.graph import StateGraph, START, END
+from src.generation.llm_model import get_llm
+from src.rag_core.tools.sandbox import execute_python_code
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.messages import HumanMessage, AIMessage
+import re
+
+class CodingState(TypedDict):
+    query: str
+    code: str
+    output: str
+    error: str
+    retry_count: int
+    success: bool
+    response: dict
+
+def extract_code(text: str) -> str:
+    match = re.search(r'```python\n(.*?)\n```', text, re.DOTALL)
+    if match:
+        return match.group(1)
+    return text
+
+def generate_code(state: CodingState):
+    llm = get_llm()
+    prompt = ChatPromptTemplate.from_template("""
+Bạn là một chuyên gia lập trình Python. Hãy viết code Python để giải quyết yêu cầu sau:
+Yêu cầu: {query}
+Chỉ trả về code Python trong block ```python...```. Đảm bảo in ra kết quả chạy (print).
+""")
+    res = llm.invoke(prompt.format(query=state.get("query", "")))
+    code = extract_code(res.content)
+    return {"code": code, "retry_count": state.get("retry_count", 0)}
+
+def execute_code_node(state: CodingState):
+    code = state["code"]
+    res = execute_python_code(code)
+    success = res["success"]
+    output = res["stdout"]
+    error = res["stderr"]
+    
+    return {"success": success, "output": output, "error": error}
+
+def fix_code(state: CodingState):
+    llm = get_llm()
+    prompt = ChatPromptTemplate.from_template("""
+Bạn đã viết đoạn code sau:
+```python
+{code}
+```
+Khi chạy gặp lỗi sau:
+{error}
+Cả kết quả stdout:
+{output}
+
+Hãy sửa lại code giúp tôi. Yêu cầu: {query}. TRẢ VỀ ĐOẠN CODE ĐÃ ĐƯỢC SỬA TRONG BLOCK ```python...```. Đảm bảo dùng print để xuất kết quả.
+""")
+    res = llm.invoke(prompt.format(
+        code=state["code"], 
+        error=state["error"],
+        output=state["output"],
+        query=state["query"]
+    ))
+    code = extract_code(res.content)
+    retry_count = state["retry_count"] + 1
+    return {"code": code, "retry_count": retry_count}
+
+def format_response(state: CodingState):
+    text = f"Dưới đây là đoạn code thực thi yêu cầu của bạn:\n```python\n{state['code']}\n```\n\n"
+    if state['success']:
+        text += f"Kết quả chạy thành công:\n```\n{state['output']}\n```"
+    else:
+        text += f"Sau {state['retry_count']} lần thử, code vẫn gặp lỗi:\n```\n{state['error']}\n```"
+        
+    data = {
+        "text": text,
+        "video_url": [],
+        "title": [],
+        "filename": [],
+        "start_timestamp": [],
+        "end_timestamp": [],
+        "confidence": [],
+        "type": "coding"
+    }
+    return {"response": data}
+
+def build_coding_subgraph():
+    graph = StateGraph(CodingState)
+    
+    graph.add_node("generate", generate_code)
+    graph.add_node("execute", execute_code_node)
+    graph.add_node("fix", fix_code)
+    graph.add_node("format_response", format_response)
+    
+    graph.add_edge(START, "generate")
+    graph.add_edge("generate", "execute")
+    
+    def condition(state: CodingState):
+        if state.get("success", False):
+            return "end"
+        if state.get("retry_count", 0) >= 3:
+            return "end"
+        return "fix"
+        
+    graph.add_conditional_edges("execute", condition, {"fix": "fix", "end": "format_response"})
+    graph.add_edge("fix", "execute")
+    graph.add_edge("format_response", END)
+    
+    return graph.compile()

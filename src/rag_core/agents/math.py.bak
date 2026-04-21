@@ -1,0 +1,72 @@
+from typing import Annotated, TypedDict
+from langgraph.graph import StateGraph, START, END
+from src.generation.llm_model import get_llm
+from src.rag_core.tools.sandbox import execute_python_code
+from langchain_core.prompts import ChatPromptTemplate
+from src.rag_core.agents.coding import extract_code
+
+class MathState(TypedDict):
+    query: str
+    sympy_code: str
+    math_result: str
+    is_success: bool
+    response: dict
+
+def generate_sympy_code(state: MathState):
+    llm = get_llm()
+    prompt = ChatPromptTemplate.from_template("""
+Bạn là chuyên gia giải toán bằng Python Sympy.
+Yêu cầu: {query}
+Hãy sinh ra MÃ PYTHON SỬ DỤNG SYMPY ĐỂ GIẢI BÀI TOÁN TRÊN VÀ PRINT KẾT QUẢ CUỐI CÙNG HOẶC RA NGHIỆM ĐỂ XÁC MINH CÂU TRẢ LỜI. 
+Trả về mã script nằm trong block ```python...```. Không cần giải thích dài dòng ở đây.
+""")
+    res = llm.invoke(prompt.format(query=state.get("query", "")))
+    code = extract_code(res.content)
+    return {"sympy_code": code}
+
+def verify_sympy(state: MathState):
+    res = execute_python_code(state.get("sympy_code", ""))
+    if res["success"]:
+        return {"is_success": True, "math_result": res["stdout"]}
+    else:
+        return {"is_success": False, "math_result": res["stderr"]}
+
+def generate_derivation(state: MathState):
+    llm = get_llm()
+    if state.get("is_success", False):
+        prompt = ChatPromptTemplate.from_template("""
+Bạn là thầy giáo dạy toán. 
+Học sinh hỏi bài toán sau: {query}
+Tôi đã dùng Sympy tính ra kết quả chuẩn xác là: {math_result}
+
+Bây giờ, hãy viết ra BÀI GIẢI CHI TIẾT TỪNG BƯỚC một (step-by-step derivation) kết hợp phân tích kiến thức, sử dụng LaTeX ($...$ hoặc $$...$$) sao cho cuối cùng khớp với kết quả trên. Viết bằng tiếng Việt.
+""")
+        res = llm.invoke(prompt.format(query=state.get("query", ""), math_result=state.get("math_result", "")))
+        text = res.content
+    else:
+        text = "Xin lỗi, tôi gặp trục trặc khi khởi tạo phương trình toán học sử dụng công cụ tính toán.\n\nLỗi:\n" + state.get("math_result", "Unknown error")
+        
+    data = {
+            "text": text,
+            "video_url": [],
+            "title": [],
+            "filename": [],
+            "start_timestamp": [],
+            "end_timestamp": [],
+            "confidence": [],
+            "type": "math"
+        }
+    return {"response": data}
+
+def build_math_subgraph():
+    graph = StateGraph(MathState)
+    graph.add_node("gen_sympy", generate_sympy_code)
+    graph.add_node("verify", verify_sympy)
+    graph.add_node("derive", generate_derivation)
+    
+    graph.add_edge(START, "gen_sympy")
+    graph.add_edge("gen_sympy", "verify")
+    graph.add_edge("verify", "derive")
+    graph.add_edge("derive", END)
+    
+    return graph.compile()

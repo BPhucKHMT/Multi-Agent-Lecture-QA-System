@@ -1,0 +1,128 @@
+import json
+import re
+from src.rag_core.state import State
+from src.generation.llm_model import get_llm
+from src.storage.vectorstore import VectorDB
+from src.rag_core.offline_rag import Offline_RAG
+from src.retrieval.reranking import CrossEncoderReranker
+from src.retrieval.keyword_search import BM25KeywordSearch
+from src.retrieval.hybrid_search import HybridSearch
+import torch
+
+device = "cuda" if torch.cuda.is_available() else "cpu"
+
+_rag_chain = None
+
+
+def _build_tutor_error_response(text: str) -> dict:
+    return {
+        "text": text,
+        "video_url": [],
+        "title": [],
+        "filename": [],
+        "start_timestamp": [],
+        "end_timestamp": [],
+        "confidence": [],
+        "type": "error",
+    }
+
+
+def _extract_tutor_json_payload(raw):
+    if isinstance(raw, dict):
+        return raw
+    if not isinstance(raw, str):
+        return None
+
+    text = raw.strip()
+    if not text:
+        return None
+
+    try:
+        parsed = json.loads(text)
+        return parsed if isinstance(parsed, dict) else None
+    except Exception:
+        pass
+
+    fenced = re.search(r"```json\s*(\{[\s\S]*?\})\s*```", text, re.IGNORECASE)
+    if fenced:
+        try:
+            parsed = json.loads(fenced.group(1))
+            return parsed if isinstance(parsed, dict) else None
+        except Exception:
+            pass
+
+    obj_match = re.search(r"(\{[\s\S]*\})", text)
+    if obj_match:
+        try:
+            parsed = json.loads(obj_match.group(1))
+            return parsed if isinstance(parsed, dict) else None
+        except Exception:
+            return None
+
+    return None
+
+
+def get_rag_chain():
+    global _rag_chain
+    if _rag_chain is None:
+        llm = get_llm()
+        vector_db = VectorDB()
+        vector_retriever = vector_db.get_retriever()
+        documents = vector_db.get_documents()
+        bm25_search = BM25KeywordSearch(documents).get_retriever()
+        hybrid_search = HybridSearch(bm25_search, vector_retriever).get_retriever()
+        print("Loading reranker model for Tutor Agent...")
+        reranker = CrossEncoderReranker(device=device)
+        print("Reranker model loaded.")
+        rag_core = Offline_RAG(llm, hybrid_search, reranker)
+        _rag_chain = rag_core.get_chain()
+    return _rag_chain
+
+def node_tutor(state: State):
+    """
+    Node Tutor chịu trách nhiệm trả lời câu hỏi bằng RAG (sử dụng video transcript)
+    """
+    messages = state.get("messages", [])
+    if not messages:
+        return {"response": {}}
+        
+    last_message = messages[-1]
+    query = ""
+    
+    if hasattr(last_message, "tool_calls") and last_message.tool_calls:
+        for tool_call in last_message.tool_calls:
+            if tool_call["name"] in ["AskTutor", "Retrieve"]:
+                query = tool_call["args"].get("query", "")
+                break
+                
+    if not query:
+        for m in reversed(messages):
+            if m.type == "human":
+                query = m.content
+                break
+        if not query:
+            query = last_message.content
+            
+    try:
+        rag_chain = get_rag_chain()
+        rag_result = rag_chain.invoke(query)
+        print("RAG result:", rag_result)
+        if isinstance(rag_result, dict):
+            data = rag_result
+        else:
+            if hasattr(rag_result, "content"):
+                raw_content = rag_result.content or ""
+            else:
+                raw_content = str(rag_result or "")
+
+            repaired = _extract_tutor_json_payload(raw_content)
+            if not repaired:
+                if not raw_content.strip():
+                    return {"response": _build_tutor_error_response("Xin lỗi, mô hình trả về output rỗng nên chưa thể trả lời.")}
+                return {"response": _build_tutor_error_response("Xin lỗi, chưa parse được JSON hợp lệ từ mô hình.")}
+            data = repaired
+
+        data["type"] = "rag"
+        return {"response": data}
+    except Exception as e:
+        return {"response": _build_tutor_error_response(f"Xin lỗi, có lỗi xảy ra: {e}")}
