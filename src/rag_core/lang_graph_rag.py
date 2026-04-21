@@ -39,6 +39,57 @@ logger = logging.getLogger(__name__)
 llm = get_supervisor_llm()
 
 
+@tool("AskTutor")
+def ask_tutor_tool(query: str) -> str:
+    """Dùng khi người dùng hỏi lý thuyết môn học cần truy hồi tri thức."""
+    return query
+
+
+@tool("CodeAssistant")
+def code_assistant_tool(query: str) -> str:
+    """Dùng khi yêu cầu liên quan đến code hoặc sửa lỗi lập trình."""
+    return query
+
+
+@tool("MathSolver")
+def math_solver_tool(query: str) -> str:
+    """Dùng khi người dùng cần giải bài toán hoặc suy luận toán học."""
+    return query
+
+
+@tool("GenerateQuiz")
+def generate_quiz_tool(
+    query: str = "",
+    topic: str = "",
+    difficulty: str = "",
+    num_questions: int | None = None,
+    number_of_questions: int | None = None,
+    language: str = "",
+    question_type: str = "",
+    options_per_question: int | None = None,
+    target_audience: str = "",
+    include_answers: bool = True,
+    include_explanations: bool = True,
+    tags: list[str] | None = None,
+) -> str:
+    """Dùng khi người dùng muốn tạo quiz/trắc nghiệm."""
+    details = {
+        "query": query,
+        "topic": topic,
+        "difficulty": difficulty,
+        "num_questions": num_questions,
+        "number_of_questions": number_of_questions,
+        "language": language,
+        "question_type": question_type,
+        "options_per_question": options_per_question,
+        "target_audience": target_audience,
+        "include_answers": include_answers,
+        "include_explanations": include_explanations,
+        "tags": tags or [],
+    }
+    return json.dumps(details, ensure_ascii=False)
+
+
 @tool("AskGeneral")
 def ask_general_tool(query: str) -> str:
     """Dùng khi người dùng chào hỏi, tán gẫu, hoặc hỏi các câu hỏi chung không liên quan đến bài học."""
