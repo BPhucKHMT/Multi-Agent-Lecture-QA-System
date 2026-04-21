@@ -77,7 +77,7 @@ def _clean_verification_text(math_result: str) -> str:
 
 # --- Các Node trong Math Graph ---
 
-def generate_sympy_code(state: MathState):
+async def generate_sympy_code(state: MathState):
     llm = get_llm()
     prompt = ChatPromptTemplate.from_template("""
 Bạn là chuyên gia Sympy. 
@@ -87,7 +87,7 @@ Yêu cầu:
 - Không có text giải thích.
 - Phải print() kết quả cuối cùng.
 """)
-    res = llm.invoke(prompt.format(query=state.get("query", "")))
+    res = await llm.ainvoke(prompt.format(query=state.get("query", "")))
     code = extract_code(res.content)
     return {"sympy_code": code}
 
@@ -101,7 +101,7 @@ def verify_sympy(state: MathState):
     else:
         return {"is_success": False, "math_result": res["stderr"]}
 
-def generate_derivation(state: MathState):
+async def generate_derivation(state: MathState):
     query = state.get("query", "")
     math_result = state.get("math_result", "")
     is_success = state.get("is_success", False)
@@ -127,7 +127,7 @@ HƯỚNG DẪN:
 """)
     
     try:
-        res = llm.invoke(prompt.format(
+        res = await llm.ainvoke(prompt.format(
             query=query,
             math_result=math_result if is_success else "Hãy tự giải chi tiết.",
             format_instructions=parser.get_format_instructions()
