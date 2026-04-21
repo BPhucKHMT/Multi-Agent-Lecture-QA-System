@@ -20,8 +20,10 @@ from typing import List
 import logging
 import json
 import time
+import asyncio
+import inspect
 
-from src.generation.llm_model import get_supervisor_llm
+from src.generation.llm_model import get_supervisor_llm, get_llm
 from src.rag_core.state import State
 from src.rag_core.agents.tutor import node_tutor
 from src.rag_core.agents.quiz import node_quiz
@@ -33,6 +35,8 @@ from src.rag_core.router_patterns import (
     QUIZ_PATTERNS,
     CODING_PATTERNS
 )
+from src.rag_core.utils import _extract_tool_args_from_state
+from src.rag_core.agents.direct import node_direct_answer
 
 logger = logging.getLogger(__name__)
 
@@ -130,24 +134,6 @@ supervisor_prompt = ChatPromptTemplate.from_messages(
 supervisor_llm = llm.bind_tools(SUPERVISOR_TOOLS)
 
 
-def _extract_tool_args_from_state(state: State, tool_name: str) -> dict:
-    tool_calls = state.get("tool_calls") or []
-    for tool_call in tool_calls:
-        if tool_call.get("name") == tool_name:
-            args = tool_call.get("args", {})
-            if isinstance(args, dict):
-                return args
-
-    messages = state.get("messages", [])
-    if messages:
-        last_message = messages[-1]
-        if hasattr(last_message, "tool_calls") and last_message.tool_calls:
-            for tool_call in last_message.tool_calls:
-                if tool_call.get("name") == tool_name:
-                    args = tool_call.get("args", {})
-                    if isinstance(args, dict):
-                        return args
-    return {}
 
 
 def _extract_text_from_ai_content(content) -> str:
@@ -234,7 +220,7 @@ def _is_greeting_input(input_text: str) -> bool:
         return False
     return any(normalized == pattern or normalized.startswith(f"{pattern} ") for pattern in GREETING_PATTERNS)
 
-def node_supervisor(state: State):
+async def node_supervisor(state: State):
     messages = state.get("messages", [])
 
     try:
@@ -276,7 +262,7 @@ def node_supervisor(state: State):
             agent_scratchpad=[]
         )
         
-        response = supervisor_llm.invoke(formatted_prompt)
+        response = await supervisor_llm.ainvoke(formatted_prompt)
         
         tool_calls = []
         if hasattr(response, "tool_calls") and response.tool_calls:
@@ -305,45 +291,6 @@ def node_supervisor(state: State):
         return {"tool_calls": [{"name": "AskGeneral", "args": {"query": f"Lỗi hệ thống điều phối: {str(e)}"}}]}
 
 
-def node_direct_answer(state: State):
-    """
-    Xử lý các tin nhắn chào hỏi, tán gẫu hoặc phản hồi chung không cần RAG.
-    Đóng vai trò là ChitChat Agent.
-    """
-    messages = state.get("messages", [])
-    args = _extract_tool_args_from_state(state, "AskGeneral")
-    query = args.get("query", "")
-    
-    if not query and messages:
-        last_message = messages[-1]
-        if isinstance(last_message, HumanMessage):
-            query = last_message.content
-
-    # Sử dụng LLM để trả lời một cách tự nhiên
-    llm_for_chat = get_llm()
-    chat_prompt = ChatPromptTemplate.from_template("""
-Bạn là trợ lý học tập UIT thân thiện và nhiệt tình.
-Hãy trả lời câu hỏi tán gẫu hoặc chào hỏi của sinh viên một cách tự nhiên bằng tiếng Việt.
-Học sinh: {query}
-
-Lưu ý:
-- Giọng văn: Gần gũi, chuyên nghiệp, súc tích.
-- Nếu được hỏi bạn có thể làm gì, hãy liệt kê ngắn gọn các khả năng: Giải Toán, Hướng dẫn học qua video, Sửa lỗi lập trình và làm Trắc nghiệm.
-""")
-    response = llm_for_chat.invoke(chat_prompt.format(query=query))
-    text = response.content
-
-    data = {
-        "text": text,
-        "video_url": [],
-        "title": [],
-        "filename": [],
-        "start_timestamp": [],
-        "end_timestamp": [],
-        "confidence": [],
-        "type": "direct"
-    }
-    return {"response": data}
 
 def router(state: State) -> str:
     messages = state.get("messages", [])
@@ -381,17 +328,17 @@ def router(state: State) -> str:
 coding_subgraph = build_coding_subgraph()
 math_subgraph = build_math_subgraph()
 
-def node_coding_wrapper(state: State):
+async def node_coding_wrapper(state: State):
     args = _extract_tool_args_from_state(state, "CodeAssistant")
     query = args.get("query", "")
-    res = coding_subgraph.invoke({"query": query, "retry_count": 0})
+    res = await coding_subgraph.ainvoke({"query": query, "retry_count": 0})
     return {"response": res.get("response", {})}
 
-def node_math_wrapper(state: State):
+async def node_math_wrapper(state: State):
     args = _extract_tool_args_from_state(state, "MathSolver")
     query = args.get("query", "")
     try:
-        res = math_subgraph.invoke({"query": query})
+        res = await math_subgraph.ainvoke({"query": query})
         response = res.get("response", {})
         
         # Đảm bảo type luôn là math cho agent này
@@ -412,9 +359,17 @@ def node_math_wrapper(state: State):
 graph = StateGraph(State)
 
 def timed_node(name: str, node_func):
-    def wrapper(state: State):
+    async def wrapper(state: State):
         start_time = time.time()
+        
+        # Gọi node function
         result = node_func(state)
+        
+        # Nếu kết quả trả về là một awaitable (coroutine), ta phải await nó.
+        # Điều này giúp xử lý an toàn cả các node định nghĩa bằng 'def' và 'async def'.
+        if inspect.isawaitable(result):
+            result = await result
+            
         elapsed = time.time() - start_time
         logger.info(f"[PERFORMANCE LOG] Node '{name}' thực thi mất {elapsed:.2f}s")
         return result

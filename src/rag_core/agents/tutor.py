@@ -55,7 +55,7 @@ def _extract_tutor_json_payload(raw):
 def get_rag_chain():
     return resource_manager.get_tutor_chain()
 
-def node_tutor(state: State):
+async def node_tutor(state: State):
     """
     Node Tutor chịu trách nhiệm trả lời câu hỏi bằng RAG (sử dụng video transcript)
     """
@@ -82,8 +82,15 @@ def node_tutor(state: State):
             
     try:
         rag_chain = get_rag_chain()
-        rag_result = rag_chain.invoke(query)
-        print("RAG result:", rag_result)
+        rag_result = await rag_chain.ainvoke(query)
+        
+        if hasattr(rag_result, "content"):
+            raw_content = rag_result.content or ""
+            print(f"DEBUG - Tutor LLM Output Length: {len(raw_content)}")
+            print(f"DEBUG - Tutor LLM Raw Content (first 500 chars): {raw_content[:500]}")
+        else:
+            raw_content = str(rag_result)
+            
         if isinstance(rag_result, dict):
             data = rag_result
         else:

@@ -22,7 +22,7 @@ def get_llm():
 def get_supervisor_llm():
     """LLM cho Supervisor routing."""
     from langchain_openai import ChatOpenAI
-    max_tokens = int(os.getenv("OPENAI_SUPERVISOR_MAX_TOKENS", "256"))
+    max_tokens = int(os.getenv("OPENAI_SUPERVISOR_MAX_TOKENS", "1024"))
     kwargs = {
         "api_key": os.getenv("myAPIKey", "placeholder"),
         "model": os.getenv(
