@@ -361,20 +361,20 @@ export default function WorkspacePage() {
     }
   }, [messages, isLoading]);
 
-  const historyItems = useMemo(
+  const historyItems = useMemo(() => {
+    const userMessages = messages.filter((m) => m.role === "user");
+    if (userMessages.length === 0) return [];
 
-    () =>
-      messages
-        .filter((message) => message.role === "user")
-        .slice(-12)
-        .reverse()
-        .map((message) => ({
-          id: message.id,
-          title: message.content.slice(0, 42) || "Câu hỏi mới",
-          subtitle: `Conversation ${conversationId.slice(0, 8)}`,
-        })),
-    [conversationId, messages],
-  );
+    // Chỉ hiển thị 1 mục đại diện cho cuộc hội thoại hiện tại
+    const firstMsg = userMessages[0];
+    return [
+      {
+        id: conversationId,
+        title: firstMsg.content.slice(0, 42) || "Hội thoại mới",
+        subtitle: `ID: ${conversationId.slice(0, 8)}`,
+      },
+    ];
+  }, [conversationId, messages]);
 
   const handleSectionChange = (newSection: AppSection) => {
     navigate(`/workspace/${newSection}`);
@@ -431,7 +431,7 @@ export default function WorkspacePage() {
           </div>
         </header>
 
-        <div className="min-h-0 flex-1 p-6 relative overflow-hidden">
+        <div className="min-h-0 flex-1 relative overflow-hidden">
           <AnimatePresence mode="wait">
             {activeSection === "summaryhub" ? (
               <motion.div
@@ -440,7 +440,7 @@ export default function WorkspacePage() {
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.98, y: -8 }}
                 transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
-                className="h-full"
+                className="h-full p-6"
               >
                 <SummaryHubPanel
                   messages={messages}
@@ -465,7 +465,7 @@ export default function WorkspacePage() {
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.98, y: -8 }}
                 transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
-                className="relative flex h-full flex-col"
+                className="flex h-full flex-col"
               >
                 {error ? (
                   <div className="mx-6 mt-6 mb-2 flex items-center justify-between rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
@@ -483,19 +483,22 @@ export default function WorkspacePage() {
                   </div>
                 ) : null}
 
-                <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto px-6 py-4 pb-28">
-
+                <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto px-6 py-8">
                   {summaryContext ? (
-                    <div className="mb-3 rounded-lg border border-cyan-200 bg-cyan-50 px-3 py-2 text-xs text-cyan-900">
-                      <p className="font-semibold">Đang thảo luận từ Summary Hub: {summaryContext.title}</p>
-                      <p className="puq-mono text-cyan-800/80">{summaryContext.subtitle}</p>
+                    <div className="mx-auto max-w-4xl mb-4 rounded-xl border border-cyan-200 bg-cyan-50/50 p-4 text-sm text-cyan-900 shadow-sm backdrop-blur-sm">
+                      <div className="flex items-center gap-2 mb-1">
+                        <div className="h-2 w-2 rounded-full bg-cyan-400 animate-pulse" />
+                        <p className="font-bold">Đang thảo luận từ Summary Hub</p>
+                      </div>
+                      <p className="font-medium text-cyan-800">{summaryContext.title}</p>
+                      <p className="puq-mono text-xs text-cyan-700/70 mt-1">{summaryContext.subtitle}</p>
                     </div>
                   ) : null}
                   <div className="mx-auto max-w-4xl">
                     <MessageList messages={messages} isLoading={isLoading} streamingStatus={streamingStatus} />
                   </div>
                 </div>
-                <div className="absolute bottom-6 left-1/2 z-20 w-full max-w-4xl -translate-x-1/2 px-4 flex justify-center">
+                <div className="w-full max-w-4xl mx-auto px-6 pb-8 pt-2">
                   <ChatInput
                     disabled={isLoading}
                     onSubmit={sendPrompt}
