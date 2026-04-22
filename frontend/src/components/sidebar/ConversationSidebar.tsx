@@ -63,14 +63,14 @@ export default function ConversationSidebar({
           <SidebarSparkIcon />
         </div>
         <div>
-          <p className="font-['Plus_Jakarta_Sans',sans-serif] text-base font-bold text-slate-900">PUQ Workspace</p>
+          <p className="font-['Plus_Jakarta_Sans',sans-serif] text-base font-bold text-slate-900">Không gian PUQ</p>
           <p className="text-xs text-slate-500">ID: {conversationId.slice(0, 8)}</p>
         </div>
       </div>
 
       <div className="space-y-1.5 border-b border-violet-100/50 pb-5">
         <NavigationButton active={activeSection === "chatspace"} label="Chatspace" onClick={() => onChangeSection("chatspace")} />
-        <NavigationButton active={activeSection === "summaryhub"} label="Summary Hub" onClick={() => onChangeSection("summaryhub")} />
+        <NavigationButton active={activeSection === "summaryhub"} label="Trung tâm tóm tắt" onClick={() => onChangeSection("summaryhub")} />
       </div>
 
       <div className="mt-4 flex min-h-0 flex-1 flex-col">
@@ -106,7 +106,7 @@ export default function ConversationSidebar({
         onClick={onNewConversation}
         className="mt-5 flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 px-4 py-3 text-[15px] font-semibold text-white shadow-md shadow-violet-500/20 transition-all duration-200 ease-out hover:from-violet-700 hover:to-indigo-700 hover:shadow-lg active:scale-[0.98]"
       >
-        <span className="text-lg leading-none">+</span> New chat
+        <span className="text-lg leading-none">+</span> Hội thoại mới
       </button>
     </aside>
   );

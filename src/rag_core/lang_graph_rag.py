@@ -96,7 +96,7 @@ def generate_quiz_tool(
 
 @tool("AskGeneral")
 def ask_general_tool(query: str) -> str:
-    """Dùng khi người dùng chào hỏi, tán gẫu, hoặc hỏi các câu hỏi chung không liên quan đến bài học."""
+    """Dùng khi người dùng chào hỏi, tán gẫu, hoặc hỏi các câu hỏi chung ( ví dụ hôm nay ăn gì, chơi gì) không liên quan đến kiến thức ML, AI, toán hoặc lập trình."""
     return query
 
 
@@ -111,11 +111,11 @@ SUPERVISOR_TOOLS = [
 SUPERVISOR_SYSTEM_PROMPT = (
     "Bạn là một Supervisor (Bộ điều phối) thông minh. Nhiệm vụ của bạn là phân loại yêu cầu của người dùng.\n\n"
     "CÁC CÔNG CỤ CÓ SẴN:\n"
-    "1. AskTutor: Dùng khi hỏi về nội dung học thuật, lý thuyết cần tra cứu video.\n"
+    "1. AskTutor: Dùng khi hỏi về nội dung học thuật, lý thuyết cần tra cứu video (AI, ML, Toán, etc.).\n"
     "2. MathSolver: Dùng khi giải toán, tính toán, đạo hàm, tích phân, chứng minh.\n"
     "3. CodeAssistant: Dùng khi viết code, sửa lỗi lập trình hoặc hỏi về công nghệ.\n"
     "4. GenerateQuiz: Dùng khi người dùng muốn làm trắc nghiệm.\n"
-    "5. AskGeneral: Dùng cho mọi trường hợp khác: chào hỏi, tán gẫu, giới thiệu bản thân, hỏi xem bạn làm được gì.\n\n"
+    "5. AskGeneral: Dùng cho mọi trường hợp khác: chào hỏi, tán gẫu, giới thiệu bản thân, hỏi xem bạn làm được gì.(Chấp nhận kiến thức tổng quát như lý, hóa, sinh nhưng những kiến thức chuyên ngành thì không được) \n\n"
     "QUY TẮC CỰC KỲ QUAN TRỌNG:\n"
     "- Bạn là một bộ điều phối thuần túy (Pure Dispatcher). BẠN BẮT BUỘC PHẢI GỌI 1 CÔNG CỤ.\n"
     "- KHÔNG được tự ý trả lời nội dung hay giải thích gì thêm trong nội dung phản hồi.\n"

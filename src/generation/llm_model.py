@@ -11,7 +11,7 @@ def get_llm():
     max_tokens = int(os.getenv("OPENAI_MAX_TOKENS", "8192"))
     kwargs = {
         "api_key": os.getenv("myAPIKey", "placeholder"),
-        "model": os.getenv("OPENAI_MODEL", "gpt-5-mini"),
+        "model": os.getenv("OPENAI_MODEL", "gpt-4o-mini"),
         "temperature": 0.1,
         "streaming": True,
         "max_tokens": max_tokens,
@@ -27,7 +27,7 @@ def get_supervisor_llm():
         "api_key": os.getenv("myAPIKey", "placeholder"),
         "model": os.getenv(
             "OPENAI_SUPERVISOR_MODEL",
-            os.getenv("OPENAI_MODEL", "gpt-5-mini"),
+            os.getenv("OPENAI_MODEL", "gpt-4o-mini"),
         ),
         "temperature": 0.0,
         "streaming": False,
