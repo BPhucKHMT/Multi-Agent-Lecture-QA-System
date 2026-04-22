@@ -4,7 +4,8 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 
 from src.api.schemas import ChatRequest, ChatResponse, VideoListResponse, VideoSummaryRequest, VideoSummaryResponse
-from src.api.services.chat_service import process_chat, generate_stream, list_local_videos, summarize_video
+from src.api.services.chat_service import process_chat, generate_stream, list_local_videos
+from src.api.services.summary_service import summarize_with_llm
 
 
 logger = logging.getLogger(__name__)
@@ -58,9 +59,9 @@ async def videos(query: str = "", page: int = 1, page_size: int = 20):
 
 @router.post("/videos/summary", response_model=VideoSummaryResponse)
 async def video_summary(request: VideoSummaryRequest):
-    """Tóm tắt nội dung transcript của một video theo video_id."""
+    """Tóm tắt nội dung transcript của một video theo video_id bằng LLM (GPT-4o-mini)."""
     try:
-        return summarize_video(request.video_id)
+        return await summarize_with_llm(request.video_id)
     except Exception as error:
         logger.error(f"Video summary error: {error}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Video summary failed: {str(error)}") from error

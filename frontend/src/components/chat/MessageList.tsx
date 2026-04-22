@@ -8,10 +8,11 @@ import type { ConversationMessage } from "../../store/conversationStore";
 type MessageListProps = {
   messages: ConversationMessage[];
   isLoading?: boolean;
+  streamingStatus?: string | null;
 };
 
-export default function MessageList({ messages, isLoading = false }: MessageListProps) {
-  if (messages.length === 0) {
+export default function MessageList({ messages, isLoading = false, streamingStatus = null }: MessageListProps) {
+  if (messages.length === 0 && !isLoading) {
     return (
       <div className="flex h-full flex-col items-center justify-center py-12 text-slate-400">
         <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-3xl bg-violet-50 text-violet-300">
@@ -61,10 +62,15 @@ export default function MessageList({ messages, isLoading = false }: MessageList
 
                 <div className="flex flex-col gap-3">
                   {!message.content && !message.response && !message.tempContext ? (
-                    <div className="flex items-center gap-1.5 py-1 opacity-40">
-                      <div className="h-1.5 w-1.5 animate-bounce rounded-full bg-violet-600" />
-                      <div className="h-1.5 w-1.5 animate-bounce rounded-full bg-violet-600 [animation-delay:0.2s]" />
-                      <div className="h-1.5 w-1.5 animate-bounce rounded-full bg-violet-600 [animation-delay:0.4s]" />
+                    <div className="flex flex-col gap-2 py-1">
+                      <div className="flex items-center gap-1.5 opacity-40">
+                        <div className="h-1.5 w-1.5 animate-bounce rounded-full bg-violet-600" />
+                        <div className="h-1.5 w-1.5 animate-bounce rounded-full bg-violet-600 [animation-delay:0.2s]" />
+                        <div className="h-1.5 w-1.5 animate-bounce rounded-full bg-violet-600 [animation-delay:0.4s]" />
+                      </div>
+                      {streamingStatus && (
+                        <p className="animate-pulse text-[12.5px] font-medium text-violet-600/70">{streamingStatus}</p>
+                      )}
                     </div>
                   ) : (
                     <>
@@ -77,7 +83,7 @@ export default function MessageList({ messages, isLoading = false }: MessageList
                           content={message.content} 
                           response={message.response} 
                           tempContext={message.tempContext}
-                          isStreaming={!isUser && index === messages.length - 1 && !message.response}
+                          isStreaming={isLoading && !isUser && index === messages.length - 1 && !message.response}
                         />
                       )}
                       {message.response && <CitationList response={message.response} />}
@@ -98,7 +104,7 @@ export default function MessageList({ messages, isLoading = false }: MessageList
           </div>
           <div className="rounded-2xl rounded-tl-none border border-violet-100/60 bg-white/80 px-5 py-3 shadow-sm backdrop-blur-sm">
             <div className="flex items-center gap-3 text-sm font-semibold text-violet-600/80">
-              <span>Đang phân tích dữ liệu</span>
+              <span>{streamingStatus || "Đang phân tích dữ liệu"}</span>
               <span className="puq-typing-dots">
                 <span className="bg-violet-400" />
                 <span className="bg-violet-400" />

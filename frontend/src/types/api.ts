@@ -33,7 +33,12 @@ export type ChatStreamContextEvent = {
   docs: any[];
 };
 
-export type ChatStreamEvent = ChatStreamTokenEvent | ChatStreamMetadataEvent | ChatStreamContextEvent;
+export type ChatStreamStatusEvent = {
+  type: "status";
+  status: string;
+};
+
+export type ChatStreamEvent = ChatStreamTokenEvent | ChatStreamMetadataEvent | ChatStreamContextEvent | ChatStreamStatusEvent;
 
 
 export type NormalizedChatResponse = {

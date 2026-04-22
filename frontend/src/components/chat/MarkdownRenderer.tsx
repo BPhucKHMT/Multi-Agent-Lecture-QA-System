@@ -62,7 +62,7 @@ const CodeBlock = ({ language, value }: { language: string; value: string }) => 
               ${isOutput ? 'text-emerald-400/80' : 
                 isError ? 'text-rose-400/80' : 
                 'text-slate-400'}`}>
-              {isOutput ? 'Terminal Output' : isError ? 'Execution Error' : (language || 'code')}
+              {isOutput ? 'Kết quả thực thi' : isError ? 'Lỗi thực thi' : (language || 'mã nguồn')}
             </span>
           </div>
         </div>
@@ -74,12 +74,12 @@ const CodeBlock = ({ language, value }: { language: string; value: string }) => 
           {copied ? (
             <>
               <Check className="h-3 w-3 text-emerald-400" />
-              <span className="text-emerald-400">Copied!</span>
+              <span className="text-emerald-400">Đã sao chép!</span>
             </>
           ) : (
             <>
               <Copy className="h-3 w-3" />
-              <span>Copy</span>
+              <span>Sao chép</span>
             </>
           )}
         </button>

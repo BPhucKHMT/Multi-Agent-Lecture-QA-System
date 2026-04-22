@@ -35,7 +35,7 @@ export default function LoginPage() {
             </span>
           </div>
           <a href="#" className="text-sm font-medium text-slate-600 transition hover:text-slate-800">
-            Back to home
+            Về trang chủ
           </a>
         </div>
       </header>
@@ -48,14 +48,14 @@ export default function LoginPage() {
                 <ShieldIcon />
               </div>
               <h1 className="font-['Plus_Jakarta_Sans',sans-serif] text-4xl font-extrabold tracking-[-0.03em] text-[#181c23]">
-                Welcome back
+                Chào mừng trở lại
               </h1>
-              <p className="mt-2 text-base text-[#414754]">Continue your journey into intelligent learning</p>
+              <p className="mt-2 text-base text-[#414754]">Tiếp tục hành trình học tập thông minh của bạn</p>
             </div>
 
             <form className="space-y-5" onSubmit={onSubmit}>
               <label className="block">
-                <span className="mb-1.5 block text-sm font-semibold text-[#181c23]">Username</span>
+                <span className="mb-1.5 block text-sm font-semibold text-[#181c23]">Tên đăng nhập</span>
                 <span className="relative block">
                   <span className="pointer-events-none absolute inset-y-0 left-3 grid place-items-center">
                     <MailIcon />
@@ -73,9 +73,9 @@ export default function LoginPage() {
 
               <label className="block">
                 <span className="mb-1.5 flex items-center justify-between text-sm font-semibold text-[#181c23]">
-                  Password
+                  Mật khẩu
                   <a href="#" className="text-[#0059bb] hover:underline">
-                    Forgot password?
+                    Quên mật khẩu?
                   </a>
                 </span>
                 <span className="relative block">
@@ -105,15 +105,15 @@ export default function LoginPage() {
                 type="submit"
                 className="w-full rounded-lg bg-[#0070ea] py-3.5 text-lg font-bold text-[#fefcff] shadow-[0_10px_15px_-3px_rgba(0,89,187,0.2),0_4px_6px_-4px_rgba(0,89,187,0.2)] transition hover:bg-[#0065d2]"
               >
-                Sign In
+                Đăng nhập
               </button>
               {loginError ? <p className="text-sm font-medium text-red-600">{loginError}</p> : null}
-              <p className="text-xs text-slate-500">Demo credentials: username `admin`, password `admin`</p>
+              <p className="text-xs text-slate-500">Thông tin thử nghiệm: tài khoản `admin`, mật khẩu `admin`</p>
             </form>
 
             <div className="my-7 flex items-center gap-4 text-sm font-medium uppercase tracking-[0.05em] text-[#717786]">
               <div className="h-px flex-1 bg-[rgba(193,198,215,0.5)]" />
-              <span>Or continue with</span>
+              <span>Hoặc tiếp tục với</span>
               <div className="h-px flex-1 bg-[rgba(193,198,215,0.5)]" />
             </div>
 
@@ -135,13 +135,13 @@ export default function LoginPage() {
             </div>
 
             <p className="mt-7 text-center text-sm text-[#414754]">
-              Don&apos;t have an account? <a href="#" className="font-bold text-[#0059bb] hover:underline">Join Luminary today</a>
+              Chưa có tài khoản? <a href="#" className="font-bold text-[#0059bb] hover:underline">Tham gia ngay hôm nay</a>
             </p>
           </div>
 
           <p className="mx-auto mt-8 max-w-[384px] text-center text-xs text-[#717786]">
-            By signing in, you agree to our <a href="#" className="underline">Terms of Service</a> and{" "}
-            <a href="#" className="underline">Privacy Policy</a>.
+            Bằng cách đăng nhập, bạn đồng ý với <a href="#" className="underline">Điều khoản dịch vụ</a> và{" "}
+            <a href="#" className="underline">Chính sách bảo mật</a> của chúng tôi.
           </p>
         </div>
       </main>
@@ -150,12 +150,12 @@ export default function LoginPage() {
         <div className="mx-auto flex w-full max-w-[1280px] flex-col items-center justify-between gap-5 text-sm sm:flex-row">
           <p className="font-bold text-blue-600">Cognitive Luminary</p>
           <div className="flex flex-wrap items-center justify-center gap-5 text-[#64748b]">
-            <a href="#" className="hover:underline">Privacy Policy</a>
-            <a href="#" className="hover:underline">Terms of Service</a>
-            <a href="#" className="hover:underline">Help Center</a>
-            <a href="#" className="hover:underline">Contact</a>
+            <a href="#" className="hover:underline">Chính sách bảo mật</a>
+            <a href="#" className="hover:underline">Điều khoản dịch vụ</a>
+            <a href="#" className="hover:underline">Trung tâm hỗ trợ</a>
+            <a href="#" className="hover:underline">Liên hệ</a>
           </div>
-          <p className="text-[#64748b]">© 2024 Cognitive Luminary. All rights reserved.</p>
+          <p className="text-[#64748b]">© 2024 PUQ Chatbot. Bảo lưu mọi quyền.</p>
         </div>
       </footer>
     </div>

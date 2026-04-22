@@ -25,6 +25,7 @@ type ConversationStoreValue = {
   clearConversation: () => void;
   clearError: () => void;
   addMessage: (message: Omit<ConversationMessage, "id">) => void;
+  streamingStatus: string | null;
 };
 
 type FailedPromptState = {
@@ -65,6 +66,7 @@ export function ConversationStoreProvider({ children }: { children: ReactNode })
   const [conversationId, setConversationId] = useState(() => createConversationId());
   const [messages, setMessages] = useState<ConversationMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [streamingStatus, setStreamingStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [failedPromptState, setFailedPromptState] = useState<FailedPromptState | null>(null);
   const inFlightLockRef = useRef(false);
@@ -105,6 +107,7 @@ export function ConversationStoreProvider({ children }: { children: ReactNode })
       setError(null);
       setFailedPromptState(null);
       setIsLoading(true);
+      setStreamingStatus("Đang gửi yêu cầu...");
 
       try {
         let isFirstToken = true;
@@ -117,6 +120,7 @@ export function ConversationStoreProvider({ children }: { children: ReactNode })
             if (isFirstToken) {
               setIsLoading(false);
               isFirstToken = false;
+              setStreamingStatus(null);
             }
 
             setMessages((prev) =>
@@ -131,6 +135,7 @@ export function ConversationStoreProvider({ children }: { children: ReactNode })
             if (requestToken !== requestTokenRef.current) return;
             
             if (serverConvId) setConversationId(serverConvId);
+            setStreamingStatus(null);
             
             setMessages((prev) =>
               prev.map((msg) =>
@@ -154,8 +159,10 @@ export function ConversationStoreProvider({ children }: { children: ReactNode })
               )
             );
           },
-
-
+          (status) => {
+            if (requestToken !== requestTokenRef.current) return;
+            setStreamingStatus(status);
+          },
           (error) => {
              throw error;
           }
@@ -190,6 +197,7 @@ export function ConversationStoreProvider({ children }: { children: ReactNode })
     inFlightLockRef.current = false;
     setMessages([]);
     setIsLoading(false);
+    setStreamingStatus(null);
     setError(null);
     setFailedPromptState(null);
     setConversationId(createConversationId());
@@ -221,8 +229,9 @@ export function ConversationStoreProvider({ children }: { children: ReactNode })
       clearConversation,
       clearError,
       addMessage,
+      streamingStatus,
     }),
-    [clearConversation, clearError, conversationId, error, failedPromptState, isLoading, messages, retryLastFailedPrompt, sendPrompt, addMessage],
+    [clearConversation, clearError, conversationId, error, failedPromptState, isLoading, messages, retryLastFailedPrompt, sendPrompt, addMessage, streamingStatus],
   );
 
   return createElement(ConversationStoreContext.Provider, { value }, children);

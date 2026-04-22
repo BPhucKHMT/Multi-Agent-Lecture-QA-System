@@ -47,14 +47,14 @@ export default function ChatInput({
         className="relative flex items-center overflow-hidden rounded-full border border-violet-200/50 bg-white/70 shadow-xl shadow-violet-900/10 backdrop-blur-xl transition-all focus-within:border-violet-400 focus-within:bg-white"
       >
         {contextPill ? (
-          <div className="absolute left-1.5 top-1.5 bottom-1.5 right-1.5 flex items-center justify-between rounded-full bg-violet-100/90 pl-4 pr-1 text-xs text-violet-900 backdrop-blur-sm z-20">
-            <span className="font-semibold truncate pr-2">Context: {contextPill.title}</span>
+          <div className="ml-2 flex shrink-0 items-center gap-2 rounded-full bg-violet-100/90 py-1.5 pl-3 pr-1 text-[11px] font-medium text-violet-900 backdrop-blur-sm transition-all animate-in fade-in slide-in-from-left-2 duration-300 max-w-[40%] sm:max-w-[50%]">
+            <span className="truncate">Ngữ cảnh: {contextPill.title}</span>
             <button
               type="button"
               onClick={onClearContextPill}
-              className="rounded-full bg-white px-3 py-1 font-bold text-violet-700 shadow-sm transition-all hover:scale-105 active:scale-95"
+              className="rounded-full bg-white px-2 py-0.5 text-[10px] font-bold text-violet-700 shadow-sm transition-all hover:bg-violet-50 hover:text-violet-800 active:scale-95"
             >
-              Clear
+              Xóa
             </button>
           </div>
         ) : null}
@@ -62,9 +62,9 @@ export default function ChatInput({
         <input
           value={value}
           onChange={(event) => setValue(event.target.value)}
-          placeholder="Hỏi bất cứ điều gì về tài liệu học tập của bạn..."
-          className="puq-input flex-1 bg-transparent py-4 pl-6 pr-14 text-[15px] outline-none placeholder:text-slate-400"
-          disabled={blocked || !!contextPill}
+          placeholder={contextPill ? "Đặt câu hỏi về context này..." : "Hỏi bất cứ điều gì về tài liệu học tập của bạn..."}
+          className={`puq-input flex-1 bg-transparent py-4 text-[15px] outline-none placeholder:text-slate-400 ${contextPill ? 'pl-3' : 'pl-6'} pr-14`}
+          disabled={blocked}
         />
         
         <button

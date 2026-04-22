@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field
 from langchain_core.output_parsers import JsonOutputParser
-from langchain.prompts import ChatPromptTemplate
+from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnablePassthrough
 from langchain_core.runnables import RunnableLambda
 from typing import List
@@ -53,7 +53,6 @@ Format instructions:
 
     def format_doc(self, docs, *args, **kwargs):
         formatted = []
-        max_chars_per_doc = 1000
         for doc in docs:
             url = doc.metadata.get("video_url", "")
             filename = doc.metadata.get("filename", "")
@@ -61,7 +60,7 @@ Format instructions:
             start = doc.metadata.get("start_timestamp", "")
             end = doc.metadata.get("end_timestamp", "")
             content_text = doc.page_content if isinstance(doc.page_content, str) else str(doc.page_content)
-            content = json.dumps(content_text[:max_chars_per_doc])  # escape quotes, newlines
+            content = json.dumps(content_text)  # escape quotes, newlines — no truncation
             formatted.append(f'{{"video_url": "{url}", "filename": "{filename}", "title": "{title}","start": "{start}", "end": "{end}",  "content": {content}}}')
         return "[" + ",".join(formatted) + "]"
 

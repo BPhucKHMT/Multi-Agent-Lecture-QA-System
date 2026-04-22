@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from "react";
+import { Sparkles, Loader2 } from "lucide-react";
 import { useParams, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import ChatInput from "../components/chat/ChatInput";
@@ -8,6 +9,30 @@ import { useConversationStore, type ConversationMessage } from "../store/convers
 import { getVideos, summarizeVideo } from "../lib/api/videos";
 import type { VideoItem } from "../types/api";
 import type { AppSection, DiscussionContext } from "../types/app";
+
+const SummaryLoading = () => (
+  <div className="space-y-6 p-2 animate-in fade-in duration-700">
+    <div className="flex items-center gap-4">
+      <div className="relative flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-500 to-indigo-600 text-white shadow-lg shadow-violet-200">
+        <Sparkles className="h-6 w-6 animate-pulse" />
+        <div className="absolute -right-1 -top-1 h-3 w-3 rounded-full bg-emerald-400 border-2 border-white" />
+      </div>
+      <div className="flex-1 space-y-2">
+        <div className="h-4 w-32 animate-pulse rounded-full bg-slate-200" />
+        <div className="flex items-center gap-2">
+          <Loader2 className="h-3 w-3 animate-spin text-violet-500" />
+          <div className="h-3 w-48 animate-pulse rounded-full bg-slate-100" />
+        </div>
+      </div>
+    </div>
+    <div className="space-y-4 pl-16">
+      <div className="h-4 w-full animate-pulse rounded-full bg-slate-100/80" />
+      <div className="h-4 w-[92%] animate-pulse rounded-full bg-slate-100/80 [animation-delay:0.2s]" />
+      <div className="h-4 w-[96%] animate-pulse rounded-full bg-slate-100/80 [animation-delay:0.4s]" />
+      <div className="h-4 w-[40%] animate-pulse rounded-full bg-slate-100/80 [animation-delay:0.6s]" />
+    </div>
+  </div>
+);
 
 function SummaryHubPanel({
   messages,
@@ -37,7 +62,7 @@ function SummaryHubPanel({
     return pane === "summary" ? "flex-[7.5]" : "flex-[2.5]";
   };
 
-  const { isLoading, error, clearError, sendPrompt, retryLastFailedPrompt, canRetryLastFailedPrompt, addMessage } = useConversationStore();
+  const { isLoading, error, clearError, sendPrompt, retryLastFailedPrompt, canRetryLastFailedPrompt, addMessage, streamingStatus } = useConversationStore();
 
   useEffect(() => {
     let mounted = true;
@@ -166,6 +191,7 @@ function SummaryHubPanel({
                 onDiscussInChat({
                   title: selectedVideo.title,
                   subtitle: `video_id=${selectedVideo.video_id}`,
+                  summaryText: summaryText || undefined,
                 });
               }}
               disabled={!canDiscussInChat}
@@ -183,8 +209,8 @@ function SummaryHubPanel({
         </div>
 
         {isSummarizing ? (
-          <div className="puq-pane rounded-xl bg-white p-5 shadow-sm">
-             <MessageList messages={[]} isLoading={true} />
+          <div className="puq-pane rounded-xl bg-white p-8 shadow-sm border border-violet-100/50">
+             <SummaryLoading />
           </div>
         ) : null}
 
@@ -318,6 +344,8 @@ export default function WorkspacePage() {
     retryLastFailedPrompt,
     canRetryLastFailedPrompt,
     clearConversation,
+    addMessage,
+    streamingStatus,
   } = useConversationStore();
 
   const [summaryContext, setSummaryContext] = useState<DiscussionContext | null>(null);
@@ -363,13 +391,13 @@ export default function WorkspacePage() {
         onChangeSection={handleSectionChange}
         conversationId={conversationId}
         historyItems={historyItems}
-        onNewConversation={clearConversation}
+        onNewConversation={() => { clearConversation(); setSummaryContext(null); }}
       />
       <main className="flex min-w-0 flex-1 flex-col">
         <header className="flex h-[72px] shrink-0 items-center justify-between border-b border-slate-200/50 bg-white/30 px-8 backdrop-blur-2xl">
           <div className="flex items-center gap-4">
             <h2 className="font-['Plus_Jakarta_Sans',sans-serif] text-[1.1rem] font-bold text-slate-800">
-              {activeSection === "chatspace" ? "Chatspace" : "Summary Hub"}
+              {activeSection === "chatspace" ? "Chatspace" : "Trung tâm tóm tắt"}
             </h2>
             <div className="flex items-center gap-2 rounded-full border border-slate-200/60 bg-white/60 px-3 py-1 shadow-sm">
               <span className="relative flex h-2 w-2">
@@ -388,7 +416,7 @@ export default function WorkspacePage() {
               <svg className="h-4 w-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
               </svg>
-              Workspaces
+              Không gian
             </button>
             <button
               type="button"
@@ -418,6 +446,14 @@ export default function WorkspacePage() {
                   messages={messages}
                   onDiscussInChat={(context) => {
                     setSummaryContext(context);
+                    // Inject summary vào Chatspace như tin nhắn AI đầu tiên
+                    // để Supervisor Agent thấy context trong chat_history
+                    if (context.summaryText) {
+                      addMessage({
+                        role: "assistant",
+                        content: `📋 **Tóm tắt video: ${context.title}**\n\n${context.summaryText}`,
+                      });
+                    }
                     handleSectionChange("chatspace");
                   }}
                 />
@@ -456,7 +492,7 @@ export default function WorkspacePage() {
                     </div>
                   ) : null}
                   <div className="mx-auto max-w-4xl">
-                    <MessageList messages={messages} isLoading={isLoading} />
+                    <MessageList messages={messages} isLoading={isLoading} streamingStatus={streamingStatus} />
                   </div>
                 </div>
                 <div className="absolute bottom-6 left-1/2 z-20 w-full max-w-4xl -translate-x-1/2 px-4 flex justify-center">
