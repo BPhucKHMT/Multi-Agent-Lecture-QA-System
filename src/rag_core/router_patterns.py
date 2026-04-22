@@ -51,4 +51,5 @@ CODING_PATTERNS = (
     "sql",
     "sửa lỗi",
     "sua loi",
+    
 )
