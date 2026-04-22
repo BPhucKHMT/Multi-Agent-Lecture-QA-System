@@ -33,10 +33,10 @@ export default function CitationList({ response }: CitationListProps) {
             </div>
             <div className="flex flex-col min-w-0">
               <span className="truncate text-[13.5px] font-bold text-slate-700 group-hover:text-violet-800">
-                {citation.marker} {citation.title || "Video Lecture"}
+                {citation.marker} {citation.title || "Video bài giảng"}
               </span>
               <span className="text-[10.5px] font-bold text-slate-400 flex items-center gap-1.5 px-0.5">
-                Timestamp: {citation.start_timestamp}
+                Mốc thời gian: {citation.start_timestamp}
                 <ExternalLink className="h-2.5 w-2.5 opacity-0 -translate-x-1 group-hover:opacity-60 group-hover:translate-x-0 transition-all" />
               </span>
             </div>

@@ -84,40 +84,6 @@ def _estimate_token_count_from_text(text: str) -> int:
     return (len(stripped) + 3) // 4
 
 
-def _extractive_summary(text: str, max_points: int = 8) -> str:
-    """Tóm tắt nhanh theo hướng extractive để phản hồi ổn định và nhanh."""
-    cleaned = re.sub(r"\s+", " ", text).strip()
-    if not cleaned:
-        return "Không có nội dung transcript để tóm tắt."
-
-    sentences = re.split(r"(?<=[\.!\?])\s+", cleaned)
-    picked: List[str] = []
-    seen = set()
-    for sentence in sentences:
-        normalized = sentence.strip()
-        if len(normalized) < 40:
-            continue
-        key = normalized.lower()
-        if key in seen:
-            continue
-        picked.append(normalized)
-        seen.add(key)
-        if len(picked) >= max_points:
-            break
-
-    if not picked:
-        picked = [cleaned[:500]]
-
-    bullet_points = "\n".join(f"- {item}" for item in picked)
-    return (
-        "## Tóm tắt video\n"
-        f"{bullet_points}\n\n"
-        "## Gợi ý thảo luận\n"
-        "- Làm rõ các khái niệm quan trọng trong phần tóm tắt trên.\n"
-        "- Đặt câu hỏi về ví dụ hoặc ứng dụng thực tế của nội dung bài giảng.\n"
-        "- So sánh nội dung video với kiến thức bạn đã học trước đó."
-    )
-
 
 @lru_cache(maxsize=1)
 def _load_video_metadata_map() -> Dict[str, Dict[str, str]]:
@@ -303,33 +269,6 @@ def _build_transcript_index() -> Dict[str, str]:
     return index
 
 
-def summarize_video(video_id: str) -> Dict[str, str]:
-    """Tóm tắt transcript theo video_id để Summary Hub gọi trước khi chuyển sang Chatspace."""
-    cleaned_video_id = (video_id or "").strip()
-    if not cleaned_video_id:
-        return {"video_id": "", "summary": "Thiếu video_id để tóm tắt."}
-
-    transcript_map = _build_transcript_index()
-    transcript_path = transcript_map.get(cleaned_video_id)
-    if not transcript_path:
-        return {
-            "video_id": cleaned_video_id,
-            "summary": "Không tìm thấy transcript cho video đã chọn. Vui lòng chọn video khác.",
-        }
-
-    try:
-        transcript_text = Path(transcript_path).read_text(encoding="utf-8", errors="ignore")
-    except Exception:
-        transcript_text = ""
-
-    if not transcript_text.strip():
-        return {
-            "video_id": cleaned_video_id,
-            "summary": "Transcript rỗng hoặc không đọc được nội dung để tóm tắt.",
-        }
-
-    summary = _extractive_summary(transcript_text[:24000])
-    return {"video_id": cleaned_video_id, "summary": summary}
 
 
 def process_chat(request: ChatRequest) -> ChatResponse:
@@ -385,11 +324,15 @@ class JsonStreamCleaner:
     def __init__(self):
         self.buffer = ""
         self.is_json = False
+        self.is_plain_text = False
         self.last_yielded_len = 0
         self.target_keys = ['"text"', '"goal"', '"content"']
         self.capture_start_idx = -1
 
     def process_token(self, token: str) -> str:
+        if self.is_plain_text:
+            return token
+
         self.buffer += token
         
         # Nếu chưa xác định là JSON, kiểm tra dấu { ở đầu
@@ -397,8 +340,19 @@ class JsonStreamCleaner:
             stripped = self.buffer.lstrip()
             if stripped.startswith("{"):
                 self.is_json = True
-            elif stripped:  # Có nội dung và không bắt đầu bằng { => stream text thường
-                return token
+            elif stripped.startswith("```"):
+                start_idx = self.buffer.find("{")
+                if start_idx != -1:
+                    self.buffer = self.buffer[start_idx:]
+                    self.is_json = True
+                elif len(stripped) < 15:
+                    return ""
+                else:
+                    self.is_plain_text = True
+                    return self.buffer
+            elif stripped:  # Có nội dung và không bắt đầu bằng { hoặc ``` => stream text thường
+                self.is_plain_text = True
+                return self.buffer
             else:
                 return "" # Đang chờ xem có phải JSON không
 
@@ -533,12 +487,24 @@ async def generate_stream(conversation_id: str, request_messages: list, user_mes
     
     cleaner = JsonStreamCleaner()
     
+    STATUS_MAPPING = {
+        "supervisor": "🤔 Đang phân tích yêu cầu của bạn...",
+        "tutor": "📚 Đang truy hồi tri thức từ bài giảng...",
+        "quiz": "📝 Đang soạn thảo câu hỏi trắc nghiệm...",
+        "coding": "💻 Đang xử lý logic lập trình...",
+        "math": "🔢 Đang thực hiện tính toán và chứng minh...",
+        "direct": "💬 Đang chuẩn bị câu trả lời...",
+    }
+    
     try:
         # Phase 1: Stream từng text token từ LLM
         async for event in workflow.astream_events(initial_state, version="v2"):
             node_name = event.get("metadata", {}).get("langgraph_node", "")
-
             event_type = event.get("event")
+
+            # Gửi trạng thái node nếu có mapping
+            if event_type == "on_chain_start" and node_name in STATUS_MAPPING:
+                yield f"data: {json_lib.dumps({'type': 'status', 'status': STATUS_MAPPING[node_name]})}\n\n"
 
             # Gửi Context sớm nếu bắt được kết quả từ retriever/lambda
             if event_type == "on_chain_end":
@@ -589,6 +555,7 @@ async def generate_stream(conversation_id: str, request_messages: list, user_mes
             response = _stream_error_response("Lỗi streaming: Không nhận được metadata phản hồi cuối.")
     except Exception as error:
         _safe_stream_log(f"[stream] ERROR {error!r}")
+        print(error)
         response = _stream_error_response(f"Lỗi streaming: {str(error)}")
 
     stream_elapsed = time.time() - stream_start_time
