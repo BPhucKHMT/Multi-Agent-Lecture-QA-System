@@ -53,14 +53,20 @@ Yêu cầu: {query}
 Hãy viết code Python giải quyết yêu cầu trên, bám sát thuật ngữ và cách tiếp cận trong bài giảng nếu có.
 Chỉ trả về code trong block ```python...```. Đảm bảo in ra kết quả (print).
 """)
-        res = await llm.ainvoke(prompt.format(query=query, context=lecture_context))
+        res = await llm.ainvoke(
+            prompt.format(query=query, context=lecture_context)
+        )
+
     else:
         prompt = ChatPromptTemplate.from_template("""
 Bạn là một chuyên gia lập trình Python. Hãy viết code Python để giải quyết yêu cầu sau:
 Yêu cầu: {query}
 Chỉ trả về code Python trong block ```python...```. Đảm bảo in ra kết quả chạy (print).
 """)
-        res = await llm.ainvoke(prompt.format(query=query))
+        res = await llm.ainvoke(
+            prompt.format(query=query)
+        )
+
     code = extract_code(res.content)
     return {"code": code, "retry_count": state.get("retry_count", 0), "references": references}
 

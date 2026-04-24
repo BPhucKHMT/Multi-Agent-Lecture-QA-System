@@ -5,6 +5,7 @@ import ast
 import os
 import re
 import sys
+from typing import Optional
 
 FORBIDDEN_MODULES = {"subprocess", "shutil", "socket"}
 FORBIDDEN_CALLS = {
@@ -54,13 +55,13 @@ def is_long_running(code: str) -> bool:
     return False
 
 
-def _string_literal(node: ast.AST) -> str | None:
+def _string_literal(node: ast.AST) -> Optional[str]:
     if isinstance(node, ast.Constant) and isinstance(node.value, str):
         return node.value
     return None
 
 
-def _subscript_string(slice_node: ast.AST) -> str | None:
+def _subscript_string(slice_node: ast.AST) -> Optional[str]:
     if hasattr(ast, "Index") and isinstance(slice_node, ast.Index):
         slice_node = slice_node.value
     return _string_literal(slice_node)

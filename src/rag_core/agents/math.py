@@ -127,11 +127,15 @@ HƯỚNG DẪN:
 """)
     
     try:
-        res = await llm.ainvoke(prompt.format(
-            query=query,
-            math_result=math_result if is_success else "Hãy tự giải chi tiết.",
-            format_instructions=parser.get_format_instructions()
-        ))
+        res = await llm.ainvoke(
+            prompt.format(
+                query=query,
+                math_result=math_result if is_success else "Hãy tự giải chi tiết.",
+                format_instructions=parser.get_format_instructions()
+            ),
+            config={"tags": ["final_answer"]}
+        )
+
         
         content = res.content if hasattr(res, "content") else str(res)
         math_data_parsed = _extract_json_from_llm(content)

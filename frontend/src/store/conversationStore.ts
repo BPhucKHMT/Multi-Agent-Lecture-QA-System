@@ -1,5 +1,5 @@
-import { createContext, createElement, useCallback, useContext, useMemo, useRef, useState, type ReactNode } from "react";
-import { postChat, streamChat } from "../lib/api/chat";
+import { createContext, createElement, useCallback, useContext, useMemo, useRef, useState, useEffect, type ReactNode } from "react";
+import { postChat, streamChat, fetchChatHistory, fetchChatSessions } from "../lib/api/chat";
 import type { ChatMessage } from "../types/api";
 import type { ChatRequest } from "../types/api";
 import type { RagResponse } from "../types/rag";
@@ -13,10 +13,16 @@ type ConversationMessage = {
   tempContext?: any[];
 };
 
+type ChatSession = {
+  session_id: string;
+  title: string;
+  created_at: string;
+};
 
 type ConversationStoreValue = {
   conversationId: string;
   messages: ConversationMessage[];
+  sessions: ChatSession[];
   isLoading: boolean;
   error: string | null;
   canRetryLastFailedPrompt: boolean;
@@ -26,6 +32,10 @@ type ConversationStoreValue = {
   clearError: () => void;
   addMessage: (message: Omit<ConversationMessage, "id">) => void;
   streamingStatus: string | null;
+  switchSession: (sessionId: string) => Promise<void>;
+  refreshSessions: () => Promise<void>;
+  login: (accessToken: string, refreshToken: string) => Promise<void>;
+  logout: () => void;
 };
 
 type FailedPromptState = {
@@ -65,12 +75,74 @@ function createConversationId(): string {
 export function ConversationStoreProvider({ children }: { children: ReactNode }) {
   const [conversationId, setConversationId] = useState(() => createConversationId());
   const [messages, setMessages] = useState<ConversationMessage[]>([]);
+  const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [streamingStatus, setStreamingStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [failedPromptState, setFailedPromptState] = useState<FailedPromptState | null>(null);
   const inFlightLockRef = useRef(false);
   const requestTokenRef = useRef(0);
+
+  const refreshSessions = useCallback(async () => {
+    try {
+      const data = await fetchChatSessions();
+      setSessions(data);
+    } catch (err) {
+      console.error("Failed to fetch sessions:", err);
+    }
+  }, []);
+
+  const switchSession = useCallback(async (sessionId: string) => {
+    if (inFlightLockRef.current) return;
+    setIsLoading(true);
+    setStreamingStatus("Đang tải cuộc hội thoại...");
+    try {
+      const history = await fetchChatHistory(sessionId);
+      const formattedMessages: ConversationMessage[] = history.map((h: any) => ({
+        id: h.id,
+        role: h.role,
+        content: h.content,
+        response: h.metadata_json
+      }));
+      setMessages(formattedMessages);
+      setConversationId(sessionId);
+    } catch (err) {
+      console.error("Failed to switch session:", err);
+      setError("Không thể tải cuộc hội thoại này.");
+    } finally {
+      setIsLoading(false);
+      setStreamingStatus(null);
+    }
+  }, []);
+
+  // Tải dữ liệu ban đầu
+  useEffect(() => {
+    const init = async () => {
+      const token = localStorage.getItem("access_token");
+      if (!token) return;
+
+      await refreshSessions();
+      
+      try {
+        const history = await fetchChatHistory();
+        if (history && history.length > 0) {
+          const lastMsg = history[history.length - 1];
+          setConversationId(lastMsg.session_id);
+          
+          const formattedMessages: ConversationMessage[] = history.map((h: any) => ({
+            id: h.id,
+            role: h.role,
+            content: h.content,
+            response: h.metadata_json
+          }));
+          setMessages(formattedMessages);
+        }
+      } catch (err) {
+        console.error("Failed to load initial history:", err);
+      }
+    };
+    init();
+  }, [refreshSessions]);
 
   const sendPrompt = useCallback(
     async (prompt: string, retryPayload?: ChatRequest) => {
@@ -102,7 +174,6 @@ export function ConversationStoreProvider({ children }: { children: ReactNode })
         content: "",
       };
 
-      // Thêm message user và assistant trống vào store
       setMessages([...nextMessages, optimisticAssistantMessage]);
       setError(null);
       setFailedPromptState(null);
@@ -116,13 +187,11 @@ export function ConversationStoreProvider({ children }: { children: ReactNode })
           payload,
           (token) => {
             if (requestToken !== requestTokenRef.current) return;
-            
             if (isFirstToken) {
               setIsLoading(false);
               isFirstToken = false;
               setStreamingStatus(null);
             }
-
             setMessages((prev) =>
               prev.map((msg) =>
                 msg.id === assistantMessageId 
@@ -133,10 +202,8 @@ export function ConversationStoreProvider({ children }: { children: ReactNode })
           },
           (metadata, serverConvId) => {
             if (requestToken !== requestTokenRef.current) return;
-            
             if (serverConvId) setConversationId(serverConvId);
             setStreamingStatus(null);
-            
             setMessages((prev) =>
               prev.map((msg) =>
                 msg.id === assistantMessageId 
@@ -148,6 +215,13 @@ export function ConversationStoreProvider({ children }: { children: ReactNode })
                   : msg
               )
             );
+            // Cập nhật lại danh sách sessions nếu đây là cuộc hội thoại mới (chưa có trong danh sách)
+            setSessions(prev => {
+              if (!prev.some(s => s.session_id === serverConvId)) {
+                refreshSessions();
+              }
+              return prev;
+            });
           },
           (docs) => {
             if (requestToken !== requestTokenRef.current) return;
@@ -168,10 +242,7 @@ export function ConversationStoreProvider({ children }: { children: ReactNode })
           }
         );
       } catch (requestError) {
-        if (requestToken !== requestTokenRef.current) {
-          return;
-        }
-        // Rollback cả user message và assistant message trống nếu lỗi ngay lập tức
+        if (requestToken !== requestTokenRef.current) return;
         setMessages((prev) => prev.filter(m => m.id !== optimisticUserMessage.id && m.id !== assistantMessageId));
         setFailedPromptState(buildFailedPromptState(userPrompt, payload));
         setError(requestError instanceof Error ? requestError.message : "Không thể gửi câu hỏi.");
@@ -182,15 +253,50 @@ export function ConversationStoreProvider({ children }: { children: ReactNode })
         }
       }
     },
-    [conversationId, messages],
+    [conversationId, messages, refreshSessions],
   );
 
   const retryLastFailedPrompt = useCallback(async () => {
-    if (!failedPromptState || inFlightLockRef.current) {
-      return;
-    }
+    if (!failedPromptState || inFlightLockRef.current) return;
     await sendPrompt(failedPromptState.prompt, failedPromptState.payload);
   }, [failedPromptState, sendPrompt]);
+
+  const login = useCallback(async (accessToken: string, refreshToken: string) => {
+    localStorage.setItem("access_token", accessToken);
+    localStorage.setItem("refresh_token", refreshToken);
+    
+    // Tải lại dữ liệu ngay lập tức cho user mới
+    await refreshSessions();
+    try {
+      const history = await fetchChatHistory();
+      if (history && history.length > 0) {
+        const lastMsg = history[history.length - 1];
+        setConversationId(lastMsg.session_id);
+        const formattedMessages: ConversationMessage[] = history.map((h: any) => ({
+          id: h.id,
+          role: h.role,
+          content: h.content,
+          response: h.metadata_json
+        }));
+        setMessages(formattedMessages);
+      } else {
+        setMessages([]);
+        setConversationId(createConversationId());
+      }
+    } catch (err) {
+      console.error("Failed to load history after login:", err);
+    }
+  }, [refreshSessions]);
+
+  const logout = useCallback(() => {
+    localStorage.removeItem("access_token");
+    localStorage.removeItem("refresh_token");
+    setMessages([]);
+    setSessions([]);
+    setConversationId(createConversationId());
+    setError(null);
+    setStreamingStatus(null);
+  }, []);
 
   const clearConversation = useCallback(() => {
     requestTokenRef.current += 1;
@@ -221,6 +327,7 @@ export function ConversationStoreProvider({ children }: { children: ReactNode })
     () => ({
       conversationId,
       messages,
+      sessions,
       isLoading,
       error,
       canRetryLastFailedPrompt: Boolean(failedPromptState),
@@ -230,8 +337,12 @@ export function ConversationStoreProvider({ children }: { children: ReactNode })
       clearError,
       addMessage,
       streamingStatus,
+      switchSession,
+      refreshSessions,
+      login,
+      logout,
     }),
-    [clearConversation, clearError, conversationId, error, failedPromptState, isLoading, messages, retryLastFailedPrompt, sendPrompt, addMessage, streamingStatus],
+    [clearConversation, clearError, conversationId, error, failedPromptState, isLoading, messages, retryLastFailedPrompt, sendPrompt, addMessage, streamingStatus, sessions, switchSession, refreshSessions, login, logout],
   );
 
   return createElement(ConversationStoreContext.Provider, { value }, children);

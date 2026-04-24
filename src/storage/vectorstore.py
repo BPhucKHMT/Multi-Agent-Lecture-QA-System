@@ -2,7 +2,7 @@ from typing import Union
 from langchain_chroma import Chroma
 from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain.schema import Document
-
+import os
 from src.shared.config import get_path
 
 
@@ -19,8 +19,9 @@ class VectorDB:
         if embedding is None:
             device = "cuda" if torch.cuda.is_available() else "cpu"
             print(f"Initializing HuggingFaceEmbeddings on {device}...")
+            embedding_model = os.getenv("EMBEDDING_MODEL_NAME", "BAAI/bge-m3")
             self.embedding = HuggingFaceEmbeddings(
-                model_name="BAAI/bge-m3", model_kwargs={"device": device}
+                model_name=embedding_model, model_kwargs={"device": device}
             )
         else:
             self.embedding = embedding
