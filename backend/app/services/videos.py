@@ -58,17 +58,20 @@ def _build_video_index() -> List[Dict[str, Any]]:
     videos_dir = os.getenv("PUQ_VIDEOS_DIR", "artifacts/videos")
     videos_root = Path(videos_dir)
     if not videos_root.exists() or not videos_root.is_dir():
+        logger.warning(f"Thư mục videos không tồn tại: {videos_root}")
         return []
 
     deduped: Dict[str, Dict[str, Any]] = {}
 
-    # Fast path: metadata.json
+    # Chế độ chỉ đọc từ metadata.json (Không quét file vật lý để tiết kiệm tài nguyên)
     for metadata_file in videos_root.glob("*/metadata.json"):
         course_name = metadata_file.parent.name
         try:
             payload = json_lib.loads(metadata_file.read_text(encoding="utf-8"))
-        except Exception:
+        except Exception as e:
+            logger.error(f"Lỗi đọc metadata tại {metadata_file}: {e}")
             continue
+
         for video in payload.get("videos", []):
             title = str(video.get("title", "")).strip()
             video_id = str(video.get("video_id", "")).strip()
@@ -76,6 +79,7 @@ def _build_video_index() -> List[Dict[str, Any]]:
             if not title: continue
             
             normalized_title = _normalize_video_title(title)
+            # Khóa duy nhất để tránh trùng lặp: course::title
             dedupe_key = f"{course_name.lower()}::{_normalize_text(normalized_title)}"
             
             deduped[dedupe_key] = {
@@ -83,41 +87,12 @@ def _build_video_index() -> List[Dict[str, Any]]:
                 "video_id": video_id,
                 "title": normalized_title,
                 "course": course_name,
-                "file_name": f"{video_id}.mp4" if video_id else normalized_title,
-                "relative_path": "",
-                "file_size_mb": 0.0,
                 "thumbnail_url": f"https://i.ytimg.com/vi/{video_id}/hqdefault.jpg" if video_id else "",
                 "video_url": video_url,
+                "file_name": "", # Không dùng file local
+                "relative_path": "",
+                "file_size_mb": 0.0,
                 "_search_key": _normalize_text(f"{normalized_title} {course_name} {video_id}"),
-                "_source": "metadata"
-            }
-
-    # Fallback path: filesystem scan
-    metadata_map = _load_video_metadata_map()
-    for file_path in videos_root.rglob("*"):
-        if not file_path.is_file() or file_path.suffix.lower() not in VIDEO_EXTENSIONS:
-            continue
-
-        relative_path = file_path.relative_to(videos_root).as_posix()
-        course = relative_path.split("/")[0] if "/" in relative_path else "General"
-        normalized_title = _normalize_video_title(file_path.stem)
-        dedupe_key = f"{course.lower()}::{_normalize_text(normalized_title)}"
-        file_size = file_path.stat().st_size
-
-        if dedupe_key not in deduped or (deduped[dedupe_key].get("_source") != "metadata" and file_size > deduped[dedupe_key].get("_size_bytes", 0)):
-             metadata = metadata_map.get(dedupe_key, {})
-             deduped[dedupe_key] = {
-                "id": dedupe_key,
-                "video_id": metadata.get("video_id", ""),
-                "title": normalized_title,
-                "course": course,
-                "file_name": file_path.name,
-                "relative_path": relative_path,
-                "file_size_mb": round(file_size / (1024 * 1024), 2),
-                "thumbnail_url": metadata.get("thumbnail_url", ""),
-                "video_url": metadata.get("video_url", ""),
-                "_size_bytes": file_size,
-                "_search_key": _normalize_text(f"{normalized_title} {course} {file_path.name}"),
             }
 
     return sorted(deduped.values(), key=lambda item: (item["course"].lower(), item["title"].lower()))
