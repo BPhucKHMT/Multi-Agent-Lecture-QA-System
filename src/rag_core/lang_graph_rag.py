@@ -16,7 +16,7 @@ from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.tools import tool
 from langchain_core.callbacks import BaseCallbackHandler
 
-from typing import List
+from typing import List, Optional, Union
 import logging
 import json
 import time
@@ -31,10 +31,12 @@ from src.rag_core.agents.coding import build_coding_subgraph
 from src.rag_core.agents.math import build_math_subgraph
 from src.rag_core.router_patterns import (
     FORCE_MATH_PATTERNS,
-    GREETING_PATTERNS,
+    CHITCHAT_PATTERNS,
     QUIZ_PATTERNS,
-    CODING_PATTERNS
+    CODING_PATTERNS,
+    FORCE_TUTOR_PATTERNS
 )
+
 from src.rag_core.utils import _extract_tool_args_from_state
 from src.rag_core.agents.direct import node_direct_answer
 
@@ -66,15 +68,15 @@ def generate_quiz_tool(
     query: str = "",
     topic: str = "",
     difficulty: str = "",
-    num_questions: int | None = None,
-    number_of_questions: int | None = None,
+    num_questions: Optional[int] = None,
+    number_of_questions: Optional[int] = None,
     language: str = "",
     question_type: str = "",
-    options_per_question: int | None = None,
+    options_per_question: Optional[int] = None,
     target_audience: str = "",
     include_answers: bool = True,
     include_explanations: bool = True,
-    tags: list[str] | None = None,
+    tags: Optional[list[str]] = None,
 ) -> str:
     """Dùng khi người dùng muốn tạo quiz/trắc nghiệm."""
     details = {
@@ -110,16 +112,25 @@ SUPERVISOR_TOOLS = [
 
 SUPERVISOR_SYSTEM_PROMPT = (
     "Bạn là một Supervisor (Bộ điều phối) thông minh. Nhiệm vụ của bạn là phân loại yêu cầu của người dùng.\n\n"
+
     "CÁC CÔNG CỤ CÓ SẴN:\n"
-    "1. AskTutor: Dùng khi hỏi về nội dung học thuật, lý thuyết cần tra cứu video (AI, ML, Toán, etc.).\n"
-    "2. MathSolver: Dùng khi giải toán, tính toán, đạo hàm, tích phân, chứng minh.\n"
-    "3. CodeAssistant: Dùng khi viết code, sửa lỗi lập trình hoặc hỏi về công nghệ.\n"
+    "1. AskTutor: Dùng khi hỏi về nội dung học thuật, lý thuyết liên quan đến AI, Machine Learning, Deep Learning "
+    "(ví dụ: diffusion model, loss function, transformers, CNN, LLM, attention, gradient descent, etc.) "
+    "hoặc bất kỳ kiến thức chuyên môn nào.\n"
+    "2. MathSolver: Dùng khi giải toán, tính toán công thức, đạo hàm, tích phân, chứng minh toán học.\n"
+    "3. CodeAssistant: Dùng khi viết code, sửa lỗi lập trình hoặc hỏi về cú pháp.\n"
     "4. GenerateQuiz: Dùng khi người dùng muốn làm trắc nghiệm.\n"
-    "5. AskGeneral: Dùng cho mọi trường hợp khác: chào hỏi, tán gẫu, giới thiệu bản thân, hỏi xem bạn làm được gì.(Chấp nhận kiến thức tổng quát như lý, hóa, sinh nhưng những kiến thức chuyên ngành thì không được) \n\n"
+    "5. AskGeneral: CHỈ dùng cho chào hỏi, xã giao, hoặc hỏi về chatbot.\n\n"
+
     "QUY TẮC CỰC KỲ QUAN TRỌNG:\n"
-    "- Bạn là một bộ điều phối thuần túy (Pure Dispatcher). BẠN BẮT BUỘC PHẢI GỌI 1 CÔNG CỤ.\n"
-    "- KHÔNG được tự ý trả lời nội dung hay giải thích gì thêm trong nội dung phản hồi.\n"
-    "- Hãy phân tích kỹ để chọn đúng chuyên gia phù hợp nhất.\n"
+    "- Bạn là một bộ điều phối thuần túy. BẮT BUỘC phải gọi đúng 1 công cụ.\n"
+    "- KHÔNG được trả lời nội dung.\n\n"
+
+    "QUY TẮC PHÂN LOẠI (ƯU TIÊN CAO):\n"
+    "- Nếu câu hỏi chứa thuật ngữ kỹ thuật (ví dụ: diffusion, transformer, CNN, loss, model, training, AI) "
+    "→ LUÔN chọn AskTutor.\n"
+    "- Nếu có bất kỳ nghi ngờ nào giữa AskTutor và AskGeneral → CHỌN AskTutor.\n"
+    "- AskGeneral CHỈ dùng khi KHÔNG có nội dung học thuật.\n"
 )
 
 supervisor_prompt = ChatPromptTemplate.from_messages(
@@ -175,7 +186,7 @@ def _coerce_tool_args(raw_args) -> dict:
     return {}
 
 
-def _extract_tool_calls_from_intermediate_steps(intermediate_steps) -> list[dict] | None:
+def _extract_tool_calls_from_intermediate_steps(intermediate_steps) -> Optional[List[dict]]:
     if not isinstance(intermediate_steps, list):
         return None
 
@@ -214,11 +225,17 @@ def _should_force_coding_route(input_text: str) -> bool:
     return any(pattern in normalized for pattern in CODING_PATTERNS)
 
 
+def _should_force_tutor_route(input_text: str) -> bool:
+    normalized = str(input_text or "").lower()
+    return any(pattern in normalized for pattern in FORCE_TUTOR_PATTERNS)
+
+
+
 def _is_greeting_input(input_text: str) -> bool:
     normalized = str(input_text or "").strip().lower()
     if not normalized:
         return False
-    return any(normalized == pattern or normalized.startswith(f"{pattern} ") for pattern in GREETING_PATTERNS)
+    return any(normalized == pattern or normalized.startswith(f"{pattern} ") for pattern in CHITCHAT_PATTERNS)
 
 async def node_supervisor(state: State):
     messages = state.get("messages", [])
@@ -254,6 +271,17 @@ async def node_supervisor(state: State):
             return {
                 "tool_calls": [{"name": "CodeAssistant", "args": {"query": input_text}}],
             }
+
+        if _is_greeting_input(input_text):
+            return {
+                "tool_calls": [{"name": "AskGeneral", "args": {"query": input_text}}],
+            }
+
+        if _should_force_tutor_route(input_text):
+            return {
+                "tool_calls": [{"name": "AskTutor", "args": {"query": input_text}}],
+            }
+
 
         # 2. Sử dụng LLM với bind_tools để phân phối (Pure Supervisor)
         formatted_prompt = supervisor_prompt.format_messages(

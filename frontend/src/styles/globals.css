@@ -30,34 +30,41 @@ body {
   --danger-500: #dc2626;
 }
 
+/* --- Premium Backgrounds & Panes --- */
 .puq-ambient {
   background:
-    radial-gradient(circle at 10% 15%, rgba(124, 58, 237, 0.12), transparent 30%),
-    radial-gradient(circle at 90% 10%, rgba(6, 182, 212, 0.10), transparent 25%),
-    radial-gradient(circle at 15% 85%, rgba(167, 139, 250, 0.15), transparent 35%),
-    linear-gradient(180deg, #FDFBFF 0%, #FAF5FF 100%);
+    radial-gradient(circle at 10% 15%, rgba(124, 58, 237, 0.08), transparent 40%),
+    radial-gradient(circle at 90% 10%, rgba(6, 182, 212, 0.06), transparent 30%),
+    radial-gradient(circle at 15% 85%, rgba(167, 139, 250, 0.10), transparent 45%),
+    linear-gradient(180deg, #FFFFFF 0%, #F8FAFC 100%);
+  position: relative;
+  overflow: hidden;
+}
+
+.puq-glass {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.puq-glass-dark {
+  background: rgba(30, 27, 75, 0.03);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 .puq-pane {
-  border: 1px solid rgba(148, 163, 184, 0.24);
-  box-shadow: 0 14px 30px -20px rgba(15, 23, 42, 0.45);
+  border: 1px solid rgba(226, 232, 240, 0.8);
+  box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.04), 0 8px 10px -6px rgba(15, 23, 42, 0.04);
 }
 
 .puq-message-shadow {
   box-shadow: 
-    0 1px 2px rgba(15, 23, 42, 0.05),
-    0 4px 12px -2px rgba(15, 23, 42, 0.08),
-    0 16px 24px -8px rgba(15, 23, 42, 0.06);
-}
-
-.puq-split {
-  /* Transition handled by Framer Motion for better control */
-}
-
-.puq-skeleton {
-  background: linear-gradient(110deg, #e2e8f0 8%, #f8fafc 18%, #e2e8f0 33%);
-  background-size: 200% 100%;
-  animation: puq-shimmer 1.15s linear infinite;
+    0 4px 6px -1px rgba(0, 0, 0, 0.05),
+    0 2px 4px -2px rgba(0, 0, 0, 0.05),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.1);
 }
 
 .puq-gateway-card {
@@ -72,8 +79,15 @@ body {
 
 .puq-gateway-card:hover {
   transform: translateY(-4px);
-  border-color: rgba(14, 116, 144, 0.35);
-  box-shadow: 0 30px 48px -26px rgba(14, 116, 144, 0.4);
+  border-color: rgba(124, 58, 237, 0.35);
+  box-shadow: 0 30px 48px -26px rgba(124, 58, 237, 0.3);
+}
+
+/* --- Animations & Micro-interactions --- */
+.puq-skeleton {
+  background: linear-gradient(110deg, #e2e8f0 8%, #f8fafc 18%, #e2e8f0 33%);
+  background-size: 200% 100%;
+  animation: puq-shimmer 1.15s linear infinite;
 }
 
 .puq-float-orb {
@@ -107,7 +121,7 @@ body {
 }
 
 .puq-input-focus:focus-visible {
-  outline: 2px solid rgba(2, 132, 199, 0.25);
+  outline: 2px solid rgba(124, 58, 237, 0.25);
   outline-offset: 1px;
 }
 
@@ -178,11 +192,10 @@ body {
   }
 }
 
-
 /* --- Premium Slim Scrollbar --- */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
 }
 
 ::-webkit-scrollbar-track {
@@ -190,17 +203,22 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(148, 163, 184, 0.2);
-  border-radius: 10px;
-  transition: background 0.3s ease;
+  background: rgba(148, 163, 184, 0.15);
+  border-radius: 20px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(124, 58, 237, 0.4);
+  background: rgba(124, 58, 237, 0.3);
 }
 
 * {
   scrollbar-width: thin;
-  scrollbar-color: rgba(124, 58, 237, 0.3) transparent;
+  scrollbar-color: rgba(124, 58, 237, 0.2) transparent;
 }
 
+.puq-gradient-text {
+  background: linear-gradient(135deg, #4F46E5 0%, #7C3AED 50%, #9333EA 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}

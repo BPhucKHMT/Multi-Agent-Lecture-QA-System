@@ -30,7 +30,11 @@ Lưu ý:
 - Nếu được hỏi bạn có thể làm gì, hãy liệt kê ngắn gọn các khả năng: Giải Toán, Hướng dẫn học qua video, Sửa lỗi lập trình và làm Trắc nghiệm.
 """)
     # Sử dụng ainvoke để hỗ trợ streaming tokens thông qua astream_events
-    response = await llm_for_chat.ainvoke(chat_prompt.format(query=query))
+    response = await llm_for_chat.ainvoke(
+        chat_prompt.format(query=query),
+        config={"tags": ["final_answer"]}
+    )
+
     text = response.content
 
     data = {

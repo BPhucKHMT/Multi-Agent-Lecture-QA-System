@@ -57,7 +57,8 @@ def get_rag_chain():
 
 async def node_tutor(state: State):
     """
-    Node Tutor chịu trách nhiệm trả lời câu hỏi bằng RAG (sử dụng video transcript)
+    Node Tutor chịu trách nhiệm trả lời câu hỏi bằng RAG.
+    Quy trình: 1. Retrieval (ngầm) -> 2. Generation (stream)
     """
     messages = state.get("messages", [])
     if not messages:
@@ -81,32 +82,25 @@ async def node_tutor(state: State):
             query = last_message.content
             
     try:
-        rag_chain = get_rag_chain()
-        rag_result = await rag_chain.ainvoke(query)
+        # BƯỚC 1: RETRIEVAL (Cực kỳ quan trọng: Bước này chạy ngầm, không phát sinh stream tokens)
+        rag_core = resource_manager.get_rag_core()
+        context = await rag_core.get_context(query)
         
-        if hasattr(rag_result, "content"):
-            raw_content = rag_result.content or ""
-            print(f"DEBUG - Tutor LLM Output Length: {len(raw_content)}")
-            print(f"DEBUG - Tutor LLM Raw Content (first 500 chars): {raw_content[:500]}")
-        else:
-            raw_content = str(rag_result)
+        # BƯỚC 2: GENERATION (Chỉ bước này mới phát sinh stream tokens với tag final_answer)
+        answer_chain = rag_core.get_answer_chain()
+        rag_result = await answer_chain.ainvoke({"context": context, "question": query})
+        
+        raw_content = rag_result.content if hasattr(rag_result, "content") else str(rag_result)
+        repaired = _extract_tutor_json_payload(raw_content)
+        
+        if not repaired:
+            if not raw_content.strip():
+                return {"response": _build_tutor_error_response("Mô hình trả về output rỗng.")}
+            return {"response": _build_tutor_error_response("Không parse được JSON.")}
             
-        if isinstance(rag_result, dict):
-            data = rag_result
-        else:
-            if hasattr(rag_result, "content"):
-                raw_content = rag_result.content or ""
-            else:
-                raw_content = str(rag_result or "")
-
-            repaired = _extract_tutor_json_payload(raw_content)
-            if not repaired:
-                if not raw_content.strip():
-                    return {"response": _build_tutor_error_response("Xin lỗi, mô hình trả về output rỗng nên chưa thể trả lời.")}
-                return {"response": _build_tutor_error_response("Xin lỗi, chưa parse được JSON hợp lệ từ mô hình.")}
-            data = repaired
-
+        data = repaired
         data["type"] = "rag"
         return {"response": data}
+        
     except Exception as e:
-        return {"response": _build_tutor_error_response(f"Xin lỗi, có lỗi xảy ra: {e}")}
+        return {"response": _build_tutor_error_response(f"Lỗi: {e}")}
