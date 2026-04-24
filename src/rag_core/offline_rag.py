@@ -4,7 +4,7 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnablePassthrough
 from langchain_core.runnables import RunnableLambda
 from typing import List
-import json
+import json as json_lib
 import re
 import asyncio
 
@@ -31,7 +31,7 @@ class Offline_RAG:
         self.llm = llm
         self.llm_internal = llm_internal or llm
         self.prompt = ChatPromptTemplate.from_template("""
-Bạn là trợ lý RAG chuyên nghiệp. Hãy trả lời câu hỏi dựa trên transcript video được cung cấp.
+Bạn là trợ lý RAG chuyên nghiệp. Hãy trả lời câu hỏi dựa trên transcript video và lịch sử hội thoại.
 
 QUY TẮC ĐỊNH DẠNG TOÁN HỌC (CỰC KỲ QUAN TRỌNG):
 1. TUYỆT ĐỐI KHÔNG copy nguyên văn các ký tự toán học từ transcript nếu chúng không ở dạng LaTeX (Vd: Không dùng x0, p_theta, Π, q(x1:T)).
@@ -47,10 +47,13 @@ YÊU CẦU NỘI DUNG:
 5. Chỉ trả về MỘT JSON object hợp lệ, không thêm lời giải thích ngoài JSON.
 6. TUYỆT ĐỐI KHÔNG lặp lại câu hỏi ban đầu hay các biến thể tìm kiếm (queries) trong câu trả lời.
 
+Lịch sử hội thoại:
+{chat_history}
+
 Transcript JSON:
 {context}
 
-Câu hỏi:
+Câu hỏi hiện tại:
 {question}
 
 Format instructions:
@@ -70,15 +73,17 @@ Format instructions:
                 "end_timestamp": doc.metadata.get("end_timestamp", ""),
                 "content": doc.page_content if isinstance(doc.page_content, str) else str(doc.page_content)
             }
-            formatted.append(json.dumps(item, ensure_ascii=False))
+            formatted.append(json_lib.dumps(item, ensure_ascii=False))
         return "[" + ",".join(formatted) + "]"
 
-    async def generate_queries(self, query: str) -> List[str]:
+    async def generate_queries(self, query: str, chat_history: str = "") -> List[str]:
         prompt = ChatPromptTemplate.from_template(
-            "Bạn là một chuyên gia AI. Hãy tạo ra 3 câu truy vấn tìm kiếm khác nhau "
-            "để tìm câu trả lời cho câu hỏi sau. "
-            "Chỉ trả về danh sách JSON gồm 3 chuỗi.\n\n"
-            "Câu hỏi: {query}"
+            "Bạn là một chuyên gia AI. Dựa trên lịch sử hội thoại và câu hỏi mới, "
+            "hãy tạo ra 3 câu truy vấn tìm kiếm (search queries) tối ưu để tìm thông tin chính xác nhất. "
+            "Nếu câu hỏi mới chứa các đại từ (nó, họ, đó, ...), hãy thay thế chúng bằng thực thể cụ thể từ lịch sử.\n\n"
+            "Lịch sử:\n{chat_history}\n\n"
+            "Câu hỏi mới: {query}\n\n"
+            "Chỉ trả về danh sách JSON gồm 3 chuỗi."
         )
         llm_expanded = self.llm_internal.with_config(
             tags=["internal_query"],
@@ -87,20 +92,20 @@ Format instructions:
         )
         chain = prompt | llm_expanded
         try:
-            res = await chain.ainvoke({"query": query})
+            res = await chain.ainvoke({"query": query, "chat_history": chat_history})
             content = res.content if hasattr(res, "content") else str(res)
             match = re.search(r"(\[.*\])", content, re.DOTALL)
             if match:
-                queries = json.loads(match.group(1))
+                queries = json_lib.loads(match.group(1))
                 if isinstance(queries, list):
                     return [query] + queries[:3]
         except Exception:
             pass
         return [query]
 
-    async def get_context(self, query: str):
+    async def get_context(self, query: str, chat_history: str = ""):
         """Bước chuẩn bị context: Chạy song song, KHÔNG stream."""
-        queries = await self.generate_queries(query)
+        queries = await self.generate_queries(query, chat_history)
         
         search_tasks = []
         for q in queries:
@@ -113,7 +118,6 @@ Format instructions:
         
         all_docs = []
         for docs in results:
-            # Lấy top 15 từ mỗi query biến thể để đảm bảo Recall
             all_docs.extend(docs[:15])
         
         unique_docs = []

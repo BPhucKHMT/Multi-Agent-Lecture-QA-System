@@ -64,6 +64,12 @@ async def node_tutor(state: State):
     if not messages:
         return {"response": {}}
         
+    # Format chat history cho prompt
+    history_str = ""
+    for m in messages[:-1]:
+        role = "User" if m.type == "human" else "Assistant"
+        history_str += f"{role}: {m.content}\n"
+
     last_message = messages[-1]
     query = ""
     
@@ -82,13 +88,17 @@ async def node_tutor(state: State):
             query = last_message.content
             
     try:
-        # BƯỚC 1: RETRIEVAL (Cực kỳ quan trọng: Bước này chạy ngầm, không phát sinh stream tokens)
+        # BƯỚC 1: RETRIEVAL (Có truyền history_str để rewrite query)
         rag_core = resource_manager.get_rag_core()
-        context = await rag_core.get_context(query)
+        context = await rag_core.get_context(query, chat_history=history_str)
         
-        # BƯỚC 2: GENERATION (Chỉ bước này mới phát sinh stream tokens với tag final_answer)
+        # BƯỚC 2: GENERATION (Có truyền history_str vào prompt cuối)
         answer_chain = rag_core.get_answer_chain()
-        rag_result = await answer_chain.ainvoke({"context": context, "question": query})
+        rag_result = await answer_chain.ainvoke({
+            "context": context, 
+            "question": query,
+            "chat_history": history_str
+        })
         
         raw_content = rag_result.content if hasattr(rag_result, "content") else str(rag_result)
         repaired = _extract_tutor_json_payload(raw_content)
@@ -101,6 +111,9 @@ async def node_tutor(state: State):
         data = repaired
         data["type"] = "rag"
         return {"response": data}
+        
+    except Exception as e:
+        return {"response": _build_tutor_error_response(f"Lỗi: {e}")}
         
     except Exception as e:
         return {"response": _build_tutor_error_response(f"Lỗi: {e}")}
