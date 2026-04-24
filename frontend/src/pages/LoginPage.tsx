@@ -1,27 +1,58 @@
 import React, { useState, type FormEvent } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation, Link } from "react-router-dom";
 import { ShieldIcon, MailIcon, LockIcon, EyeIcon, SparkIcon } from "../components/shared/Icons";
+import { useConversationStore } from "../store/conversationStore";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [loginError, setLoginError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const { login } = useConversationStore();
+  const location = useLocation();
 
-  const onSubmit = (event: FormEvent<HTMLFormElement>) => {
+  // Nhận tin nhắn từ RegisterPage nếu có
+  const successMessage = location.state?.message;
+
+  const onSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const isValidCredential = email.trim().toLowerCase() === "admin" && password === "admin";
-    if (!isValidCredential) {
-      setLoginError("Tài khoản hoặc mật khẩu chưa đúng. Dùng admin/admin để vào tạm thời.");
-      return;
+    setError(null);
+    setLoading(true);
+
+    try {
+      const response = await fetch("http://localhost:8000/api/v1/auth/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email: email,
+          password: password,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.detail || "Đăng nhập thất bại.");
+      }
+
+      // Sử dụng hàm login từ store để làm sạch state và tải dữ liệu mới
+      await login(data.access_token, data.refresh_token);
+      
+      // Chuyển hướng sang Gateway
+      navigate("/gateway");
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
     }
-    setLoginError(null);
-    navigate("/gateway");
   };
 
   return (
-    <div className="relative min-h-screen text-slate-800">
+    <div className="relative min-h-screen text-slate-800 font-['Inter',sans-serif]">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_left_top,rgba(0,123,255,0.08),transparent_42%),radial-gradient(circle_at_right_top,rgba(0,212,255,0.08),transparent_40%),radial-gradient(circle_at_right_bottom,rgba(40,167,69,0.08),transparent_40%),radial-gradient(circle_at_left_bottom,rgba(0,89,187,0.08),transparent_44%)]" />
 
       <header className="relative z-10 border-b border-slate-200/90 bg-white/80 px-4 py-4 backdrop-blur-sm sm:px-6">
@@ -53,20 +84,27 @@ export default function LoginPage() {
               <p className="mt-2 text-base text-[#414754]">Tiếp tục hành trình học tập thông minh của bạn</p>
             </div>
 
+            {successMessage && (
+              <div className="mb-6 p-4 rounded-lg bg-green-50 border border-green-200 text-green-700 text-sm font-medium">
+                {successMessage}
+              </div>
+            )}
+
             <form className="space-y-5" onSubmit={onSubmit}>
               <label className="block">
-                <span className="mb-1.5 block text-sm font-semibold text-[#181c23]">Tên đăng nhập</span>
+                <span className="mb-1.5 block text-sm font-semibold text-[#181c23]">Email đăng nhập</span>
                 <span className="relative block">
                   <span className="pointer-events-none absolute inset-y-0 left-3 grid place-items-center">
                     <MailIcon />
                   </span>
                   <input
-                    type="text"
+                    type="email"
+                    required
                     value={email}
                     onChange={(event) => setEmail(event.target.value)}
                     className="w-full rounded-lg border border-[#c1c6d7] bg-white py-3 pl-10 pr-3 text-base outline-none transition placeholder:text-[#c1c6d7] focus:border-[#0070ea]"
-                    placeholder="admin"
-                    autoComplete="username"
+                    placeholder="name@example.com"
+                    autoComplete="email"
                   />
                 </span>
               </label>
@@ -84,10 +122,11 @@ export default function LoginPage() {
                   </span>
                   <input
                     type={showPassword ? "text" : "password"}
+                    required
                     value={password}
                     onChange={(event) => setPassword(event.target.value)}
                     className="w-full rounded-lg border border-[#c1c6d7] bg-white py-3 pl-10 pr-10 text-base outline-none transition placeholder:text-[#c1c6d7] focus:border-[#0070ea]"
-                    placeholder="admin"
+                    placeholder="••••••••"
                     autoComplete="current-password"
                   />
                   <button
@@ -103,12 +142,14 @@ export default function LoginPage() {
 
               <button
                 type="submit"
-                className="w-full rounded-lg bg-[#0070ea] py-3.5 text-lg font-bold text-[#fefcff] shadow-[0_10px_15px_-3px_rgba(0,89,187,0.2),0_4px_6px_-4px_rgba(0,89,187,0.2)] transition hover:bg-[#0065d2]"
+                disabled={loading}
+                className="w-full rounded-lg bg-[#0070ea] py-3.5 text-lg font-bold text-[#fefcff] shadow-[0_10px_15px_-3px_rgba(0,89,187,0.2),0_4px_6px_-4px_rgba(0,89,187,0.2)] transition hover:bg-[#0065d2] disabled:opacity-70"
               >
-                Đăng nhập
+                {loading ? "Đang xác thực..." : "Đăng nhập"}
               </button>
-              {loginError ? <p className="text-sm font-medium text-red-600">{loginError}</p> : null}
-              <p className="text-xs text-slate-500">Thông tin thử nghiệm: tài khoản `admin`, mật khẩu `admin`</p>
+              
+              {error && <p className="text-sm font-medium text-red-600">{error}</p>}
+              <p className="text-xs text-slate-500">Mẹo: Bạn có thể đăng ký tài khoản mới bên dưới nếu chưa có.</p>
             </form>
 
             <div className="my-7 flex items-center gap-4 text-sm font-medium uppercase tracking-[0.05em] text-[#717786]">
@@ -135,7 +176,7 @@ export default function LoginPage() {
             </div>
 
             <p className="mt-7 text-center text-sm text-[#414754]">
-              Chưa có tài khoản? <a href="#" className="font-bold text-[#0059bb] hover:underline">Tham gia ngay hôm nay</a>
+              Chưa có tài khoản? <Link to="/register" className="font-bold text-[#0059bb] hover:underline">Tham gia ngay hôm nay</Link>
             </p>
           </div>
 

@@ -337,6 +337,7 @@ export default function WorkspacePage() {
   const {
     conversationId,
     messages,
+    sessions,
     isLoading,
     error,
     clearError,
@@ -346,10 +347,27 @@ export default function WorkspacePage() {
     clearConversation,
     addMessage,
     streamingStatus,
+    switchSession,
+    logout,
   } = useConversationStore();
 
   const [summaryContext, setSummaryContext] = useState<DiscussionContext | null>(null);
   const scrollRef = React.useRef<HTMLDivElement>(null);
+
+  // Chuyển đổi format sessions sang format sidebar mong muốn
+  const historyItems = useMemo(() => {
+    return sessions.map(s => ({
+      id: s.session_id,
+      title: s.title,
+      subtitle: new Date(s.created_at).toLocaleString("vi-VN", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit"
+      })
+    }));
+  }, [sessions]);
 
   // Auto-scroll to bottom during streaming or new messages
   useEffect(() => {
@@ -361,26 +379,12 @@ export default function WorkspacePage() {
     }
   }, [messages, isLoading]);
 
-  const historyItems = useMemo(() => {
-    const userMessages = messages.filter((m) => m.role === "user");
-    if (userMessages.length === 0) return [];
-
-    // Chỉ hiển thị 1 mục đại diện cho cuộc hội thoại hiện tại
-    const firstMsg = userMessages[0];
-    return [
-      {
-        id: conversationId,
-        title: firstMsg.content.slice(0, 42) || "Hội thoại mới",
-        subtitle: `ID: ${conversationId.slice(0, 8)}`,
-      },
-    ];
-  }, [conversationId, messages]);
-
   const handleSectionChange = (newSection: AppSection) => {
     navigate(`/workspace/${newSection}`);
   };
 
   const handleLogout = () => {
+    logout();
     navigate("/login");
   };
 
@@ -392,6 +396,7 @@ export default function WorkspacePage() {
         conversationId={conversationId}
         historyItems={historyItems}
         onNewConversation={() => { clearConversation(); setSummaryContext(null); }}
+        onSelectConversation={(id) => switchSession(id)}
       />
       <main className="flex min-w-0 flex-1 flex-col">
         <header className="flex h-[72px] shrink-0 items-center justify-between border-b border-slate-200/50 bg-white/30 px-8 backdrop-blur-2xl">

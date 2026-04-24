@@ -1,5 +1,6 @@
 """Quản lý tài nguyên nặng dùng chung cho RAG."""
 
+import os
 import threading
 
 _LOCK = threading.RLock()
@@ -12,6 +13,7 @@ _hybrid_retriever = None
 _tutor_reranker = None
 _quiz_reranker = None
 _quiz_resources = None
+_rag_core = None
 _tutor_chain = None
 
 
@@ -59,12 +61,19 @@ def _build_quiz_reranker():
     return CrossEncoderReranker(device=_get_device())
 
 
-def _build_tutor_chain():
-    from src.generation.llm_model import get_llm
+def _build_rag_core():
+    from src.generation.llm_model import get_llm, get_internal_llm
     from src.rag_core.offline_rag import Offline_RAG
-
-    rag_core = Offline_RAG(get_llm(), get_hybrid_retriever(), get_tutor_reranker())
-    return rag_core.get_chain()
+    
+    streaming_llm = get_llm()
+    internal_llm = get_internal_llm()
+    
+    return Offline_RAG(
+        streaming_llm, 
+        get_hybrid_retriever(), 
+        get_tutor_reranker(),
+        llm_internal=internal_llm
+    )
 
 
 def _build_quiz_resources():
@@ -143,15 +152,20 @@ def get_quiz_resources():
     return _quiz_resources
 
 
-def get_tutor_chain():
-    global _tutor_chain
-    if _tutor_chain is None:
+def get_rag_core():
+    global _rag_core
+    if _rag_core is None:
         with _LOCK:
-            if _tutor_chain is None:
-                _tutor_chain = _build_tutor_chain()
-    return _tutor_chain
+            if _rag_core is None:
+                _rag_core = _build_rag_core()
+    return _rag_core
+
+
+def get_tutor_chain():
+    # Trả về answer chain để tương thích với các phần cũ nếu có
+    return get_rag_core().get_answer_chain()
 
 
 def prewarm_all_resources():
-    get_tutor_chain()
+    get_rag_core()
     get_quiz_resources()

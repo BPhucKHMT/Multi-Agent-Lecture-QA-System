@@ -330,82 +330,56 @@ class JsonStreamCleaner:
         self.capture_start_idx = -1
 
     def process_token(self, token: str) -> str:
-        if self.is_plain_text:
-            return token
-
         self.buffer += token
         
-        # Nếu chưa xác định là JSON, kiểm tra dấu { ở đầu
+        # 1. Tìm điểm bắt đầu JSON
         if not self.is_json:
-            stripped = self.buffer.lstrip()
-            if stripped.startswith("{"):
+            start_bracket_idx = self.buffer.find("{")
+            if start_bracket_idx != -1:
                 self.is_json = True
-            elif stripped.startswith("```"):
-                start_idx = self.buffer.find("{")
-                if start_idx != -1:
-                    self.buffer = self.buffer[start_idx:]
-                    self.is_json = True
-                elif len(stripped) < 15:
-                    return ""
-                else:
-                    self.is_plain_text = True
-                    return self.buffer
-            elif stripped:  # Có nội dung và không bắt đầu bằng { hoặc ``` => stream text thường
-                self.is_plain_text = True
-                return self.buffer
+                self.buffer = self.buffer[start_bracket_idx:]
             else:
-                return "" # Đang chờ xem có phải JSON không
-
-        if self.is_json:
-            # Nếu chưa tìm thấy điểm bắt đầu của giá trị cần cướp
-            if self.capture_start_idx == -1:
-                for key in self.target_keys:
-                    key_idx = self.buffer.find(key)
-                    if key_idx != -1:
-                        # Tìm dấu : sau key
-                        colon_idx = self.buffer.find(":", key_idx + len(key))
-                        if colon_idx != -1:
-                            # Tìm dấu " mở đầu giá trị
-                            quote_idx = self.buffer.find('"', colon_idx + 1)
-                            if quote_idx != -1:
-                                self.capture_start_idx = quote_idx + 1
-                                break
-                if self.capture_start_idx == -1:
-                    return "" # Vẫn đang tìm key
-
-            # Nếu đã tìm thấy điểm bắt đầu, lấy phần nội dung mới
-            extracted_raw = self.buffer[self.capture_start_idx:]
-            
-            # Tìm dấu " kết thúc (không bị escape bởi \)
-            # Lưu ý: Tìm ngược từ cuối để lấy đoạn dài nhất hiện có
-            # Nhưng vì ta stream nên ta chỉ cần lấy tất cả nội dung hiện tại
-            # và lọc bỏ các ký tự escape dở dang ở cuối
-            
-            # Kiểm tra xem đã kết thúc chuỗi chưa
-            end_quote_idx = -1
-            for i in range(len(extracted_raw)):
-                if extracted_raw[i] == '"' and (i == 0 or extracted_raw[i-1] != '\\'):
-                    end_quote_idx = i
-                    break
-            
-            content_to_decode = extracted_raw if end_quote_idx == -1 else extracted_raw[:end_quote_idx]
-            
-            try:
-                # Giải mã escape sequences bằng cách dùng json.loads
-                # Ta cần đảm bảo chuỗi kết thúc hợp lệ để loads thành công
-                # Nếu đang dở dang dấu \, ta bỏ qua ký tự đó
-                if content_to_decode.endswith('\\'):
-                    content_to_decode = content_to_decode[:-1]
-                
-                # Bọc lại thành JSON string hợp lệ
-                decoded = json_lib.loads(f'"{content_to_decode}"')
-                delta = decoded[self.last_yielded_len:]
-                self.last_yielded_len = len(decoded)
-                return delta
-            except:
                 return ""
+
+        # 2. Tìm key mục tiêu (text, content, goal)
+        if self.capture_start_idx == -1:
+            for key in self.target_keys:
+                key_idx = self.buffer.find(key)
+                if key_idx != -1:
+                    colon_idx = self.buffer.find(":", key_idx + len(key))
+                    if colon_idx != -1:
+                        quote_idx = self.buffer.find('"', colon_idx + 1)
+                        if quote_idx != -1:
+                            self.capture_start_idx = quote_idx + 1
+                            break
+            if self.capture_start_idx == -1:
+                return ""
+
+        # 3. Trích xuất và giải mã nội dung
+        extracted_raw = self.buffer[self.capture_start_idx:]
         
-        return token
+        # Tìm dấu kết thúc chuỗi (không bị escape)
+        end_quote_idx = -1
+        for i in range(len(extracted_raw)):
+            if extracted_raw[i] == '"' and (i == 0 or extracted_raw[i-1] != '\\'):
+                end_quote_idx = i
+                break
+        
+        content_to_decode = extracted_raw if end_quote_idx == -1 else extracted_raw[:end_quote_idx]
+        
+        try:
+            # Xử lý trường hợp chuỗi kết thúc bằng dấu escape dở dang
+            if content_to_decode.endswith('\\'):
+                content_to_decode = content_to_decode[:-1]
+            
+            # Sử dụng json.loads để giải mã các ký tự escape (\n, \", v.v.)
+            decoded = json_lib.loads(f'"{content_to_decode}"')
+            delta = decoded[self.last_yielded_len:]
+            self.last_yielded_len = len(decoded)
+            return delta
+        except:
+            return ""
+
 
 
 def _extract_stream_context(event: dict) -> list:
@@ -418,10 +392,15 @@ def _extract_stream_context(event: dict) -> list:
     # Nếu là output của lambda get_context trong OfflineRag
     if isinstance(output, str) and output.startswith("["):
         try:
-            return json_lib.loads(output)
+            data = json_lib.loads(output)
+            # Chỉ chấp nhận nếu là danh sách các object có page_content (đặc thù của context docs)
+            if isinstance(data, list) and len(data) > 0 and isinstance(data[0], dict) and "page_content" in data[0]:
+                return data
+            return []
         except:
             return []
     return []
+
 
 async def generate_stream(conversation_id: str, request_messages: list, user_message: str) -> AsyncGenerator[str, None]:
     """Yield SSE chunks: token realtime + metadata cuối + [DONE]."""
@@ -506,17 +485,35 @@ async def generate_stream(conversation_id: str, request_messages: list, user_mes
             if event_type == "on_chain_start" and node_name in STATUS_MAPPING:
                 yield f"data: {json_lib.dumps({'type': 'status', 'status': STATUS_MAPPING[node_name]})}\n\n"
 
-            # Gửi Context sớm nếu bắt được kết quả từ retriever/lambda
+            # Gửi Context sớm nếu bắt được kết quả từ retriever/lambda (chỉ bước retrieve_context)
             if event_type == "on_chain_end":
-                context_docs = _extract_stream_context(event)
-                if context_docs:
-                    yield f"data: {json_lib.dumps({'type': 'context', 'docs': context_docs})}\n\n"
+                # Chỉ lấy dữ liệu từ bước được định danh là retrieve_context
+                if event.get("name") == "retrieve_context":
+                    context_docs = _extract_stream_context(event)
+                    if context_docs:
+                        yield f"data: {json_lib.dumps({'type': 'context', 'docs': context_docs})}\n\n"
+
+
 
             if event_type == "on_chat_model_stream":
-                # Bỏ qua tokens text từ các node xử lý nội bộ hoặc supervisor
-                internal_nodes = ["supervisor", "agent", "gen_sympy", "verify"]
-                if node_name in internal_nodes:
+                node_name = event.get("metadata", {}).get("langgraph_node", "")
+                allowed_nodes = ["tutor", "math", "quiz", "coding", "direct", "derive", "generate", "quiz_gen"]
+                
+                tags = event.get("tags", [])
+                content = event["data"]["chunk"].content
+                
+                # DEBUG LOG (Sẽ xóa sau khi tìm ra nguyên nhân)
+                if content.strip():
+                    print(f"DEBUG STREAM: Node={node_name} | Tags={tags} | Content={repr(content)}")
+
+                if node_name not in allowed_nodes:
                     continue
+
+                if "final_answer" not in tags:
+                    continue
+
+
+
                 
                 token_text = _extract_stream_token_content(event.get("data", {}).get("chunk"))
                 if token_text:
