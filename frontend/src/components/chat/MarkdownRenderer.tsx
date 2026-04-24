@@ -120,16 +120,43 @@ export default function MarkdownRenderer({
 }: MarkdownRendererProps) {
 
   const processedContent = useMemo(() => {
-    return content.replace(/\[(\d+)\]/g, (match, p1) => {
-      return `[${match}](cite:${p1})`;
-    });
-  }, [content]);
+    if (!content) return "";
+    
+    // Tìm tất cả các trích dẫn [n]
+    const matches = Array.from(content.matchAll(/\[(\d+)\]/g));
+    if (matches.length === 0) return content;
 
+    // Lấy danh sách citation items để có URL thật
+    const citationItems = response 
+      ? buildCitationItems(content, response) 
+      : (tempContext && tempContext.length > 0 ? buildCitationItemsFromContext(content, tempContext) : []);
+
+    let result = content;
+    // Duyệt ngược từ cuối lên để tránh làm lệch index khi replace
+    for (let i = matches.length - 1; i >= 0; i--) {
+      const match = matches[i];
+      const fullMatch = match[0];
+      const index = parseInt(match[1], 10);
+      const citation = citationItems.find(c => c.index === index);
+      
+      if (citation && citation.video_url) {
+        const startIdx = match.index!;
+        // Thay [n] bằng [ [n] ](url) để hiển thị đẹp và clickable
+        result = result.substring(0, startIdx) + 
+                 `[\\[${index}\\]](${citation.video_url})` + 
+                 result.substring(startIdx + fullMatch.length);
+      }
+    }
+    return result;
+  }, [content, response, tempContext]);
+
+  // Vẫn cần danh sách citations cho CitationList hoặc logic khác nếu cần
   const citations = useMemo(() => {
     if (response) return buildCitationItems(content, response);
     if (tempContext && tempContext.length > 0) return buildCitationItemsFromContext(content, tempContext);
     return [];
   }, [content, response, tempContext]);
+
 
   const displayContent = useMemo(() => {
     let fixed = processedContent;

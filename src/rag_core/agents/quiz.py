@@ -139,10 +139,12 @@ TRẢ VỀ JSON NGUYÊN THỦY PHẢI CHỨA OBJECT THEO FORMAT, KHÔNG DÙNG ``
     }
     
     try:
-        result = await chain.ainvoke(invoke_input)
+        result = await chain.ainvoke(invoke_input, config={"tags": ["final_answer"]})
+
     except Exception as parse_error:
         try:
-            raw_result = await llm_chain.ainvoke(invoke_input)
+            raw_result = await llm_chain.ainvoke(invoke_input, config={"tags": ["final_answer"]})
+
             raw_content = raw_result.content if hasattr(raw_result, "content") else str(raw_result)
             repaired = _extract_quiz_json_payload(raw_content)
             if not repaired:

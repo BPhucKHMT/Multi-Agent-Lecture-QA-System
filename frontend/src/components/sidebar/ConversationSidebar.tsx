@@ -12,6 +12,7 @@ type ConversationSidebarProps = {
   conversationId: string;
   historyItems: HistoryItem[];
   onNewConversation: () => void;
+  onSelectConversation: (id: string) => void;
 };
 
 function SidebarSparkIcon() {
@@ -55,6 +56,7 @@ export default function ConversationSidebar({
   conversationId,
   historyItems,
   onNewConversation,
+  onSelectConversation,
 }: ConversationSidebarProps) {
   return (
     <aside className="flex h-screen w-[340px] flex-col border-r border-violet-100/60 bg-white/50 p-6 backdrop-blur-2xl">
@@ -91,9 +93,16 @@ export default function ConversationSidebar({
               <button
                 key={item.id}
                 type="button"
-                className="w-full rounded-xl border border-transparent bg-white/40 px-4 py-3 text-left transition-all duration-200 ease-out hover:border-violet-200 hover:bg-violet-50 hover:shadow-sm active:scale-[0.98]"
+                onClick={() => onSelectConversation(item.id)}
+                className={`w-full rounded-xl border px-4 py-3 text-left transition-all duration-200 ease-out active:scale-[0.98] ${
+                  conversationId === item.id
+                    ? "border-violet-200 bg-violet-50/80 shadow-sm"
+                    : "border-transparent bg-white/40 hover:border-violet-200 hover:bg-violet-50 hover:shadow-sm"
+                }`}
               >
-                <p className="truncate text-sm font-semibold text-slate-700">{item.title}</p>
+                <p className={`truncate text-sm font-semibold ${conversationId === item.id ? "text-violet-900" : "text-slate-700"}`}>
+                  {item.title}
+                </p>
                 <p className="truncate text-xs text-slate-500">{item.subtitle}</p>
               </button>
             ))
