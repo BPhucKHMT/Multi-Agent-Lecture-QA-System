@@ -1,10 +1,17 @@
 """Endpoints xử lý tóm tắt video."""
+
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
+
+# from sqlalchemy.orm import Session
 import redis
 
-from backend.app.api.v1.endpoints.schemas import VideoSummaryRequest, VideoSummaryResponse, VideoListResponse
-from backend.app.db.session import get_db
+from backend.app.api.v1.endpoints.schemas import (
+    VideoSummaryRequest,
+    VideoSummaryResponse,
+    VideoListResponse,
+)
+
+# from backend.app.db.session import get_db
 from backend.app.db.redis import get_redis
 from backend.app.deps import get_current_user
 from backend.app.models.user import User
@@ -37,13 +44,11 @@ async def get_video_summary(
     Lấy tóm tắt bài giảng video (có cache).
     """
     result = await summary_service.summarize_video(
-        video_id=body.video_id,
-        redis_client=redis_client
+        video_id=body.video_id, redis_client=redis_client
     )
     if "summary" not in result or not result["summary"]:
-        raise HTTPException(status_code=404, detail="Không thể tạo tóm tắt cho video này.")
-    
-    return VideoSummaryResponse(
-        video_id=result["video_id"],
-        summary=result["summary"]
-    )
+        raise HTTPException(
+            status_code=404, detail="Không thể tạo tóm tắt cho video này."
+        )
+
+    return VideoSummaryResponse(video_id=result["video_id"], summary=result["summary"])

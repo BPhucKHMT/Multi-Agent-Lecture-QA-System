@@ -8,14 +8,26 @@ import json as json_lib
 import re
 import asyncio
 
+
 class VideoAnswer(BaseModel):
-    text: str = Field(description="Câu trả lời đúng trọng tâm dựa trên transcript. SỬ DỤNG LaTeX ($...$ hoặc $$...$$) cho tất cả công thức/ký hiệu toán học và Markdown cho định dạng văn bản.")
+    text: str = Field(
+        description="Câu trả lời đúng trọng tâm dựa trên transcript. SỬ DỤNG LaTeX ($...$ hoặc $$...$$) cho tất cả công thức/ký hiệu toán học và Markdown cho định dạng văn bản."
+    )
     filename: List[str] = Field(description="Tên file transcript gốc")
-    video_url: List[str] = Field(description="URL của video gốc, số video phải khớp với số timestamp")
-    title: List[str] = Field(description="Tiêu đề của video gốc, số lượng phải khớp với số lượng timestamp")
-    start_timestamp: List[str] = Field(description="Thời điểm bắt đầu (format: HH:MM:SS)")
-    end_timestamp: List[str] = Field(description="Thời điểm kết thúc (format: HH:MM:SS)")
+    video_url: List[str] = Field(
+        description="URL của video gốc, số video phải khớp với số timestamp"
+    )
+    title: List[str] = Field(
+        description="Tiêu đề của video gốc, số lượng phải khớp với số lượng timestamp"
+    )
+    start_timestamp: List[str] = Field(
+        description="Thời điểm bắt đầu (format: HH:MM:SS)"
+    )
+    end_timestamp: List[str] = Field(
+        description="Thời điểm kết thúc (format: HH:MM:SS)"
+    )
     confidence: List[str] = Field(description="Độ tin cậy: zero/low/medium/high")
+
 
 class TutorOutput(BaseModel):
     text: str
@@ -25,6 +37,7 @@ class TutorOutput(BaseModel):
     start_timestamp: List[str]
     end_timestamp: List[str]
     confidence: List[str]
+
 
 class Offline_RAG:
     def __init__(self, llm, retriever, reranker, llm_internal=None) -> None:
@@ -71,7 +84,9 @@ Format instructions:
                 "title": doc.metadata.get("title", ""),
                 "start_timestamp": doc.metadata.get("start_timestamp", ""),
                 "end_timestamp": doc.metadata.get("end_timestamp", ""),
-                "content": doc.page_content if isinstance(doc.page_content, str) else str(doc.page_content)
+                "content": doc.page_content
+                if isinstance(doc.page_content, str)
+                else str(doc.page_content),
             }
             formatted.append(json_lib.dumps(item, ensure_ascii=False))
         return "[" + ",".join(formatted) + "]"
@@ -86,9 +101,7 @@ Format instructions:
             "Chỉ trả về danh sách JSON gồm 3 chuỗi."
         )
         llm_expanded = self.llm_internal.with_config(
-            tags=["internal_query"],
-            run_name="query_expansion",
-            callbacks=[]
+            tags=["internal_query"], run_name="query_expansion", callbacks=[]
         )
         chain = prompt | llm_expanded
         try:
@@ -106,20 +119,22 @@ Format instructions:
     async def get_context(self, query: str, chat_history: str = ""):
         """Bước chuẩn bị context: Chạy song song, KHÔNG stream."""
         queries = await self.generate_queries(query, chat_history)
-        
+
         search_tasks = []
         for q in queries:
             if hasattr(self.retriever, "ainvoke"):
                 search_tasks.append(self.retriever.ainvoke(q))
             else:
-                search_tasks.append(asyncio.to_thread(self.retriever.get_relevant_documents, q))
-        
+                search_tasks.append(
+                    asyncio.to_thread(self.retriever.get_relevant_documents, q)
+                )
+
         results = await asyncio.gather(*search_tasks)
-        
+
         all_docs = []
         for docs in results:
             all_docs.extend(docs[:15])
-        
+
         unique_docs = []
         seen_content = set()
         for doc in all_docs:
@@ -127,16 +142,16 @@ Format instructions:
             if content_hash not in seen_content:
                 unique_docs.append(doc)
                 seen_content.add(content_hash)
-        
+
         reranked = self.reranker.rerank(unique_docs, query)[:10]
         return self.format_doc(reranked)
 
     def get_answer_chain(self):
         """Chuỗi chỉ chứa bước sinh câu trả lời, dùng để stream sạch."""
         from langchain_core.output_parsers import JsonOutputParser
+
         parser = JsonOutputParser(pydantic_object=TutorOutput)
-        
-        return (
-            self.prompt.partial(format_instructions=parser.get_format_instructions())
-            | self.llm.with_config(tags=["final_answer"])
-        )
+
+        return self.prompt.partial(
+            format_instructions=parser.get_format_instructions()
+        ) | self.llm.with_config(tags=["final_answer_json"])
