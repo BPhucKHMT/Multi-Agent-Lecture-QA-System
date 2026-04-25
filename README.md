@@ -84,7 +84,7 @@ npm install
 ### 4. Khởi chạy hệ thống
 Sử dụng 2 terminal riêng biệt:
 
-- **Terminal 1 (Backend)**: `uvicorn backend.app.main:app --host 0.0.0.0 --port 8001`
+- **Terminal 1 (Backend)**: `uvicorn backend.app.main:app --host 0.0.0.0 --port 8000`
 - **Terminal 2 (Frontend)**: `cd frontend && npm run dev`
 
 ---

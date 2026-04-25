@@ -1,4 +1,5 @@
 """Redis client (Upstash compatible) — dùng cho blacklist JTI, rate limit, semantic cache."""
+
 from typing import Optional
 import redis
 from backend.app.core.config import settings
@@ -8,22 +9,33 @@ _redis_client: Optional[redis.Redis] = None
 
 
 def get_redis() -> redis.Redis:
-    """Trả về singleton Redis client."""
+    """
+    Trả về singleton Redis client
+        - Duy trì một đường dây kết nối duy nhất xuyên suốt thời gian hoạt động
+        - Tiết kiệm tài nguyên
+    """
     global _redis_client
+    # Kiểm tra xem đã có kết nối chưa, chỉ tạo nếu chưa có
     if _redis_client is None:
         _redis_client = redis.from_url(
             settings.REDIS_URL,
             decode_responses=True,  # Trả về str thay vì bytes
-            socket_timeout=5,
+            socket_timeout=5,  # Tránh ứng dụng bị treo
             socket_connect_timeout=5,
         )
     return _redis_client
 
 
 # --- Helpers ---
-
 def blacklist_jti(redis_client: redis.Redis, jti: str, ttl_seconds: int) -> None:
-    """Đưa JTI vào blacklist với TTL tương ứng."""
+    """
+    Chức năng:
+        - Đưa JTI vào blacklist với TIL tương ứng
+    Giải thích:
+        - Cho phép user đăng xuất thật sự => Tránh sự cố bảo mật
+        - Ngăn chặn session hijacking
+        - Tối ưu hóa hiệu năng bảo mật
+    """
     redis_client.setex(f"auth:revoked_jti:{jti}", ttl_seconds, "1")
 
 
@@ -32,10 +44,13 @@ def is_jti_blacklisted(redis_client: redis.Redis, jti: str) -> bool:
     return redis_client.exists(f"auth:revoked_jti:{jti}") == 1
 
 
-def check_rate_limit(redis_client: redis.Redis, key: str, limit: int, window_seconds: int) -> bool:
+def check_rate_limit(
+    redis_client: redis.Redis, key: str, limit: int, window_seconds: int
+) -> bool:
     """
     Trả về True nếu vượt giới hạn, False nếu còn trong giới hạn.
     Dùng INCR + EXPIRE để đếm số lần gọi trong time window.
+    Chống lại Brute-force (thử mật khẩu liên tục)
     """
     count = redis_client.incr(key)
     if count == 1:

@@ -133,7 +133,7 @@ HƯỚNG DẪN:
                 math_result=math_result if is_success else "Hãy tự giải chi tiết.",
                 format_instructions=parser.get_format_instructions()
             ),
-            config={"tags": ["final_answer"]}
+                config={"tags": ["final_answer_json"]}
         )
 
         

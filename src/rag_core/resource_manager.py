@@ -1,7 +1,7 @@
 """Quản lý tài nguyên nặng dùng chung cho RAG."""
 
-import os
 import threading
+import logging
 
 _LOCK = threading.RLock()
 
@@ -15,6 +15,8 @@ _quiz_reranker = None
 _quiz_resources = None
 _rag_core = None
 _tutor_chain = None
+
+logger = logging.getLogger(__name__)
 
 
 def _get_device() -> str:
@@ -40,7 +42,9 @@ def _build_documents():
 def _build_bm25_retriever():
     from src.retrieval.keyword_search import BM25KeywordSearch
 
-    return BM25KeywordSearch(get_documents()).get_retriever()
+    docs = get_documents()
+    logger.info("[prewarm] Building BM25 retriever with documents=%d", len(docs))
+    return BM25KeywordSearch(docs).get_retriever()
 
 
 def _build_hybrid_retriever():
@@ -64,15 +68,15 @@ def _build_quiz_reranker():
 def _build_rag_core():
     from src.generation.llm_model import get_llm, get_internal_llm
     from src.rag_core.offline_rag import Offline_RAG
-    
+
     streaming_llm = get_llm()
     internal_llm = get_internal_llm()
-    
+
     return Offline_RAG(
-        streaming_llm, 
-        get_hybrid_retriever(), 
+        streaming_llm,
+        get_hybrid_retriever(),
         get_tutor_reranker(),
-        llm_internal=internal_llm
+        llm_internal=internal_llm,
     )
 
 
@@ -167,5 +171,8 @@ def get_tutor_chain():
 
 
 def prewarm_all_resources():
+    logger.info("[prewarm] Step 1/2: build RAG core")
     get_rag_core()
+    logger.info("[prewarm] Step 2/2: build quiz resources")
     get_quiz_resources()
+    logger.info("[prewarm] All resources initialized")
