@@ -1,4 +1,5 @@
 """Auth service — Register, Login, Refresh Token, Logout."""
+
 from datetime import datetime, timedelta, timezone
 import uuid
 
@@ -6,8 +7,12 @@ from sqlalchemy.orm import Session
 import redis
 
 from backend.app.core.security import (
-    verify_password, get_password_hash,
-    create_access_token, create_refresh_token, decode_token, hash_token,
+    verify_password,
+    get_password_hash,
+    create_access_token,
+    create_refresh_token,
+    decode_token,
+    hash_token,
 )
 from backend.app.db.redis import blacklist_jti, is_jti_blacklisted
 from backend.app.models.user import User, UserSession, AuditLog
@@ -19,9 +24,13 @@ from jose import JWTError
 def register_user(db: Session, email: str, username: str, password: str) -> User:
     """Tạo tài khoản mới. Raise 409 nếu email/username đã tồn tại."""
     if db.query(User).filter(User.email == email).first():
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email đã được đăng ký")
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail="Email đã được đăng ký"
+        )
     if db.query(User).filter(User.username == username).first():
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Username đã được sử dụng")
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail="Username đã được sử dụng"
+        )
 
     user = User(
         email=email,
@@ -54,15 +63,21 @@ def login_user(
             detail="Email hoặc mật khẩu không đúng",
         )
     if not user.is_active:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Tài khoản đã bị vô hiệu hóa")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Tài khoản đã bị vô hiệu hóa"
+        )
 
     # Tạo session mới với token_family_id mới
     family_id = uuid.uuid4()
     session_id = uuid.uuid4()
-    expire = datetime.now(timezone.utc) + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
+    expire = datetime.now(timezone.utc) + timedelta(
+        days=settings.REFRESH_TOKEN_EXPIRE_DAYS
+    )
 
-    refresh_token, _ = create_refresh_token(str(user.email), str(session_id), str(family_id))
-    access_token = create_access_token(user.email)
+    refresh_token, _ = create_refresh_token(
+        str(user.email), str(session_id), str(family_id)
+    )
+    access_token = create_access_token(user.email, sid=str(session_id))
 
     session = UserSession(
         id=session_id,
@@ -124,11 +139,13 @@ def rotate_refresh_token(
         if session:
             # Thu hồi toàn bộ token trong cùng family
             _revoke_family(db, session.token_family_id)
-            db.add(AuditLog(
-                user_id=session.user_id,
-                action="reuse_detected",
-                metadata_json={"family_id": str(session.token_family_id)},
-            ))
+            db.add(
+                AuditLog(
+                    user_id=session.user_id,
+                    action="reuse_detected",
+                    metadata_json={"family_id": str(session.token_family_id)},
+                )
+            )
             db.commit()
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -136,12 +153,16 @@ def rotate_refresh_token(
         )
 
     # Tạo cặp token mới
-    new_access_token = create_access_token(email)
-    new_refresh_token, _ = create_refresh_token(email, sid, str(session.token_family_id))
+    new_access_token = create_access_token(email, sid=sid)
+    new_refresh_token, _ = create_refresh_token(
+        email, sid, str(session.token_family_id)
+    )
 
     # Cập nhật hash trong DB
     session.refresh_token_hash = hash_token(new_refresh_token)
-    session.expires_at = datetime.now(timezone.utc) + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
+    session.expires_at = datetime.now(timezone.utc) + timedelta(
+        days=settings.REFRESH_TOKEN_EXPIRE_DAYS
+    )
     db.commit()
 
     # Đưa JTI cũ vào Redis blacklist (TTL = thời gian còn lại của access token)
@@ -156,10 +177,23 @@ def logout_user(
     redis_client: redis.Redis,
     access_jti: str,
     user_id: uuid.UUID,
+    session_id: uuid.UUID | None = None,
 ) -> None:
     """Đăng xuất — blacklist access JTI và xóa session."""
     ttl = settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60
     blacklist_jti(redis_client, access_jti, ttl)
+    if session_id is not None:
+        session = (
+            db.query(UserSession)
+            .filter(
+                UserSession.id == session_id,
+                UserSession.user_id == user_id,
+                UserSession.revoked_at.is_(None),
+            )
+            .first()
+        )
+        if session:
+            session.revoked_at = datetime.now(timezone.utc)
     db.add(AuditLog(user_id=user_id, action="logout"))
     db.commit()
 
@@ -167,9 +201,13 @@ def logout_user(
 def _revoke_family(db: Session, family_id: uuid.UUID) -> None:
     """Thu hồi toàn bộ sessions thuộc cùng token_family_id."""
     now = datetime.now(timezone.utc)
-    sessions = db.query(UserSession).filter(
-        UserSession.token_family_id == family_id,
-        UserSession.revoked_at.is_(None),
-    ).all()
+    sessions = (
+        db.query(UserSession)
+        .filter(
+            UserSession.token_family_id == family_id,
+            UserSession.revoked_at.is_(None),
+        )
+        .all()
+    )
     for s in sessions:
         s.revoked_at = now
