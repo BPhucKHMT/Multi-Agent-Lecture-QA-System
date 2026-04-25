@@ -3,7 +3,7 @@
 **PUQ Q&A** là hệ thống trợ lý học tập thông minh sử dụng kiến trúc **Multi-Agent RAG (Retrieval-Augmented Generation)** để hỗ trợ sinh viên UIT tra cứu kiến thức từ các bài giảng video.
 
 <p align="center">
-  <img src="notebook_baseline/architecture.png" alt="Overall Framework" width="600"/>
+  <img src="src/notebook_baseline/architecture.png" alt="Overall Framework" width="600"/>
 </p>
 
 - tk demo: nguyenlam.baophuc@gmail.com
