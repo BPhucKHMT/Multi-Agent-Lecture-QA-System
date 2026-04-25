@@ -2,6 +2,7 @@
 Service xử lý hội thoại (Chat) với AI Engine.
 Hỗ trợ Streaming SSE, Semantic Caching, và lưu trữ lịch sử vào DB.
 """
+
 import json as json_lib
 import logging
 import os
@@ -31,8 +32,10 @@ MAX_HISTORY_MESSAGES = int(os.getenv("PUQ_MAX_STREAM_HISTORY_MESSAGES", "8"))
 
 # --- Hỗ trợ xử lý JSON Stream ---
 
+
 class JsonStreamCleaner:
     """Hỗ trợ bóc tách nội dung text sạch từ một luồng JSON dở dang của LLM."""
+
     def __init__(self):
         self.buffer = ""
         self.is_json = False
@@ -45,7 +48,7 @@ class JsonStreamCleaner:
         if self.is_plain_text:
             return token
         self.buffer += token
-        
+
         if not self.is_json:
             stripped = self.buffer.lstrip()
             if stripped.startswith("{"):
@@ -80,64 +83,108 @@ class JsonStreamCleaner:
                 if self.capture_start_idx == -1:
                     return ""
 
-            extracted_raw = self.buffer[self.capture_start_idx:]
+            extracted_raw = self.buffer[self.capture_start_idx :]
             end_quote_idx = -1
             for i in range(len(extracted_raw)):
-                if extracted_raw[i] == '"' and (i == 0 or extracted_raw[i-1] != '\\'):
+                if extracted_raw[i] == '"' and (i == 0 or extracted_raw[i - 1] != "\\"):
                     end_quote_idx = i
                     break
-            
-            content_to_decode = extracted_raw if end_quote_idx == -1 else extracted_raw[:end_quote_idx]
+
+            content_to_decode = (
+                extracted_raw if end_quote_idx == -1 else extracted_raw[:end_quote_idx]
+            )
             try:
-                if content_to_decode.endswith('\\'):
+                if content_to_decode.endswith("\\"):
                     content_to_decode = content_to_decode[:-1]
                 decoded = json_lib.loads(f'"{content_to_decode}"')
-                delta = decoded[self.last_yielded_len:]
+                delta = decoded[self.last_yielded_len :]
                 self.last_yielded_len = len(decoded)
                 return delta
-            except:
+            except Exception:
                 return ""
         return token
 
+
 # --- Helper functions ---
+
 
 def _extract_stream_token_content(chunk: Any) -> str:
     """Trích xuất nội dung text từ chunk của LangChain stream."""
-    if chunk is None: return ""
-    if isinstance(chunk, str): return chunk
+    if chunk is None:
+        return ""
+    if isinstance(chunk, str):
+        return chunk
     content = getattr(chunk, "content", None)
-    if isinstance(content, str): return content
+    if isinstance(content, str):
+        return content
     if isinstance(content, list):
         parts = []
         for item in content:
-            if isinstance(item, str): parts.append(item)
+            if isinstance(item, str):
+                parts.append(item)
             elif isinstance(item, dict):
                 text = item.get("text")
-                if isinstance(text, str): parts.append(text)
+                if isinstance(text, str):
+                    parts.append(text)
         return "".join(parts)
     if isinstance(chunk, dict):
         dict_content = chunk.get("content")
-        if isinstance(dict_content, str): return dict_content
+        if isinstance(dict_content, str):
+            return dict_content
     return ""
+
 
 def _extract_stream_context(event: dict) -> list:
     """Trích xuất danh sách video (context) từ event data."""
     data = event.get("data", {})
     output = data.get("output")
-    if not output: return []
+    if not output:
+        return []
     if isinstance(output, str) and output.startswith("["):
-        try: return json_lib.loads(output)
-        except: return []
+        try:
+            parsed = json_lib.loads(output)
+            if (
+                isinstance(parsed, list)
+                and len(parsed) > 0
+                and isinstance(parsed[0], dict)
+                and "page_content" in parsed[0]
+            ):
+                return parsed
+            return []
+        except Exception:
+            return []
     return []
 
+
+def _looks_like_json_fragment(token: str) -> bool:
+    """Phát hiện token là mảnh JSON/metadata để không stream ra UI."""
+    stripped = (token or "").strip()
+    if not stripped:
+        return True
+
+    # Structural token hoặc key/value metadata thường gặp
+    if stripped in {"{", "}", "[", "]", ",", ":", '"'}:
+        return True
+    if all(c in '{}[],:"\n\t ' for c in stripped):
+        return True
+    if re.search(
+        r'"(text|video_url|title|filename|start_timestamp|end_timestamp|confidence|type|quizzes|math_data|goal|steps)"\s*:',
+        stripped,
+    ):
+        return True
+
+    return False
+
+
 # --- Core Service Logic ---
+
 
 async def generate_chat_stream(
     db: Session,
     user_id: Any,
     session_id: str,
     user_message: str,
-    redis_client: Optional[redis.Redis] = None
+    redis_client: Optional[redis.Redis] = None,
 ) -> AsyncGenerator[str, None]:
     """
     Generator xử lý hội thoại AI:
@@ -154,18 +201,18 @@ async def generate_chat_stream(
         if cached_resp:
             # Nếu là cache hit, stream kết quả ngay lập tức
             yield f"data: {json_lib.dumps({'type': 'status', 'status': '🚀 Phản hồi nhanh từ bộ nhớ đệm...'})}\n\n"
-            
+
             # Giả lập streaming cho UX tốt hơn
             full_text = cached_resp.get("text", "")
             words = full_text.split(" ")
             for i in range(0, len(words), 5):
-                chunk = " ".join(words[i:i+5]) + " "
+                chunk = " ".join(words[i : i + 5]) + " "
                 yield f"data: {json_lib.dumps({'type': 'token', 'content': chunk})}\n\n"
                 time.sleep(0.02)
-            
+
             yield f"data: {json_lib.dumps({'type': 'metadata', 'conversation_id': session_id, 'response': cached_resp})}\n\n"
             yield "data: [DONE]\n\n"
-            
+
             # Vẫn lưu vào lịch sử DB
             assistant_chat = ChatHistory(
                 user_id=user_id,
@@ -173,21 +220,23 @@ async def generate_chat_stream(
                 role="assistant",
                 content=full_text,
                 agent_type="cache",
-                metadata_json=cached_resp
+                metadata_json=cached_resp,
             )
             db.add(assistant_chat)
             db.commit()
             return
 
     # 2. Lấy lịch sử hội thoại từ DB
-    history = db.query(ChatHistory).filter(
-        ChatHistory.user_id == user_id,
-        ChatHistory.session_id == session_id
-    ).order_by(ChatHistory.created_at.asc()).all()
-    
+    history = (
+        db.query(ChatHistory)
+        .filter(ChatHistory.user_id == user_id, ChatHistory.session_id == session_id)
+        .order_by(ChatHistory.created_at.asc())
+        .all()
+    )
+
     # Giới hạn lịch sử
     history = history[-MAX_HISTORY_MESSAGES:]
-    
+
     # Build LangChain messages
     langchain_messages = []
     for msg in history:
@@ -195,23 +244,20 @@ async def generate_chat_stream(
             langchain_messages.append(HumanMessage(content=msg.content))
         else:
             langchain_messages.append(AIMessage(content=msg.content))
-    
+
     # Thêm tin nhắn mới của user
     langchain_messages.append(HumanMessage(content=user_message))
-    
+
     # Lưu tin nhắn User vào DB ngay lập tức
     user_chat = ChatHistory(
-        user_id=user_id,
-        session_id=session_id,
-        role="user",
-        content=user_message
+        user_id=user_id, session_id=session_id, role="user", content=user_message
     )
     db.add(user_chat)
     db.commit()
 
     initial_state = {"messages": langchain_messages}
     cleaner = JsonStreamCleaner()
-    
+
     STATUS_MAPPING = {
         "supervisor": "🤔 Đang phân tích yêu cầu của bạn...",
         "tutor": "📚 Đang truy hồi tri thức từ bài giảng...",
@@ -221,12 +267,8 @@ async def generate_chat_stream(
         "direct": "💬 Đang chuẩn bị câu trả lời...",
     }
 
-    final_response = {
-        "text": "",
-        "type": "error",
-        "metadata": {}
-    }
-    
+    final_response = {"text": "", "type": "error", "metadata": {}}
+
     try:
         async for event in workflow.astream_events(initial_state, version="v2"):
             node_name = event.get("metadata", {}).get("langgraph_node", "")
@@ -237,7 +279,7 @@ async def generate_chat_stream(
                 yield f"data: {json_lib.dumps({'type': 'status', 'status': STATUS_MAPPING[node_name]})}\n\n"
 
             # Stream Context (Citations)
-            if event_type == "on_chain_end":
+            if event_type == "on_chain_end" and event.get("name") == "retrieve_context":
                 context_docs = _extract_stream_context(event)
                 if context_docs:
                     yield f"data: {json_lib.dumps({'type': 'context', 'docs': context_docs})}\n\n"
@@ -246,15 +288,30 @@ async def generate_chat_stream(
             if event_type == "on_chat_model_stream":
                 if node_name in ["supervisor", "agent", "gen_sympy", "verify"]:
                     continue
-                
-                token_text = _extract_stream_token_content(event.get("data", {}).get("chunk"))
+
+                tags = event.get("tags", [])
+                # Bỏ qua mọi luồng nội bộ hoặc luồng trả JSON metadata
+                if "internal_query" in tags or "final_answer_json" in tags:
+                    continue
+
+                token_text = _extract_stream_token_content(
+                    event.get("data", {}).get("chunk")
+                )
                 if token_text:
+                    if _looks_like_json_fragment(token_text):
+                        continue
                     clean_token = cleaner.process_token(token_text)
                     if clean_token:
                         yield f"data: {json_lib.dumps({'type': 'token', 'content': clean_token})}\n\n"
-            
+
             # Capture Final Output of the winning node
-            if event_type == "on_chain_end" and node_name in ["tutor", "math", "quiz", "coding", "direct"]:
+            if event_type == "on_chain_end" and node_name in [
+                "tutor",
+                "math",
+                "quiz",
+                "coding",
+                "direct",
+            ]:
                 output = event.get("data", {}).get("output")
                 if isinstance(output, dict) and "response" in output:
                     final_response = output.get("response")
@@ -267,7 +324,7 @@ async def generate_chat_stream(
                 role="assistant",
                 content=final_response.get("text", ""),
                 agent_type=node_name,
-                metadata_json=final_response
+                metadata_json=final_response,
             )
             db.add(assistant_chat)
             db.commit()
@@ -285,7 +342,9 @@ async def generate_chat_stream(
         yield "data: [DONE]\n\n"
 
 
-def get_chat_history(db: Session, user_id: Any, session_id: Optional[str] = None, limit: int = 50) -> List[ChatHistory]:
+def get_chat_history(
+    db: Session, user_id: Any, session_id: Optional[str] = None, limit: int = 50
+) -> List[ChatHistory]:
     """Lấy lịch sử hội thoại của user. Nếu có session_id thì chỉ lấy của session đó."""
     query = db.query(ChatHistory).filter(ChatHistory.user_id == user_id)
     if session_id:
@@ -293,27 +352,40 @@ def get_chat_history(db: Session, user_id: Any, session_id: Optional[str] = None
     return query.order_by(ChatHistory.created_at.asc()).limit(limit).all()
 
 
-def get_chat_sessions(db: Session, user_id: Any, limit: int = 20) -> List[Dict[str, Any]]:
+def get_chat_sessions(
+    db: Session, user_id: Any, limit: int = 20
+) -> List[Dict[str, Any]]:
     """Lấy danh sách các phiên hội thoại (session_id) duy nhất của user."""
     from sqlalchemy import func
-    
+
     # Lấy tin nhắn đầu tiên của mỗi session để làm tiêu đề
-    subquery = db.query(
-        ChatHistory.session_id,
-        func.min(ChatHistory.created_at).label("first_msg_time")
-    ).filter(ChatHistory.user_id == user_id).group_by(ChatHistory.session_id).subquery()
-    
-    sessions = db.query(ChatHistory).join(
-        subquery,
-        (ChatHistory.session_id == subquery.c.session_id) & 
-        (ChatHistory.created_at == subquery.c.first_msg_time)
-    ).order_by(subquery.c.first_msg_time.desc()).limit(limit).all()
-    
+    subquery = (
+        db.query(
+            ChatHistory.session_id,
+            func.min(ChatHistory.created_at).label("first_msg_time"),
+        )
+        .filter(ChatHistory.user_id == user_id)
+        .group_by(ChatHistory.session_id)
+        .subquery()
+    )
+
+    sessions = (
+        db.query(ChatHistory)
+        .join(
+            subquery,
+            (ChatHistory.session_id == subquery.c.session_id)
+            & (ChatHistory.created_at == subquery.c.first_msg_time),
+        )
+        .order_by(subquery.c.first_msg_time.desc())
+        .limit(limit)
+        .all()
+    )
+
     return [
         {
             "session_id": s.session_id,
             "title": s.content[:50] + "..." if len(s.content) > 50 else s.content,
-            "created_at": s.created_at
+            "created_at": s.created_at,
         }
         for s in sessions
     ]
