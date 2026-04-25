@@ -1,11 +1,19 @@
-"""Auth endpoints — /register, /login, /refresh, /logout, /me."""
+"""
+Auth endpoints — /register, /login, /refresh, /logout, /me.
+"""
+
+import uuid
+
 from fastapi import APIRouter, Depends, Request, status
-from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 import redis
 
 from backend.app.api.v1.endpoints.schemas import (
-    RegisterRequest, LoginRequest, TokenResponse, RefreshRequest, UserResponse,
+    RegisterRequest,
+    LoginRequest,
+    TokenResponse,
+    RefreshRequest,
+    UserResponse,
 )
 from backend.app.db.session import get_db
 from backend.app.db.redis import get_redis
@@ -17,7 +25,9 @@ from backend.app.core.security import decode_token
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
-@router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED
+)
 def register(
     body: RegisterRequest,
     db: Session = Depends(get_db),
@@ -71,7 +81,14 @@ def logout(
 ):
     """Đăng xuất — blacklist Access Token hiện tại."""
     payload = decode_token(token)
-    auth_service.logout_user(db, redis_client, payload["jti"], current_user.id)
+    session_id = payload.get("sid")
+    auth_service.logout_user(
+        db,
+        redis_client,
+        payload["jti"],
+        current_user.id,
+        session_id=uuid.UUID(session_id) if session_id else None,
+    )
 
 
 @router.get("/me", response_model=UserResponse)

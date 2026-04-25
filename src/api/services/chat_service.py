@@ -24,7 +24,9 @@ def _safe_stream_log(message: str) -> None:
     try:
         builtins.print(message)
     except UnicodeEncodeError:
-        builtins.print(message.encode("ascii", errors="backslashreplace").decode("ascii"))
+        builtins.print(
+            message.encode("ascii", errors="backslashreplace").decode("ascii")
+        )
 
 
 def _stream_error_response(message: str) -> Dict[str, Any]:
@@ -84,7 +86,6 @@ def _estimate_token_count_from_text(text: str) -> int:
     return (len(stripped) + 3) // 4
 
 
-
 @lru_cache(maxsize=1)
 def _load_video_metadata_map() -> Dict[str, Dict[str, str]]:
     """Load metadata mapping from artifacts/videos/*/metadata.json."""
@@ -114,7 +115,9 @@ def _load_video_metadata_map() -> Dict[str, Dict[str, str]]:
             key = f"{course_name.lower()}::{normalized_title}"
             mapping[key] = {
                 "video_url": video_url,
-                "thumbnail_url": f"https://i.ytimg.com/vi/{video_id}/hqdefault.jpg" if video_id else "",
+                "thumbnail_url": f"https://i.ytimg.com/vi/{video_id}/hqdefault.jpg"
+                if video_id
+                else "",
             }
 
     return mapping
@@ -154,9 +157,13 @@ def _build_video_index() -> List[Dict[str, Any]]:
                 "file_name": f"{video_id}.mp4" if video_id else normalized_title,
                 "relative_path": "",
                 "file_size_mb": 0.0,
-                "thumbnail_url": f"https://i.ytimg.com/vi/{video_id}/hqdefault.jpg" if video_id else "",
+                "thumbnail_url": f"https://i.ytimg.com/vi/{video_id}/hqdefault.jpg"
+                if video_id
+                else "",
                 "video_url": video_url,
-                "_search_key": _normalize_text(f"{normalized_title} {course_name} {video_id}"),
+                "_search_key": _normalize_text(
+                    f"{normalized_title} {course_name} {video_id}"
+                ),
             }
 
     if deduped:
@@ -193,7 +200,9 @@ def _build_video_index() -> List[Dict[str, Any]]:
                 "thumbnail_url": metadata.get("thumbnail_url", ""),
                 "video_url": metadata.get("video_url", ""),
                 "_size_bytes": file_size,
-                "_search_key": _normalize_text(f"{normalized_title} {course} {file_path.name}"),
+                "_search_key": _normalize_text(
+                    f"{normalized_title} {course} {file_path.name}"
+                ),
             }
 
     return sorted(
@@ -202,18 +211,25 @@ def _build_video_index() -> List[Dict[str, Any]]:
     )
 
 
-def list_local_videos(query: str = "", page: int = 1, page_size: int = 20) -> Dict[str, Any]:
+def list_local_videos(
+    query: str = "", page: int = 1, page_size: int = 20
+) -> Dict[str, Any]:
     """Trả danh sách video local từ artifacts/videos cho Summary Hub (search + pagination)."""
     all_videos = _build_video_index()
     if not all_videos:
-        return {"total": 0, "page": 1, "page_size": page_size, "total_pages": 0, "query": query, "videos": []}
+        return {
+            "total": 0,
+            "page": 1,
+            "page_size": page_size,
+            "total_pages": 0,
+            "query": query,
+            "videos": [],
+        }
 
     query_text = _normalize_text(query)
     if query_text:
         all_videos = [
-            item
-            for item in all_videos
-            if query_text in item.get("_search_key", "")
+            item for item in all_videos if query_text in item.get("_search_key", "")
         ]
 
     total = len(all_videos)
@@ -227,11 +243,7 @@ def list_local_videos(query: str = "", page: int = 1, page_size: int = 20) -> Di
     end_index = start_index + safe_page_size
     page_items = all_videos[start_index:end_index]
     videos = [
-        {
-            key: value
-            for key, value in item.items()
-            if not key.startswith("_")
-        }
+        {key: value for key, value in item.items() if not key.startswith("_")}
         for item in page_items
     ]
 
@@ -269,8 +281,6 @@ def _build_transcript_index() -> Dict[str, str]:
     return index
 
 
-
-
 def process_chat(request: ChatRequest) -> ChatResponse:
     """Xử lý hội thoại, gọi RAG và lưu lịch sử trong bộ nhớ."""
     doc = conversations_store.get(request.conversation_id)
@@ -302,7 +312,9 @@ def process_chat(request: ChatRequest) -> ChatResponse:
 
     title = doc["title"]
     if title == "Cuộc trò chuyện mới" and len(messages) > 1:
-        first_user_msg = next((msg["content"] for msg in messages if msg["role"] == "user"), "")
+        first_user_msg = next(
+            (msg["content"] for msg in messages if msg["role"] == "user"), ""
+        )
         if isinstance(first_user_msg, str):
             title = first_user_msg[:35] + ("..." if len(first_user_msg) > 35 else "")
 
@@ -321,6 +333,7 @@ def process_chat(request: ChatRequest) -> ChatResponse:
 
 class JsonStreamCleaner:
     """Hỗ trợ bóc tách nội dung text sạch từ một luồng JSON dở dang."""
+
     def __init__(self):
         self.buffer = ""
         self.is_json = False
@@ -328,10 +341,19 @@ class JsonStreamCleaner:
         self.last_yielded_len = 0
         self.target_keys = ['"text"', '"goal"', '"content"']
         self.capture_start_idx = -1
+        self.json_depth = 0
+        self.is_in_string = False
+        self.final_extracted_text = ""
 
     def process_token(self, token: str) -> str:
+        # Nếu chủ yếu là JSON structural token (chỉ chứa {}, :, ,, [, ], "), skip nó
+        if token.strip() in ["{", "}", "[", "]", ",", ":", '"'] or (
+            len(token) < 3 and all(c in '{}[],:"\n\t ' for c in token)
+        ):
+            return ""
+
         self.buffer += token
-        
+
         # 1. Tìm điểm bắt đầu JSON
         if not self.is_json:
             start_bracket_idx = self.buffer.find("{")
@@ -339,7 +361,8 @@ class JsonStreamCleaner:
                 self.is_json = True
                 self.buffer = self.buffer[start_bracket_idx:]
             else:
-                return ""
+                # Nếu không phải JSON, trả lại token như là plain text
+                return token
 
         # 2. Tìm key mục tiêu (text, content, goal)
         if self.capture_start_idx == -1:
@@ -356,30 +379,31 @@ class JsonStreamCleaner:
                 return ""
 
         # 3. Trích xuất và giải mã nội dung
-        extracted_raw = self.buffer[self.capture_start_idx:]
-        
+        extracted_raw = self.buffer[self.capture_start_idx :]
+
         # Tìm dấu kết thúc chuỗi (không bị escape)
         end_quote_idx = -1
         for i in range(len(extracted_raw)):
-            if extracted_raw[i] == '"' and (i == 0 or extracted_raw[i-1] != '\\'):
+            if extracted_raw[i] == '"' and (i == 0 or extracted_raw[i - 1] != "\\"):
                 end_quote_idx = i
                 break
-        
-        content_to_decode = extracted_raw if end_quote_idx == -1 else extracted_raw[:end_quote_idx]
-        
+
+        content_to_decode = (
+            extracted_raw if end_quote_idx == -1 else extracted_raw[:end_quote_idx]
+        )
+
         try:
             # Xử lý trường hợp chuỗi kết thúc bằng dấu escape dở dang
-            if content_to_decode.endswith('\\'):
+            if content_to_decode.endswith("\\"):
                 content_to_decode = content_to_decode[:-1]
-            
+
             # Sử dụng json.loads để giải mã các ký tự escape (\n, \", v.v.)
             decoded = json_lib.loads(f'"{content_to_decode}"')
-            delta = decoded[self.last_yielded_len:]
+            delta = decoded[self.last_yielded_len :]
             self.last_yielded_len = len(decoded)
             return delta
         except:
             return ""
-
 
 
 def _extract_stream_context(event: dict) -> list:
@@ -388,13 +412,18 @@ def _extract_stream_context(event: dict) -> list:
     output = data.get("output")
     if not output:
         return []
-    
+
     # Nếu là output của lambda get_context trong OfflineRag
     if isinstance(output, str) and output.startswith("["):
         try:
             data = json_lib.loads(output)
             # Chỉ chấp nhận nếu là danh sách các object có page_content (đặc thù của context docs)
-            if isinstance(data, list) and len(data) > 0 and isinstance(data[0], dict) and "page_content" in data[0]:
+            if (
+                isinstance(data, list)
+                and len(data) > 0
+                and isinstance(data[0], dict)
+                and "page_content" in data[0]
+            ):
                 return data
             return []
         except:
@@ -402,7 +431,9 @@ def _extract_stream_context(event: dict) -> list:
     return []
 
 
-async def generate_stream(conversation_id: str, request_messages: list, user_message: str) -> AsyncGenerator[str, None]:
+async def generate_stream(
+    conversation_id: str, request_messages: list, user_message: str
+) -> AsyncGenerator[str, None]:
     """Yield SSE chunks: token realtime + metadata cuối + [DONE]."""
     import time
     from src.rag_core.lang_graph_rag import workflow
@@ -425,7 +456,11 @@ async def generate_stream(conversation_id: str, request_messages: list, user_mes
     messages = doc.get("messages", [])
     messages.append({"role": "user", "content": user_message})
 
-    history_slice = request_messages[-MAX_STREAM_HISTORY_MESSAGES:] if MAX_STREAM_HISTORY_MESSAGES > 0 else request_messages
+    history_slice = (
+        request_messages[-MAX_STREAM_HISTORY_MESSAGES:]
+        if MAX_STREAM_HISTORY_MESSAGES > 0
+        else request_messages
+    )
 
     # Build langchain messages từ lịch sử hội thoại
     langchain_messages = []
@@ -442,7 +477,7 @@ async def generate_stream(conversation_id: str, request_messages: list, user_mes
     langchain_messages.append(HumanMessage(content=user_message))
 
     initial_state = {"messages": langchain_messages}
-    
+
     response = {
         "text": "Lỗi: Không nhận được phản hồi từ AI.",
         "video_url": [],
@@ -458,14 +493,14 @@ async def generate_stream(conversation_id: str, request_messages: list, user_mes
     total_input_tokens = 0
     total_output_tokens = 0
     node_token_usage: Dict[str, Dict[str, int]] = {}
-    
+
     _safe_stream_log(
         f"[stream] START user_message={user_message[:120]!r} "
         f"history_total={len(request_messages)} history_used={len(history_slice)}"
     )
-    
+
     cleaner = JsonStreamCleaner()
-    
+
     STATUS_MAPPING = {
         "supervisor": "🤔 Đang phân tích yêu cầu của bạn...",
         "tutor": "📚 Đang truy hồi tri thức từ bài giảng...",
@@ -474,7 +509,7 @@ async def generate_stream(conversation_id: str, request_messages: list, user_mes
         "math": "🔢 Đang thực hiện tính toán và chứng minh...",
         "direct": "💬 Đang chuẩn bị câu trả lời...",
     }
-    
+
     try:
         # Phase 1: Stream từng text token từ LLM
         async for event in workflow.astream_events(initial_state, version="v2"):
@@ -493,29 +528,36 @@ async def generate_stream(conversation_id: str, request_messages: list, user_mes
                     if context_docs:
                         yield f"data: {json_lib.dumps({'type': 'context', 'docs': context_docs})}\n\n"
 
-
-
             if event_type == "on_chat_model_stream":
                 node_name = event.get("metadata", {}).get("langgraph_node", "")
-                allowed_nodes = ["tutor", "math", "quiz", "coding", "direct", "derive", "generate", "quiz_gen"]
-                
+                allowed_nodes = [
+                    "tutor",
+                    "math",
+                    "quiz",
+                    "coding",
+                    "direct",
+                    "derive",
+                    "generate",
+                    "quiz_gen",
+                ]
+
                 tags = event.get("tags", [])
                 content = event["data"]["chunk"].content
-                
-                # DEBUG LOG (Sẽ xóa sau khi tìm ra nguyên nhân)
-                if content.strip():
-                    print(f"DEBUG STREAM: Node={node_name} | Tags={tags} | Content={repr(content)}")
 
                 if node_name not in allowed_nodes:
                     continue
 
-                if "final_answer" not in tags:
+                if "final_answer" not in tags and "final_answer_json" not in tags:
                     continue
 
+                # Skip streaming từ JSON-outputting chains (final_answer_json tag)
+                # Metadata JSON sẽ được gửi cuối cùng qua metadata event
+                if "final_answer_json" in tags:
+                    continue
 
-
-                
-                token_text = _extract_stream_token_content(event.get("data", {}).get("chunk"))
+                token_text = _extract_stream_token_content(
+                    event.get("data", {}).get("chunk")
+                )
                 if token_text:
                     clean_token = cleaner.process_token(token_text)
                     if clean_token:
@@ -524,19 +566,31 @@ async def generate_stream(conversation_id: str, request_messages: list, user_mes
             elif event_type == "on_chat_model_end":
                 try:
                     output = event.get("data", {}).get("output")
-                    if output and hasattr(output, "usage_metadata") and output.usage_metadata:
+                    if (
+                        output
+                        and hasattr(output, "usage_metadata")
+                        and output.usage_metadata
+                    ):
                         input_tokens = output.usage_metadata.get("input_tokens", 0)
                         output_tokens = output.usage_metadata.get("output_tokens", 0)
                         total_input_tokens += input_tokens
                         total_output_tokens += output_tokens
-                        bucket = node_token_usage.setdefault(node_name or "unknown", {"input": 0, "output": 0})
+                        bucket = node_token_usage.setdefault(
+                            node_name or "unknown", {"input": 0, "output": 0}
+                        )
                         bucket["input"] += input_tokens
                         bucket["output"] += output_tokens
                 except:
                     pass
-            
+
             # Bắt kết quả cuối cùng của node xử lý (Chỉ log của các node thực thi chính)
-            if event_type == "on_chain_end" and node_name in ["tutor", "math", "quiz", "coding", "direct"]:
+            if event_type == "on_chain_end" and node_name in [
+                "tutor",
+                "math",
+                "quiz",
+                "coding",
+                "direct",
+            ]:
                 output = event.get("data", {}).get("output")
                 if isinstance(output, dict) and "response" in output:
                     response = output.get("response")
@@ -544,12 +598,20 @@ async def generate_stream(conversation_id: str, request_messages: list, user_mes
                         f"[stream] NODE_END node={node_name} response_preview="
                     )
                     _safe_stream_log(
-                        (response.get("text", "")[:120] if isinstance(response, dict) else str(response)[:120])
+                        (
+                            response.get("text", "")[:120]
+                            if isinstance(response, dict)
+                            else str(response)[:120]
+                        )
                     )
 
         if not isinstance(response, dict) or not str(response.get("text", "")).strip():
-            _safe_stream_log(f"[stream] WARN empty/invalid response payload: {response!r}")
-            response = _stream_error_response("Lỗi streaming: Không nhận được metadata phản hồi cuối.")
+            _safe_stream_log(
+                f"[stream] WARN empty/invalid response payload: {response!r}"
+            )
+            response = _stream_error_response(
+                "Lỗi streaming: Không nhận được metadata phản hồi cuối."
+            )
     except Exception as error:
         _safe_stream_log(f"[stream] ERROR {error!r}")
         print(error)
@@ -565,13 +627,18 @@ async def generate_stream(conversation_id: str, request_messages: list, user_mes
         f"[TOKEN METRICS] mode=stream input={total_input_tokens} "
         f"output={total_output_tokens} total={total_input_tokens + total_output_tokens}"
     )
-    visible_text = response.get("text", "") if isinstance(response, dict) else str(response or "")
+    visible_text = (
+        response.get("text", "") if isinstance(response, dict) else str(response or "")
+    )
     visible_chars = len(str(visible_text or ""))
     visible_tokens_estimate = _estimate_token_count_from_text(visible_text)
-    node_breakdown = ", ".join(
-        f"{node}:in={usage['input']},out={usage['output']}"
-        for node, usage in sorted(node_token_usage.items())
-    ) or "none"
+    node_breakdown = (
+        ", ".join(
+            f"{node}:in={usage['input']},out={usage['output']}"
+            for node, usage in sorted(node_token_usage.items())
+        )
+        or "none"
+    )
     _safe_stream_log(
         f"[TOKEN BREAKDOWN] per_node={node_breakdown} "
         f"visible_chars={visible_chars} visible_tokens_estimate={visible_tokens_estimate}"
@@ -581,7 +648,9 @@ async def generate_stream(conversation_id: str, request_messages: list, user_mes
 
     title = doc["title"]
     if title == "Cuộc trò chuyện mới" and len(messages) > 1:
-        first_user_msg = next((msg["content"] for msg in messages if msg["role"] == "user"), "")
+        first_user_msg = next(
+            (msg["content"] for msg in messages if msg["role"] == "user"), ""
+        )
         if isinstance(first_user_msg, str):
             title = first_user_msg[:35] + ("..." if len(first_user_msg) > 35 else "")
 
@@ -593,4 +662,3 @@ async def generate_stream(conversation_id: str, request_messages: list, user_mes
 
     yield f"data: {json_lib.dumps({'type': 'metadata', 'conversation_id': conversation_id, 'response': response})}\n\n"
     yield "data: [DONE]\n\n"
-
