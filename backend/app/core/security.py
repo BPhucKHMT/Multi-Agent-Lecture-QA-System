@@ -1,10 +1,11 @@
 """Tiện ích bảo mật — sign/verify JWT, hash password."""
+
 from datetime import datetime, timedelta, timezone
 from typing import Any, Union
 import hashlib
 import uuid
 
-from jose import jwt, JWTError
+from jose import jwt
 from passlib.context import CryptContext
 
 from backend.app.core.config import settings
@@ -13,6 +14,7 @@ pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
 
 
 # --- Password ---
+
 
 def verify_password(plain: str, hashed: str) -> bool:
     return pwd_context.verify(plain, hashed)
@@ -24,8 +26,13 @@ def get_password_hash(password: str) -> str:
 
 # --- Token ---
 
-def create_access_token(subject: Union[str, Any], jti: str = None) -> str:
-    expire = datetime.now(timezone.utc) + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+
+def create_access_token(
+    subject: Union[str, Any], jti: str = None, sid: str = None
+) -> str:
+    expire = datetime.now(timezone.utc) + timedelta(
+        minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES
+    )
     payload = {
         "sub": str(subject),
         "exp": expire,
@@ -33,13 +40,19 @@ def create_access_token(subject: Union[str, Any], jti: str = None) -> str:
         "jti": jti or str(uuid.uuid4()),
         "type": "access",
     }
+    if sid:
+        payload["sid"] = str(sid)
     return jwt.encode(payload, settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM)
 
 
-def create_refresh_token(subject: Union[str, Any], sid: str, family_id: str) -> tuple[str, str]:
+def create_refresh_token(
+    subject: Union[str, Any], sid: str, family_id: str
+) -> tuple[str, str]:
     """Trả về (token, jti) để lưu jti vào blacklist sau khi rotate."""
     jti = str(uuid.uuid4())
-    expire = datetime.now(timezone.utc) + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
+    expire = datetime.now(timezone.utc) + timedelta(
+        days=settings.REFRESH_TOKEN_EXPIRE_DAYS
+    )
     payload = {
         "sub": str(subject),
         "exp": expire,
