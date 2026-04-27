@@ -63,7 +63,7 @@ class _SingleRunWorkflow:
 
 class _EmptyResponseWorkflow:
     async def astream_events(self, *_args, **_kwargs):
-        yield {"event": "on_chain_end", "data": {"output": {"response": {}}}}
+        yield {"event": "on_chain_end", "metadata": {"langgraph_node": "direct"}, "data": {"output": {"response": {}}}}
 
     async def ainvoke(self, *_args, **_kwargs):
         return {"response": {}}
@@ -73,6 +73,7 @@ class _EmptyDirectPayloadWorkflow:
     async def astream_events(self, *_args, **_kwargs):
         yield {
             "event": "on_chain_end",
+            "metadata": {"langgraph_node": "direct"},
             "data": {
                 "output": {
                     "response": {
@@ -298,7 +299,7 @@ def test_generate_stream_returns_error_when_response_payload_is_empty(monkeypatc
     body = json.loads(payloads[-1][6:])
     assert body["type"] == "metadata"
     assert body["response"]["type"] == "error"
-    assert "Không nhận được metadata phản hồi cuối" in body["response"]["text"]
+    assert "Không nhận được phản hồi từ AI" in body["response"]["text"]
 
 
 def test_generate_stream_returns_error_when_direct_payload_text_is_empty(monkeypatch):
@@ -316,7 +317,7 @@ def test_generate_stream_returns_error_when_direct_payload_text_is_empty(monkeyp
     body = json.loads(payloads[-1][6:])
     assert body["type"] == "metadata"
     assert body["response"]["type"] == "error"
-    assert "Không nhận được metadata phản hồi cuối" in body["response"]["text"]
+    assert "Không nhận được phản hồi từ AI" in body["response"]["text"]
 
 
 def test_generate_stream_caps_history_before_invoking_workflow(monkeypatch):
