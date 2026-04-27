@@ -338,18 +338,16 @@ class JsonStreamCleaner:
         self.buffer = ""
         self.is_json = False
         self.is_plain_text = False
-        self.last_yielded_len = 0
         self.target_keys = ['"text"', '"goal"', '"content"']
         self.capture_start_idx = -1
-        self.json_depth = 0
-        self.is_in_string = False
-        self.final_extracted_text = ""
+        self.raw_cursor = 0
+        self.pending_escape = ""
+        self.capture_done = False
 
     def process_token(self, token: str) -> str:
-        # Nếu chủ yếu là JSON structural token (chỉ chứa {}, :, ,, [, ], "), skip nó
-        if token.strip() in ["{", "}", "[", "]", ",", ":", '"'] or (
-            len(token) < 3 and all(c in '{}[],:"\n\t ' for c in token)
-        ):
+        if self.is_plain_text:
+            return token
+        if self.capture_done:
             return ""
 
         self.buffer += token
@@ -362,6 +360,7 @@ class JsonStreamCleaner:
                 self.buffer = self.buffer[start_bracket_idx:]
             else:
                 # Nếu không phải JSON, trả lại token như là plain text
+                self.is_plain_text = True
                 return token
 
         # 2. Tìm key mục tiêu (text, content, goal)
@@ -380,30 +379,60 @@ class JsonStreamCleaner:
 
         # 3. Trích xuất và giải mã nội dung
         extracted_raw = self.buffer[self.capture_start_idx :]
+        return self._decode_text_delta(extracted_raw)
 
-        # Tìm dấu kết thúc chuỗi (không bị escape)
-        end_quote_idx = -1
-        for i in range(len(extracted_raw)):
-            if extracted_raw[i] == '"' and (i == 0 or extracted_raw[i - 1] != "\\"):
-                end_quote_idx = i
+    def _decode_text_delta(self, extracted_raw: str) -> str:
+        """Giải mã từng phần value JSON string mà không chờ object hoàn chỉnh."""
+        out = []
+        i = self.raw_cursor
+
+        while i < len(extracted_raw):
+            char = extracted_raw[i]
+
+            if self.pending_escape:
+                self.pending_escape += char
+                if self.pending_escape.startswith("\\u"):
+                    if len(self.pending_escape) < 6:
+                        i += 1
+                        continue
+                    try:
+                        out.append(chr(int(self.pending_escape[2:6], 16)))
+                    except ValueError:
+                        out.append(self.pending_escape)
+                    self.pending_escape = ""
+                    i += 1
+                    continue
+
+                escape_char = self.pending_escape[1]
+                escape_map = {
+                    '"': '"',
+                    "\\": "\\",
+                    "/": "/",
+                    "b": "\b",
+                    "f": "\f",
+                    "n": "\n",
+                    "r": "\r",
+                    "t": "\t",
+                }
+                out.append(escape_map.get(escape_char, self.pending_escape))
+                self.pending_escape = ""
+                i += 1
+                continue
+
+            if char == "\\":
+                self.pending_escape = "\\"
+                i += 1
+                continue
+            if char == '"':
+                self.capture_done = True
+                i += 1
                 break
 
-        content_to_decode = (
-            extracted_raw if end_quote_idx == -1 else extracted_raw[:end_quote_idx]
-        )
+            out.append(char)
+            i += 1
 
-        try:
-            # Xử lý trường hợp chuỗi kết thúc bằng dấu escape dở dang
-            if content_to_decode.endswith("\\"):
-                content_to_decode = content_to_decode[:-1]
-
-            # Sử dụng json.loads để giải mã các ký tự escape (\n, \", v.v.)
-            decoded = json_lib.loads(f'"{content_to_decode}"')
-            delta = decoded[self.last_yielded_len :]
-            self.last_yielded_len = len(decoded)
-            return delta
-        except:
-            return ""
+        self.raw_cursor = i
+        return "".join(out)
 
 
 def _extract_stream_context(event: dict) -> list:
@@ -422,7 +451,7 @@ def _extract_stream_context(event: dict) -> list:
                 isinstance(data, list)
                 and len(data) > 0
                 and isinstance(data[0], dict)
-                and "page_content" in data[0]
+                and ("page_content" in data[0] or "content" in data[0])
             ):
                 return data
             return []
@@ -548,11 +577,6 @@ async def generate_stream(
                     continue
 
                 if "final_answer" not in tags and "final_answer_json" not in tags:
-                    continue
-
-                # Skip streaming từ JSON-outputting chains (final_answer_json tag)
-                # Metadata JSON sẽ được gửi cuối cùng qua metadata event
-                if "final_answer_json" in tags:
                     continue
 
                 token_text = _extract_stream_token_content(

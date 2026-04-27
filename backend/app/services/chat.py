@@ -40,13 +40,17 @@ class JsonStreamCleaner:
         self.buffer = ""
         self.is_json = False
         self.is_plain_text = False
-        self.last_yielded_len = 0
         self.target_keys = ['"text"', '"goal"', '"content"']
         self.capture_start_idx = -1
+        self.raw_cursor = 0
+        self.pending_escape = ""
+        self.capture_done = False
 
     def process_token(self, token: str) -> str:
         if self.is_plain_text:
             return token
+        if self.capture_done:
+            return ""
         self.buffer += token
 
         if not self.is_json:
@@ -84,25 +88,61 @@ class JsonStreamCleaner:
                     return ""
 
             extracted_raw = self.buffer[self.capture_start_idx :]
-            end_quote_idx = -1
-            for i in range(len(extracted_raw)):
-                if extracted_raw[i] == '"' and (i == 0 or extracted_raw[i - 1] != "\\"):
-                    end_quote_idx = i
-                    break
-
-            content_to_decode = (
-                extracted_raw if end_quote_idx == -1 else extracted_raw[:end_quote_idx]
-            )
-            try:
-                if content_to_decode.endswith("\\"):
-                    content_to_decode = content_to_decode[:-1]
-                decoded = json_lib.loads(f'"{content_to_decode}"')
-                delta = decoded[self.last_yielded_len :]
-                self.last_yielded_len = len(decoded)
-                return delta
-            except Exception:
-                return ""
+            return self._decode_text_delta(extracted_raw)
         return token
+
+    def _decode_text_delta(self, extracted_raw: str) -> str:
+        """Giải mã từng phần value JSON string mà không chờ object hoàn chỉnh."""
+        out = []
+        i = self.raw_cursor
+
+        while i < len(extracted_raw):
+            char = extracted_raw[i]
+
+            if self.pending_escape:
+                self.pending_escape += char
+                if self.pending_escape.startswith("\\u"):
+                    if len(self.pending_escape) < 6:
+                        i += 1
+                        continue
+                    try:
+                        out.append(chr(int(self.pending_escape[2:6], 16)))
+                    except ValueError:
+                        out.append(self.pending_escape)
+                    self.pending_escape = ""
+                    i += 1
+                    continue
+
+                escape_char = self.pending_escape[1]
+                escape_map = {
+                    '"': '"',
+                    "\\": "\\",
+                    "/": "/",
+                    "b": "\b",
+                    "f": "\f",
+                    "n": "\n",
+                    "r": "\r",
+                    "t": "\t",
+                }
+                out.append(escape_map.get(escape_char, self.pending_escape))
+                self.pending_escape = ""
+                i += 1
+                continue
+
+            if char == "\\":
+                self.pending_escape = "\\"
+                i += 1
+                continue
+            if char == '"':
+                self.capture_done = True
+                i += 1
+                break
+
+            out.append(char)
+            i += 1
+
+        self.raw_cursor = i
+        return "".join(out)
 
 
 # --- Helper functions ---
@@ -147,7 +187,7 @@ def _extract_stream_context(event: dict) -> list:
                 isinstance(parsed, list)
                 and len(parsed) > 0
                 and isinstance(parsed[0], dict)
-                and "page_content" in parsed[0]
+                and ("page_content" in parsed[0] or "content" in parsed[0])
             ):
                 return parsed
             return []
@@ -290,15 +330,15 @@ async def generate_chat_stream(
                     continue
 
                 tags = event.get("tags", [])
-                # Bỏ qua mọi luồng nội bộ hoặc luồng trả JSON metadata
-                if "internal_query" in tags or "final_answer_json" in tags:
+                # Bỏ qua luồng nội bộ như query expansion, nhưng vẫn bóc text từ final JSON answer.
+                if "internal_query" in tags:
                     continue
 
                 token_text = _extract_stream_token_content(
                     event.get("data", {}).get("chunk")
                 )
                 if token_text:
-                    if _looks_like_json_fragment(token_text):
+                    if "final_answer_json" not in tags and _looks_like_json_fragment(token_text):
                         continue
                     clean_token = cleaner.process_token(token_text)
                     if clean_token:

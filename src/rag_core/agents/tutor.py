@@ -52,6 +52,52 @@ def _extract_tutor_json_payload(raw):
     return None
 
 
+def _extract_cited_indices(text: str) -> list[int]:
+    return sorted({int(match) for match in re.findall(r"\[(\d+)\]", text or "")})
+
+
+def _ensure_list_slot(data: dict, key: str, index: int, value: str) -> None:
+    current = data.get(key)
+    if not isinstance(current, list):
+        current = []
+    while len(current) <= index:
+        current.append("")
+    if not current[index] and value:
+        current[index] = value
+    data[key] = current
+
+
+def _sync_citation_metadata_from_context(data: dict, context: str) -> dict:
+    """Backfill metadata cho citation [n] từ context docs nếu LLM trả thiếu."""
+    if not isinstance(data, dict):
+        return data
+
+    try:
+        docs = json.loads(context) if isinstance(context, str) else []
+    except Exception:
+        return data
+
+    if not isinstance(docs, list):
+        return data
+
+    for index in _extract_cited_indices(str(data.get("text", ""))):
+        if index >= len(docs) or not isinstance(docs[index], dict):
+            continue
+        doc = docs[index]
+        _ensure_list_slot(data, "video_url", index, str(doc.get("video_url", "")))
+        _ensure_list_slot(data, "title", index, str(doc.get("title", "")))
+        _ensure_list_slot(data, "filename", index, str(doc.get("filename", "")))
+        _ensure_list_slot(
+            data, "start_timestamp", index, str(doc.get("start_timestamp", ""))
+        )
+        _ensure_list_slot(
+            data, "end_timestamp", index, str(doc.get("end_timestamp", ""))
+        )
+        _ensure_list_slot(data, "confidence", index, "medium")
+
+    return data
+
+
 def get_rag_chain():
     return resource_manager.get_tutor_chain()
 
@@ -94,7 +140,13 @@ async def node_tutor(state: State):
         rag_core = resource_manager.get_rag_core()
         # In ra màn hình console câu query
         print(f"Query to RAG: {query}")
-        context = await rag_core.get_context(query, chat_history=history_str)
+        
+        from langchain_core.runnables import RunnableLambda
+        async def fetch_context(params: dict) -> str:
+            return await params["rag_core"].get_context(params["query"], chat_history=params["history_str"])
+            
+        context_chain = RunnableLambda(fetch_context).with_config(run_name="retrieve_context")
+        context = await context_chain.ainvoke({"rag_core": rag_core, "query": query, "history_str": history_str})
 
         # BƯỚC 2: GENERATION (Có truyền history_str vào prompt cuối)
         answer_chain = rag_core.get_answer_chain()
@@ -117,6 +169,7 @@ async def node_tutor(state: State):
             return {"response": _build_tutor_error_response("Không parse được JSON.")}
 
         data = repaired
+        data = _sync_citation_metadata_from_context(data, context)
         data["type"] = "rag"
         return {"response": data}
 
