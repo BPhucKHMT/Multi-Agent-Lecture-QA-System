@@ -1,3 +1,21 @@
+"""
+JSON trả ra có dạng:
+{{
+    "text": str,
+    "video_url": List[str],
+    "title": List[str],
+    "filename": List[str],
+    "start_timestamp": List[str],
+    "end_timestamp": List[str],
+    "confidence": List[str]
+}}
+Vì vậy khi thực hiện streaming, output đầu tiên luôn là "{{\n", output cuối cùng luôn là "}}\n".
+Trong quá trình thực hiện, ta chỉ cần trích xuất phần value của key 'text' và ghép lại với nhau.
+Bên cạnh đó prompt để trả về trường "text" ở đầu tiên giúp cho JsonStreamCleaner sẽ ngay lập tức "bắt" được tín hiệu và streaming trực tiếp từng 
+chữ ra frontend mà không có độ trễ nào nữa. 
+"""
+
+
 from pydantic import BaseModel, Field
 from langchain_core.output_parsers import JsonOutputParser
 from langchain_core.prompts import ChatPromptTemplate
@@ -71,6 +89,7 @@ Câu hỏi hiện tại:
 
 Format instructions:
 {format_instructions}
+LUÔN LUÔN đặt key "text" ở vị trí ĐẦU TIÊN trong JSON object để hỗ trợ streaming nhanh nhất.
 """)
         self.retriever = retriever
         self.reranker = reranker
