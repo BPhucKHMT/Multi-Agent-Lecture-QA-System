@@ -1,0 +1,67 @@
+
+# Web & API
+streamlit
+fastapi==0.115.0
+uvicorn[standard]==0.32.1
+motor==3.6.0
+pymongo==4.9
+requests==2.32.3
+pydantic==2.10.3
+
+# LangChain ecosystem
+langchain==0.3.27
+langchain-chroma==0.2.4
+langchain-community==0.3.24
+langchain-core==0.3.79
+langchain-experimental==0.3.4
+langchain-google-genai==2.1.12
+langchain-huggingface==0.2.0
+langchain-openai==0.3.35
+langchainhub==0.1.21
+langgraph
+
+# Vector store & embeddings
+chromadb==1.3.2
+sentence-transformers==5.1.2
+
+# Retrieval
+rank-bm25==0.2.2
+
+# LLM & Transformers
+transformers==4.57.1
+httpx==0.27.0
+accelerate==1.10.1
+tokenizers==0.22.1
+safetensors==0.6.2
+
+# Text processing & NLP
+pyvi==0.1.1
+language_tool_python==2.9.4
+python-dotenv==1.2.1
+
+# Utilities
+tqdm==4.67.1
+numpy
+regex==2025.11.3
+
+google-api-python-client==2.187.0
+dotenv
+youtube-transcript-api==1.2.3
+pytube==15.0.0
+yt-dlp==2025.11.12
+librosa==0.11.0
+hf_transfer==0.1.9
+ffmpeg==1.4
+openai-whisper==20250625
+
+# Visualization
+plotly==6.4.0
+matplotlib==3.9.4
+
+# Visual pipeline & OCR
+pyyaml
+opencv-python-headless
+easyocr
+transnetv2-pytorch
+tensorflow
+tf-keras==2.20.1
