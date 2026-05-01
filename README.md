@@ -11,6 +11,7 @@ Mục tiêu: người dùng có thể hỏi về nội dung bài giảng/video, 
 | ![Demo giao diện chat](public/Demo1.png) | ![Demo workflow agent](public/Demo2.png) |
 
 ![Demo tổng quan hệ thống](public/Demo3.png)
+![Demo mở rộng hệ thống](public/Demo4.png)
 
 ---
 
@@ -60,19 +61,19 @@ Dùng khi máy local có NVIDIA GPU, Docker Desktop đã bật GPU support/NVIDI
 docker compose --profile gpu --profile redis up --build
 ```
 
+Lệnh trên chạy **2 service**: `api-gpu` + `redis-stack`.
+
+Nếu muốn chạy cùng lúc **3 service** (frontend + backend GPU + Redis):
+
+```powershell
+docker compose --profile gpu --profile redis --profile frontend up --build
+```
+
 Image GPU đã test build local:
 
 ```txt
 rag-qabot:gpu = 12.5GB
 ```
-
-Nếu muốn chạy frontend cùng lúc với backend GPU, hiện frontend proxy mặc định trỏ `api-cpu`; cách đơn giản nhất là chạy frontend ngoài Docker:
-
-```powershell
-npm --prefix frontend run dev
-```
-
-Hoặc chỉnh `VITE_API_PROXY_TARGET=http://api-gpu:8000` trong service `frontend` trước khi chạy profile `frontend` cùng `gpu`.
 
 ### 4. Chạy data pipeline bằng Docker
 
