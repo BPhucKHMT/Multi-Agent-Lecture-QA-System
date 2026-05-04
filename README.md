@@ -277,6 +277,27 @@ npm --prefix frontend install
 npm --prefix frontend run dev
 ```
 
+### Chạy Redis local
+
+Nếu đã cài Redis local sẵn trên máy:
+
+```powershell
+redis-server
+```
+
+Hoặc chạy bằng Docker:
+
+```powershell
+docker compose --profile redis up -d redis-stack
+```
+
+Redis endpoint local:
+
+```txt
+REDIS_URL=redis://localhost:6379/0
+RedisInsight: http://localhost:8001
+```
+
 ### Chạy data pipeline
 
 ```powershell
