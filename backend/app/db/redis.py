@@ -1,4 +1,14 @@
-"""Redis client (Upstash compatible) — dùng cho blacklist JTI, rate limit, semantic cache."""
+"""Redis client factory cho backend.
+
+Module này cung cấp hai singleton Redis client có mục đích khác nhau:
+- `get_redis()`: client text (`decode_responses=True`) cho auth, blacklist,
+  rate limit và các key/value string thông thường.
+- `get_redis_binary()`: client bytes (`decode_responses=False`) cho Redis Stack
+  semantic cache vì vector embedding được lưu dạng binary.
+
+Tách hai client giúp tránh lỗi decode bytes embedding thành UTF-8 khi dùng
+RediSearch vector index.
+"""
 
 from typing import Optional
 import redis
@@ -6,35 +16,41 @@ from backend.app.core.config import settings
 
 # Upstash dùng giao thức rediss:// (SSL), redis-py hỗ trợ sẵn
 _redis_client: Optional[redis.Redis] = None
+_redis_binary_client: Optional[redis.Redis] = None
 
 
 def get_redis() -> redis.Redis:
-    """
-    Trả về singleton Redis client
-        - Duy trì một đường dây kết nối duy nhất xuyên suốt thời gian hoạt động
-        - Tiết kiệm tài nguyên
-    """
+    """Trả singleton Redis text client cho các nghiệp vụ key/value thông thường."""
     global _redis_client
-    # Kiểm tra xem đã có kết nối chưa, chỉ tạo nếu chưa có
     if _redis_client is None:
         _redis_client = redis.from_url(
             settings.REDIS_URL,
-            decode_responses=True,  # Trả về str thay vì bytes
-            socket_timeout=5,  # Tránh ứng dụng bị treo
+            decode_responses=True,
+            socket_timeout=5,
             socket_connect_timeout=5,
         )
     return _redis_client
 
 
+def get_redis_binary() -> redis.Redis:
+    """Trả singleton Redis bytes client cho Redis Stack vector cache."""
+    global _redis_binary_client
+    if _redis_binary_client is None:
+        _redis_binary_client = redis.from_url(
+            settings.REDIS_URL,
+            decode_responses=False,
+            socket_timeout=5,
+            socket_connect_timeout=5,
+        )
+    return _redis_binary_client
+
+
 # --- Helpers ---
 def blacklist_jti(redis_client: redis.Redis, jti: str, ttl_seconds: int) -> None:
-    """
-    Chức năng:
-        - Đưa JTI vào blacklist với TIL tương ứng
-    Giải thích:
-        - Cho phép user đăng xuất thật sự => Tránh sự cố bảo mật
-        - Ngăn chặn session hijacking
-        - Tối ưu hóa hiệu năng bảo mật
+    """Đưa JWT ID vào blacklist cho đến khi token hết hạn.
+
+    Dùng khi logout hoặc revoke token để access token còn hạn không thể tiếp tục
+    được sử dụng. TTL phải khớp thời gian sống còn lại của token.
     """
     redis_client.setex(f"auth:revoked_jti:{jti}", ttl_seconds, "1")
 
@@ -47,10 +63,10 @@ def is_jti_blacklisted(redis_client: redis.Redis, jti: str) -> bool:
 def check_rate_limit(
     redis_client: redis.Redis, key: str, limit: int, window_seconds: int
 ) -> bool:
-    """
-    Trả về True nếu vượt giới hạn, False nếu còn trong giới hạn.
-    Dùng INCR + EXPIRE để đếm số lần gọi trong time window.
-    Chống lại Brute-force (thử mật khẩu liên tục)
+    """Kiểm tra key có vượt giới hạn request trong cửa sổ thời gian không.
+
+    Trả `True` khi đã vượt giới hạn, `False` khi request vẫn được phép đi tiếp.
+    Dùng Redis `INCR` + `EXPIRE` để giữ counter đơn giản và tự hết hạn.
     """
     count = redis_client.incr(key)
     if count == 1:

@@ -1,13 +1,139 @@
 services:
-  app:
-    build: .
-    container_name: my_app
+  api-cpu:
+    profiles: ["cpu"]
+    build:
+      context: .
+      target: prod-cpu
+    image: rag-qabot:cpu
+    container_name: rag-qabot-api-cpu
+    env_file:
+      - .env
+    environment:
+      RAG_DEVICE: cpu
+      RAG_RETRIEVER_K: ${RAG_RETRIEVER_K:-40}
+      RAG_RETRIEVER_FETCH_K: ${RAG_RETRIEVER_FETCH_K:-80}
+      REDIS_URL: redis://redis-stack:6379/0
+      HF_HOME: /app/.cache/huggingface
+      TRANSFORMERS_CACHE: /app/.cache/huggingface
+      TOKENIZERS_PARALLELISM: "false"
     ports:
       - "8000:8000"
-      - "8501:8501"
     volumes:
-      - .:/src
-    command: >
-      sh -c "uvicorn server:app --host 0.0.0.0 --port 8000 --reload &
-             streamlit run app.py --server.port=8501 --server.address=0.0.0.0"
-    restart: always
+      - ./artifacts:/app/artifacts
+      - hf_cache:/app/.cache/huggingface
+    networks:
+      default:
+        aliases:
+          - api
+    restart: unless-stopped
+
+  frontend:
+    profiles: ["frontend"]
+    build:
+      context: ./frontend
+      target: dev
+    image: rag-qabot-frontend:dev
+    container_name: rag-qabot-frontend
+    environment:
+      VITE_API_PROXY_TARGET: http://api:8000
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - frontend_node_modules:/app/node_modules
+    restart: unless-stopped
+
+  pipeline-cpu:
+    profiles: ["pipeline"]
+    build:
+      context: .
+      target: pipeline-cpu
+    image: rag-qabot:pipeline-cpu
+    container_name: rag-qabot-pipeline-cpu
+    env_file:
+      - .env
+    environment:
+      RAG_DEVICE: cpu
+      HF_HOME: /app/.cache/huggingface
+      TRANSFORMERS_CACHE: /app/.cache/huggingface
+      TOKENIZERS_PARALLELISM: "false"
+    volumes:
+      - ./artifacts:/app/artifacts
+      - hf_cache:/app/.cache/huggingface
+    restart: "no"
+
+  api-gpu:
+    profiles: ["gpu"]
+    build:
+      context: .
+      target: dev-gpu
+    image: rag-qabot:gpu
+    container_name: rag-qabot-api-gpu
+    env_file:
+      - .env
+    environment:
+      RAG_DEVICE: cuda
+      RAG_RETRIEVER_K: ${RAG_RETRIEVER_K:-40}
+      RAG_RETRIEVER_FETCH_K: ${RAG_RETRIEVER_FETCH_K:-80}
+      HF_HOME: /app/.cache/huggingface
+      TRANSFORMERS_CACHE: /app/.cache/huggingface
+      TOKENIZERS_PARALLELISM: "false"
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/app
+      - hf_cache:/app/.cache/huggingface
+    networks:
+      default:
+        aliases:
+          - api
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: ["gpu"]
+    restart: unless-stopped
+
+  pipeline-gpu:
+    profiles: ["pipeline-gpu"]
+    build:
+      context: .
+      target: pipeline-gpu
+    image: rag-qabot:pipeline-gpu
+    container_name: rag-qabot-pipeline-gpu
+    env_file:
+      - .env
+    environment:
+      RAG_DEVICE: cuda
+      HF_HOME: /app/.cache/huggingface
+      TRANSFORMERS_CACHE: /app/.cache/huggingface
+      TOKENIZERS_PARALLELISM: "false"
+    volumes:
+      - .:/app
+      - hf_cache:/app/.cache/huggingface
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: ["gpu"]
+    restart: "no"
+
+  redis-stack:
+    profiles: ["redis"]
+    image: redis/redis-stack:latest
+    container_name: rag-qabot-redis
+    ports:
+      - "6379:6379"
+      - "8001:8001"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+
+volumes:
+  hf_cache:
+  frontend_node_modules:
+  redis_data:

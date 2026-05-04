@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { buildFailedPromptState, rollbackOptimisticMessage, type ConversationMessage } from "./conversationStore";
+import {
+  buildFailedPromptState,
+  hasVisibleStreamToken,
+  rollbackOptimisticMessage,
+  type ConversationMessage,
+} from "./conversationStore";
 
 describe("rollbackOptimisticMessage", () => {
   it("removes only the failed optimistic user message", () => {
@@ -32,5 +37,17 @@ describe("buildFailedPromptState", () => {
         messages: [{ role: "user", content: "Cau hoi" }],
       },
     });
+  });
+});
+
+describe("hasVisibleStreamToken", () => {
+  it("keeps loading visible for whitespace-only stream tokens", () => {
+    expect(hasVisibleStreamToken("")).toBe(false);
+    expect(hasVisibleStreamToken(" \n\t")).toBe(false);
+  });
+
+  it("detects the first visible token before hiding the loader", () => {
+    expect(hasVisibleStreamToken(" attention")).toBe(true);
+    expect(hasVisibleStreamToken("$\\theta$")).toBe(true);
   });
 });

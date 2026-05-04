@@ -369,15 +369,20 @@ export default function WorkspacePage() {
     }));
   }, [sessions]);
 
-  // Auto-scroll to bottom during streaming or new messages
+  // Auto-scroll to bottom when message content changes.
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTo({
-        top: scrollRef.current.scrollHeight,
+    const container = scrollRef.current;
+    if (!container) return;
+
+    const frameId = window.requestAnimationFrame(() => {
+      container.scrollTo({
+        top: container.scrollHeight,
         behavior: "smooth"
       });
-    }
-  }, [messages, isLoading]);
+    });
+
+    return () => window.cancelAnimationFrame(frameId);
+  }, [messages]);
 
   const handleSectionChange = (newSection: AppSection) => {
     navigate(`/workspace/${newSection}`);

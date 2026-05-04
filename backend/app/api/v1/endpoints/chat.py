@@ -7,7 +7,7 @@ import uuid
 
 from backend.app.api.v1.endpoints.schemas import ChatRequest # Sẽ cập nhật schemas sau
 from backend.app.db.session import get_db
-from backend.app.db.redis import get_redis
+from backend.app.db.redis import get_redis_binary
 from backend.app.deps import get_current_user
 from backend.app.models.user import User
 from backend.app.services import chat as chat_service
@@ -20,7 +20,7 @@ async def chat_stream(
     body: ChatRequest,
     current_user: User = Depends(get_current_user), # Bạn cần login để lấy token
     db: Session = Depends(get_db),
-    redis_client: redis.Redis = Depends(get_redis),
+    redis_client: redis.Redis = Depends(get_redis_binary),
 ):
     """
     Endpoint streaming hội thoại AI (SSE).
@@ -36,7 +36,12 @@ async def chat_stream(
             user_message=body.user_message,
             redis_client=redis_client
         ),
-        media_type="text/event-stream"
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache, no-transform",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
     )
 
 

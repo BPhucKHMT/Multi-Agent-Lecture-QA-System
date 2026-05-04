@@ -30,3 +30,44 @@ def test_node_tutor_handles_empty_output_with_clear_error(monkeypatch):
     assert result["response"]["type"] == "error"
     assert "output rỗng" in result["response"]["text"]
     assert "Expecting value" not in result["response"]["text"]
+
+
+def test_sync_citation_metadata_backfills_missing_entries_from_context():
+    response = {
+        "text": "Attention dùng Query, Key, Value [0][3].",
+        "video_url": ["https://youtube.com/watch?v=a"],
+        "title": ["Part 1"],
+        "filename": ["a.json"],
+        "start_timestamp": ["00:00:01"],
+        "end_timestamp": ["00:00:10"],
+        "confidence": ["high"],
+    }
+    context = """
+    [
+      {
+        "video_url": "https://youtube.com/watch?v=a",
+        "title": "Part 1",
+        "filename": "a.json",
+        "start_timestamp": "00:00:01",
+        "end_timestamp": "00:00:10",
+        "content": "doc 0"
+      },
+      {},
+      {},
+      {
+        "video_url": "https://youtube.com/watch?v=d",
+        "title": "Part 4: Key Value",
+        "filename": "d.json",
+        "start_timestamp": "00:08:09",
+        "end_timestamp": "00:09:00",
+        "content": "doc 3"
+      }
+    ]
+    """
+
+    synced = tutor._sync_citation_metadata_from_context(response, context)
+
+    assert synced["video_url"][3] == "https://youtube.com/watch?v=d"
+    assert synced["title"][3] == "Part 4: Key Value"
+    assert synced["start_timestamp"][3] == "00:08:09"
+    assert synced["confidence"][3] == "medium"

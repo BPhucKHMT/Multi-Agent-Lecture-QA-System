@@ -1,12 +1,17 @@
-"""
-Module này định nghĩa một hệ thống Multi-Agent Supervisor
-sử dụng StateGraph để điều phối giữa các agent con như Tutor, Coding, Math, và Quiz 
- dựa trên truy vấn của người dùng. Supervisor sẽ phân tích yêu cầu và quyết định agent nào phù hợp nhất để xử lý, 
-sau đó gọi agent đó với các tham số cần thiết. Kết quả cuối cùng sẽ được trả về cho người dùng dưới dạng một phản hồi tổng hợp.
+"""LangGraph Multi-Agent Supervisor workflow.
 
-Output của mỗi agent con sẽ có định dạng chuẩn để dễ dàng tổng hợp và trả về cho người dùng.
-Supervisor sẽ sử dụng một LLM để phân tích truy vấn và quyết định agent nào nên được gọi, dựa trên nội dung của truy vấn và lịch sử chat.
+Module này là điểm điều phối chính của AI engine. Supervisor nhận lịch sử chat,
+chuẩn hóa input người dùng, chọn đúng một tool/agent chuyên trách rồi chuyển
+state sang node tương ứng.
 
+Các nhánh xử lý chính:
+- Tutor: truy hồi bài giảng bằng RAG và trả citation.
+- Coding: sinh/chạy/sửa code Python trong sandbox khi phù hợp.
+- Math: sinh SymPy, kiểm chứng và diễn giải lời giải bằng LaTeX.
+- Quiz: tạo câu hỏi trắc nghiệm từ context bài giảng.
+- Direct: trả lời chào hỏi/câu hỏi xã giao không cần retrieval.
+
+Response cuối cùng được backend stream về frontend và lưu vào PostgreSQL.
 """
 
 
@@ -238,6 +243,7 @@ def _is_greeting_input(input_text: str) -> bool:
     return any(normalized == pattern or normalized.startswith(f"{pattern} ") for pattern in CHITCHAT_PATTERNS)
 
 async def node_supervisor(state: State):
+    """Route request sang đúng agent bằng deterministic rules trước, LLM sau."""
     messages = state.get("messages", [])
 
     try:
@@ -321,6 +327,7 @@ async def node_supervisor(state: State):
 
 
 def router(state: State) -> str:
+    """Chuyển tool call của Supervisor thành tên node LangGraph kế tiếp."""
     messages = state.get("messages", [])
     last_message = messages[-1]
 
@@ -357,12 +364,14 @@ coding_subgraph = build_coding_subgraph()
 math_subgraph = build_math_subgraph()
 
 async def node_coding_wrapper(state: State):
+    """Adapter giữa State chung của graph và Coding subgraph riêng."""
     args = _extract_tool_args_from_state(state, "CodeAssistant")
     query = args.get("query", "")
     res = await coding_subgraph.ainvoke({"query": query, "retry_count": 0})
     return {"response": res.get("response", {})}
 
 async def node_math_wrapper(state: State):
+    """Adapter giữa State chung của graph và Math subgraph riêng."""
     args = _extract_tool_args_from_state(state, "MathSolver")
     query = args.get("query", "")
     try:
@@ -387,6 +396,7 @@ async def node_math_wrapper(state: State):
 graph = StateGraph(State)
 
 def timed_node(name: str, node_func):
+    """Bọc node để log thời gian chạy mà không đổi signature LangGraph."""
     async def wrapper(state: State):
         start_time = time.time()
         
@@ -426,8 +436,9 @@ graph.add_edge("direct", END)
 
 workflow = graph.compile()
 
-# Hàm dùng để đo hiệu năng của từng node và tổng thể workflow, cũng như đếm token sử dụng trong LLM calls ( sẽ xóa sau khi hoàn thiện )
 class PerformanceCallbackHandler(BaseCallbackHandler):
+    """Callback gom token usage từ LLM calls trong workflow."""
+
     def __init__(self):
         super().__init__()
         self.total_input_tokens = 0
@@ -451,8 +462,10 @@ class PerformanceCallbackHandler(BaseCallbackHandler):
 
 
 def call_agent(chat_history: List[dict]) -> dict:
-    """
-    Chạy hệ thống Multi-Agent Supervisor với lịch sử chat.
+    """Chạy workflow đồng bộ từ lịch sử chat dạng dict role/content.
+
+    Hàm này phục vụ các call site cũ hoặc smoke test. API streaming hiện tại
+    thường gọi trực tiếp `workflow.astream_events` để nhận token theo thời gian thực.
     """
     langchain_messages = []
     for msg in chat_history:

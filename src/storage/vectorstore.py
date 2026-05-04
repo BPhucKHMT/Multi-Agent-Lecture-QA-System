@@ -8,6 +8,20 @@ from src.shared.config import get_path
 
 import torch
 
+
+def _get_rag_device() -> str:
+    device = os.getenv("RAG_DEVICE", "auto").strip().lower()
+    if device in {"cpu", "cuda"}:
+        return device
+    return "cuda" if torch.cuda.is_available() else "cpu"
+
+
+def _get_int_env(name: str, default: int) -> int:
+    try:
+        return int(os.getenv(name, str(default)))
+    except ValueError:
+        return default
+
 class VectorDB:
     def __init__(
         self,
@@ -17,7 +31,7 @@ class VectorDB:
     ) -> None:
         self.vector_db = vector_db
         if embedding is None:
-            device = "cuda" if torch.cuda.is_available() else "cpu"
+            device = _get_rag_device()
             print(f"Initializing HuggingFaceEmbeddings on {device}...")
             embedding_model = os.getenv("EMBEDDING_MODEL_NAME", "BAAI/bge-m3")
             self.embedding = HuggingFaceEmbeddings(
@@ -71,8 +85,14 @@ class VectorDB:
     def get_retriever(
         self,
         search_type: str = "mmr",
-        search_kwargs: dict = {"k": 40, "fetch_k": 80, "lambda_mult": 0.7},
+        search_kwargs: dict = None,
     ):
+        if search_kwargs is None:
+            search_kwargs = {
+                "k": _get_int_env("RAG_RETRIEVER_K", 40),
+                "fetch_k": _get_int_env("RAG_RETRIEVER_FETCH_K", 80),
+                "lambda_mult": float(os.getenv("RAG_RETRIEVER_LAMBDA", "0.7")),
+            }
         retriever = self.db.as_retriever(
             search_type=search_type, search_kwargs=search_kwargs
         )
