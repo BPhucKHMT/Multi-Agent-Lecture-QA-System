@@ -1,6 +1,6 @@
 export type RagConfidence = "high" | "medium" | "low" | "zero";
 
-export type RagResponseType = "rag" | "direct" | "quiz" | "math" | "error";
+export type RagResponseType = "rag" | "direct" | "quiz" | "math" | "coding" | "error";
 
 export interface QuizQuestion {
   question: string;
@@ -37,4 +37,5 @@ export type RagResponse = {
   type: RagResponseType;
   quizzes?: QuizQuestion[];
   math_data?: MathData;
+  coding_data?: unknown;
 };

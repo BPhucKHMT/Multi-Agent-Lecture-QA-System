@@ -1,12 +1,21 @@
-from pydantic import BaseModel, Field
-from typing import List
-from langchain_core.output_parsers import JsonOutputParser
-from langchain_core.prompts import ChatPromptTemplate
-from src.generation.llm_model import get_llm
-from src.rag_core.state import State
-from src.rag_core import resource_manager
+"""Quiz Agent tạo câu hỏi trắc nghiệm từ context bài giảng.
+
+Agent này luôn retrieval trước khi sinh quiz để câu hỏi bám sát transcript/video
+thay vì model tự bịa kiến thức. Output gồm Markdown để hiển thị trực tiếp và
+metadata citation để frontend có thể render nguồn tham khảo.
+"""
+
 import json
 import re
+from typing import List
+
+from langchain_core.output_parsers import JsonOutputParser
+from langchain_core.prompts import ChatPromptTemplate
+from pydantic import BaseModel, Field
+
+from src.generation.llm_model import get_llm
+from src.rag_core import resource_manager
+from src.rag_core.state import State
 
 
 class QuizQuestion(BaseModel):
@@ -32,6 +41,7 @@ class QuizOutput(BaseModel):
 
 
 def _extract_quiz_json_payload(raw: str):
+    """Parse JSON quiz khi LLM trả raw JSON hoặc markdown fenced JSON."""
     if not isinstance(raw, str):
         return None
 
@@ -56,10 +66,7 @@ def _extract_quiz_json_payload(raw: str):
 
 
 async def node_quiz(state: State):
-    """
-    RAG-based Quiz Agent: Tìm kiếm nội dung bài giảng trước khi tạo câu hỏi.
-    Đảm bảo câu hỏi bám sát kiến thức thực tế và có trích dẫn nguồn.
-    """
+    """Chạy Quiz node: lấy query, retrieval context, sinh quiz và citation."""
     messages = state.get("messages", [])
     if not messages:
         return {"response": {}}

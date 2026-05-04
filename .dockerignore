@@ -1,0 +1,39 @@
+# Git / IDE
+.git
+.github
+.vscode
+.agent
+.agents
+.claude
+.pytest_cache
+.mypy_cache
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+
+# Local environments and secrets
+.env
+.env.*
+!.env.example
+.conda
+.venv
+venv
+
+# Runtime and temporary files
+scratch
+temp.txt
+*.log
+
+# Large runtime artifacts mounted separately
+artifacts/database_semantic
+artifacts/chunks
+artifacts/videos
+artifacts/data_extraction
+
+# Frontend generated files
+frontend/node_modules
+frontend/dist
+
+# Reports/cache
+report

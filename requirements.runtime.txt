@@ -1,0 +1,57 @@
+# Web & API runtime
+fastapi==0.115.0
+uvicorn[standard]==0.32.1
+motor==3.6.0
+pymongo==4.9
+requests==2.32.3
+pydantic==2.10.3
+python-dotenv==1.2.1
+dotenv
+
+# Backend service runtime
+sqlalchemy==2.0.36
+asyncpg==0.29.0
+alembic==1.13.3
+psycopg2-binary==2.9.10
+redis==5.1.1
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+python-multipart==0.0.12
+pydantic-settings==2.6.1
+email-validator==2.2.0
+argon2_cffi
+
+# LangChain ecosystem
+langchain==0.3.27
+langchain-chroma==0.2.4
+langchain-community==0.3.24
+langchain-core==0.3.79
+langchain-experimental==0.3.4
+langchain-google-genai==2.1.12
+langchain-huggingface==0.2.0
+langchain-openai==0.3.35
+langchainhub==0.1.21
+langgraph
+
+# Vector store & embeddings
+chromadb==1.3.2
+sentence-transformers==5.1.2
+
+# Retrieval
+rank-bm25==0.2.2
+
+# LLM & Transformers
+transformers==4.57.1
+httpx==0.27.0
+accelerate==1.10.1
+tokenizers==0.22.1
+safetensors==0.6.2
+hf_transfer==0.1.9
+
+# Text processing & utilities
+pyvi==0.1.1
+language_tool_python==2.9.4
+tqdm==4.67.1
+numpy
+regex==2025.11.3
+pyyaml

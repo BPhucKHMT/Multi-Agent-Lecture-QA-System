@@ -94,7 +94,7 @@ const CodeBlock = ({ language, value }: { language: string; value: string }) => 
             margin: 0,
             padding: '1.25rem',
             background: 'transparent',
-            fontSize: '13 px',
+            fontSize: '13px',
             lineHeight: '1.6',
           }}
           codeTagProps={{
@@ -176,7 +176,7 @@ export default function MarkdownRenderer({
   }, [processedContent]);
 
   return (
-    <div className="relative">
+    <div className="relative min-w-0 max-w-full overflow-hidden">
       <div className={`prose prose-slate prose-base max-w-none 
       prose-headings:font-bold prose-headings:text-slate-900 
       prose-p:leading-[1.75] prose-p:text-slate-800 prose-p:my-4
@@ -186,8 +186,9 @@ export default function MarkdownRenderer({
       prose-li:my-1.5 prose-li:leading-relaxed
       prose-a:text-violet-600 prose-a:no-underline hover:prose-a:underline
       prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded-md prose-code:bg-slate-100 prose-code:text-violet-600 prose-code:before:content-none prose-code:after:content-none prose-code:break-words prose-code:whitespace-pre-wrap
-      prose-pre:bg-transparent prose-pre:p-0 prose-pre:my-0
-      ${className}`}>
+      prose-pre:bg-transparent prose-pre:p-0 prose-pre:my-0 prose-pre:max-w-full prose-pre:overflow-x-auto
+      prose-table:block prose-table:max-w-full prose-table:overflow-x-auto
+      break-words ${className}`}>
       <ReactMarkdown 
         remarkPlugins={[remarkGfm, remarkMath]}
         rehypePlugins={[rehypeKatex]}

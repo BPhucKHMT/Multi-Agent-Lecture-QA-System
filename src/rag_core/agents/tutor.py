@@ -1,10 +1,28 @@
+"""Tutor Agent cho câu hỏi cần truy hồi bài giảng.
+
+Module này là worker RAG chính trong LangGraph workflow. Agent nhận query từ
+Supervisor, lấy context qua RAG core, gọi answer chain để sinh JSON response và
+backfill metadata citation nếu LLM trả thiếu trường nguồn.
+
+Response của agent phải giữ contract chung: `text`, các mảng citation
+`video_url/title/timestamp`, `confidence` và `type` để backend/frontend xử lý
+thống nhất.
+"""
+
 import json
+import logging
 import re
-from src.rag_core.state import State
+import time
+
 from src.rag_core import resource_manager
+from src.rag_core.state import State
+
+
+logger = logging.getLogger(__name__)
 
 
 def _build_tutor_error_response(text: str) -> dict:
+    """Tạo response lỗi theo cùng schema với response RAG thành công."""
     return {
         "text": text,
         "video_url": [],
@@ -18,6 +36,7 @@ def _build_tutor_error_response(text: str) -> dict:
 
 
 def _extract_tutor_json_payload(raw):
+    """Parse JSON từ output LLM, kể cả khi model bọc trong markdown fence."""
     if isinstance(raw, dict):
         return raw
     if not isinstance(raw, str):
@@ -53,6 +72,7 @@ def _extract_tutor_json_payload(raw):
 
 
 def _extract_cited_indices(text: str) -> list[int]:
+    """Lấy danh sách chỉ số citation `[n]` đang xuất hiện trong câu trả lời."""
     return sorted({int(match) for match in re.findall(r"\[(\d+)\]", text or "")})
 
 
@@ -99,14 +119,12 @@ def _sync_citation_metadata_from_context(data: dict, context: str) -> dict:
 
 
 def get_rag_chain():
+    """Trả answer chain hiện tại để giữ tương thích với call site cũ."""
     return resource_manager.get_tutor_chain()
 
 
 async def node_tutor(state: State):
-    """
-    Node Tutor chịu trách nhiệm trả lời câu hỏi bằng RAG.
-    Quy trình: 1. Retrieval (ngầm) -> 2. Generation (stream)
-    """
+    """Chạy Tutor node: lấy query, retrieval context, sinh answer và chuẩn hóa citation."""
     messages = state.get("messages", [])
     if not messages:
         print(f"Nội dung người dùng gửi {messages}")
@@ -146,13 +164,23 @@ async def node_tutor(state: State):
             return await params["rag_core"].get_context(params["query"], chat_history=params["history_str"])
             
         context_chain = RunnableLambda(fetch_context).with_config(run_name="retrieve_context")
+        context_start = time.perf_counter()
         context = await context_chain.ainvoke({"rag_core": rag_core, "query": query, "history_str": history_str})
+        context_elapsed = time.perf_counter() - context_start
+        logger.info(
+            "[TUTOR_TIMING] context_chain=%.2fs context_chars=%d",
+            context_elapsed,
+            len(context),
+        )
 
         # BƯỚC 2: GENERATION (Có truyền history_str vào prompt cuối)
         answer_chain = rag_core.get_answer_chain()
+        generation_start = time.perf_counter()
         rag_result = await answer_chain.ainvoke(
             {"context": context, "question": query, "chat_history": history_str}
         )
+        generation_elapsed = time.perf_counter() - generation_start
+        logger.info("[TUTOR_TIMING] answer_generation=%.2fs", generation_elapsed)
 
         raw_content = (
             rag_result.content if hasattr(rag_result, "content") else str(rag_result)
@@ -172,9 +200,6 @@ async def node_tutor(state: State):
         data = _sync_citation_metadata_from_context(data, context)
         data["type"] = "rag"
         return {"response": data}
-
-    except Exception as e:
-        return {"response": _build_tutor_error_response(f"Lỗi: {e}")}
 
     except Exception as e:
         return {"response": _build_tutor_error_response(f"Lỗi: {e}")}

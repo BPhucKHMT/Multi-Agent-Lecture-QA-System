@@ -1,4 +1,5 @@
 import { createContext, createElement, useCallback, useContext, useMemo, useRef, useState, useEffect, type ReactNode } from "react";
+import { flushSync } from "react-dom";
 import { postChat, streamChat, fetchChatHistory, fetchChatSessions } from "../lib/api/chat";
 import type { ChatMessage } from "../types/api";
 import type { ChatRequest } from "../types/api";
@@ -54,6 +55,56 @@ export function rollbackOptimisticMessage(
 
 export function buildFailedPromptState(prompt: string, payload: ChatRequest): FailedPromptState {
   return { prompt, payload };
+}
+
+export function hasVisibleStreamToken(token: string): boolean {
+  return /\S/.test(token);
+}
+
+function splitTypewriterText(text: string, maxChars = 12): string[] {
+  const chunks: string[] = [];
+  let current = "";
+
+  for (const char of text) {
+    current += char;
+    if (current.length >= maxChars && /[\s.,;:!?)]/.test(char)) {
+      chunks.push(current);
+      current = "";
+    }
+  }
+
+  if (current) chunks.push(current);
+  return chunks;
+}
+
+function wait(ms: number): Promise<void> {
+  return new Promise((resolve) => window.setTimeout(resolve, ms));
+}
+
+function toFinalAssistantMessage(message: ConversationMessage, metadata: RagResponse): ConversationMessage {
+  return {
+    ...message,
+    response: metadata,
+    content: metadata.text && metadata.text.length > 0 ? metadata.text : message.content,
+  };
+}
+
+function withAssistantContent(
+  messages: ConversationMessage[],
+  assistantMessageId: string,
+  updater: (message: ConversationMessage) => ConversationMessage,
+): ConversationMessage[] {
+  return messages.map((msg) => (msg.id === assistantMessageId ? updater(msg) : msg));
+}
+
+async function playTypewriterFallback(
+  text: string,
+  appendContent: (chunk: string) => void,
+): Promise<void> {
+  for (const chunk of splitTypewriterText(text)) {
+    appendContent(chunk);
+    await wait(/[.!?]\s*$/.test(chunk) ? 90 : 34);
+  }
 }
 
 function toApiMessages(messages: ConversationMessage[]): ChatMessage[] {
@@ -174,22 +225,27 @@ export function ConversationStoreProvider({ children }: { children: ReactNode })
         content: "",
       };
 
-      setMessages([...nextMessages, optimisticAssistantMessage]);
-      setError(null);
-      setFailedPromptState(null);
-      setIsLoading(true);
-      setStreamingStatus("Đang gửi yêu cầu...");
+      flushSync(() => {
+        setMessages([...nextMessages, optimisticAssistantMessage]);
+        setError(null);
+        setFailedPromptState(null);
+        setIsLoading(true);
+        setStreamingStatus("Đang gửi yêu cầu...");
+      });
 
       try {
         let isFirstToken = true;
+        let hasReceivedVisibleToken = false;
+        let hasFinalMetadata = false;
 
         await streamChat(
           payload,
           (token) => {
-            if (requestToken !== requestTokenRef.current) return;
-            if (isFirstToken) {
+            if (requestToken !== requestTokenRef.current || hasFinalMetadata) return;
+            if (isFirstToken && hasVisibleStreamToken(token)) {
               setIsLoading(false);
               isFirstToken = false;
+              hasReceivedVisibleToken = true;
               setStreamingStatus(null);
             }
             setMessages((prev) =>
@@ -202,19 +258,39 @@ export function ConversationStoreProvider({ children }: { children: ReactNode })
           },
           (metadata, serverConvId) => {
             if (requestToken !== requestTokenRef.current) return;
+            hasFinalMetadata = true;
             if (serverConvId) setConversationId(serverConvId);
+            setIsLoading(false);
             setStreamingStatus(null);
-            setMessages((prev) =>
-              prev.map((msg) =>
-                msg.id === assistantMessageId 
-                  ? { 
-                      ...msg, 
-                      response: metadata, 
-                      content: (metadata.text && metadata.text.length > 0) ? metadata.text : msg.content 
-                    } 
-                  : msg
-              )
-            );
+            const shouldPlayFallback = Boolean(metadata.text) && !hasReceivedVisibleToken;
+            if (shouldPlayFallback) {
+              const chunks = splitTypewriterText(metadata.text);
+              const [firstChunk = "", ...remainingChunks] = chunks;
+              setMessages((prev) =>
+                withAssistantContent(prev, assistantMessageId, (msg) => ({
+                  ...msg,
+                  response: undefined,
+                  content: firstChunk,
+                })),
+              );
+
+              void playTypewriterFallback(remainingChunks.join(""), (chunk) => {
+                setMessages((prev) =>
+                  withAssistantContent(prev, assistantMessageId, (msg) => ({
+                    ...msg,
+                    content: msg.content + chunk,
+                  })),
+                );
+              }).then(() => {
+                setMessages((prev) =>
+                  withAssistantContent(prev, assistantMessageId, (msg) => toFinalAssistantMessage(msg, metadata)),
+                );
+              });
+            } else {
+              setMessages((prev) =>
+                withAssistantContent(prev, assistantMessageId, (msg) => toFinalAssistantMessage(msg, metadata)),
+              );
+            }
             // Cập nhật lại danh sách sessions nếu đây là cuộc hội thoại mới (chưa có trong danh sách)
             setSessions(prev => {
               if (!prev.some(s => s.session_id === serverConvId)) {
@@ -234,7 +310,7 @@ export function ConversationStoreProvider({ children }: { children: ReactNode })
             );
           },
           (status) => {
-            if (requestToken !== requestTokenRef.current) return;
+            if (requestToken !== requestTokenRef.current || hasFinalMetadata) return;
             setStreamingStatus(status);
           },
           (error) => {

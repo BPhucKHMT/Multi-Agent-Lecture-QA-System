@@ -25,7 +25,11 @@ from typing import List
 import json as json_lib
 import re
 import asyncio
+import logging
+import time
 
+
+logger = logging.getLogger(__name__)
 
 class VideoAnswer(BaseModel):
     text: str = Field(
@@ -137,9 +141,19 @@ LUÔN LUÔN đặt key "text" ở vị trí ĐẦU TIÊN trong JSON object để
 
     async def get_context(self, query: str, chat_history: str = ""):
         """Bước chuẩn bị context: Chạy song song, KHÔNG stream."""
+        total_start = time.perf_counter()
+
+        expand_start = time.perf_counter()
         queries = await self.generate_queries(query, chat_history)
+        expand_elapsed = time.perf_counter() - expand_start
+        logger.info(
+            "[TUTOR_TIMING] query_expansion=%.2fs query_count=%d",
+            expand_elapsed,
+            len(queries),
+        )
 
         search_tasks = []
+        search_start = time.perf_counter()
         for q in queries:
             if hasattr(self.retriever, "ainvoke"):
                 search_tasks.append(self.retriever.ainvoke(q))
@@ -149,7 +163,17 @@ LUÔN LUÔN đặt key "text" ở vị trí ĐẦU TIÊN trong JSON object để
                 )
 
         results = await asyncio.gather(*search_tasks)
+        search_elapsed = time.perf_counter() - search_start
+        result_counts = [len(docs) for docs in results]
+        logger.info(
+            "[TUTOR_TIMING] retrieve=%.2fs query_count=%d docs_per_query=%s total_raw_docs=%d",
+            search_elapsed,
+            len(queries),
+            result_counts,
+            sum(result_counts),
+        )
 
+        dedupe_start = time.perf_counter()
         all_docs = []
         for docs in results:
             all_docs.extend(docs[:15])
@@ -161,9 +185,35 @@ LUÔN LUÔN đặt key "text" ở vị trí ĐẦU TIÊN trong JSON object để
             if content_hash not in seen_content:
                 unique_docs.append(doc)
                 seen_content.add(content_hash)
+        dedupe_elapsed = time.perf_counter() - dedupe_start
+        logger.info(
+            "[TUTOR_TIMING] dedupe=%.2fs capped_docs=%d unique_docs=%d",
+            dedupe_elapsed,
+            len(all_docs),
+            len(unique_docs),
+        )
 
+        rerank_start = time.perf_counter()
         reranked = self.reranker.rerank(unique_docs, query)[:10]
-        return self.format_doc(reranked)
+        rerank_elapsed = time.perf_counter() - rerank_start
+        logger.info(
+            "[TUTOR_TIMING] rerank=%.2fs input_docs=%d output_docs=%d",
+            rerank_elapsed,
+            len(unique_docs),
+            len(reranked),
+        )
+
+        format_start = time.perf_counter()
+        context = self.format_doc(reranked)
+        format_elapsed = time.perf_counter() - format_start
+        total_elapsed = time.perf_counter() - total_start
+        logger.info(
+            "[TUTOR_TIMING] format_context=%.2fs context_chars=%d total_context=%.2fs",
+            format_elapsed,
+            len(context),
+            total_elapsed,
+        )
+        return context
 
     def get_answer_chain(self):
         """Chuỗi chỉ chứa bước sinh câu trả lời, dùng để stream sạch."""

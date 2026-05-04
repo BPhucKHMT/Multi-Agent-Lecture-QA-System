@@ -1,16 +1,28 @@
-import re
-import unicodedata
+"""Math Agent cho các yêu cầu tính toán và diễn giải toán học.
+
+Module này dùng LangGraph subgraph để tách rõ ba trách nhiệm:
+1. Sinh mã SymPy từ yêu cầu tự nhiên.
+2. Chạy mã trong sandbox để kiểm chứng kết quả.
+3. Nhờ LLM chuyển kết quả khô thành lời giải Markdown/LaTeX có cấu trúc.
+
+Thiết kế này giúp câu trả lời toán học ít phụ thuộc vào suy luận thuần của LLM
+và có bước kiểm chứng máy tính trước khi trình bày cho người dùng.
+"""
+
 import json
 import logging
-from typing import TypedDict, List
-from pydantic import BaseModel, Field
-from langgraph.graph import StateGraph, START, END
-from langchain_core.prompts import ChatPromptTemplate
+import re
+import unicodedata
+from typing import List, TypedDict
+
 from langchain_core.output_parsers import JsonOutputParser
+from langchain_core.prompts import ChatPromptTemplate
+from langgraph.graph import END, START, StateGraph
+from pydantic import BaseModel, Field
 
 from src.generation.llm_model import get_llm
-from src.rag_core.tools.sandbox import execute_python_code
 from src.rag_core.agents.coding import extract_code
+from src.rag_core.tools.sandbox import execute_python_code
 
 logger = logging.getLogger(__name__)
 
@@ -36,6 +48,7 @@ class MathState(TypedDict):
 # --- Hỗ trợ xử lý text và fallback ---
 
 def _fallback_math_data(query: str) -> dict:
+    """Tạo lời giải dự phòng khi LLM không trả JSON hợp lệ."""
     fallback_text = f"## 🎯 Mục tiêu\nGiải bài toán: ${query}$\n\n## 📝 Các bước giải\n1. Xác định yêu cầu bài toán.\n2. Áp dụng phương pháp toán học phù hợp.\n3. Tính toán kết quả."
     return {
         "text": fallback_text,
@@ -48,7 +61,9 @@ def _fallback_math_data(query: str) -> dict:
     }
 
 def _extract_json_from_llm(text: str):
-    if not text: return None
+    """Trích xuất JSON từ output LLM, kể cả khi bị bọc trong ```json."""
+    if not text:
+        return None
     try:
         # Tìm block ```json
         match = re.search(r"```json\s*([\s\S]*?)\s*```", text, re.IGNORECASE)
@@ -65,7 +80,9 @@ def _extract_json_from_llm(text: str):
     return None
 
 def _clean_verification_text(math_result: str) -> str:
-    if not math_result: return "Chưa có dữ liệu kiểm chứng."
+    """Chuẩn hóa output sandbox để hiển thị trong phần kiểm chứng."""
+    if not math_result:
+        return "Chưa có dữ liệu kiểm chứng."
     text = unicodedata.normalize("NFC", str(math_result)).strip()
     if not text or "undefined" in text.lower():
         return "Kiểm chứng tự động chưa trả kết quả hợp lệ."
@@ -78,6 +95,7 @@ def _clean_verification_text(math_result: str) -> str:
 # --- Các Node trong Math Graph ---
 
 async def generate_sympy_code(state: MathState):
+    """Sinh mã SymPy tối thiểu để kiểm chứng bài toán."""
     llm = get_llm()
     prompt = ChatPromptTemplate.from_template("""
 Bạn là chuyên gia Sympy. 
@@ -92,6 +110,7 @@ Yêu cầu:
     return {"sympy_code": code}
 
 def verify_sympy(state: MathState):
+    """Chạy mã SymPy trong sandbox và trả trạng thái kiểm chứng."""
     code = state.get("sympy_code", "")
     if not code:
         return {"is_success": False, "math_result": "Không tìm thấy mã Sympy."}
@@ -102,6 +121,7 @@ def verify_sympy(state: MathState):
         return {"is_success": False, "math_result": res["stderr"]}
 
 async def generate_derivation(state: MathState):
+    """Sinh lời giải Markdown/LaTeX dựa trên yêu cầu và kết quả kiểm chứng."""
     query = state.get("query", "")
     math_result = state.get("math_result", "")
     is_success = state.get("is_success", False)
@@ -176,6 +196,7 @@ HƯỚNG DẪN:
     return {"response": response_data}
 
 def build_math_subgraph():
+    """Build subgraph Math Agent gồm generate -> verify -> derive."""
     graph = StateGraph(MathState)
     graph.add_node("gen_sympy", generate_sympy_code)
     graph.add_node("verify", verify_sympy)
