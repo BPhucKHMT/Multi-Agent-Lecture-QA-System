@@ -20,8 +20,14 @@ logger = logging.getLogger(__name__)
 
 
 def _get_device() -> str:
+    import os
     import torch
 
+    device = os.getenv("RAG_DEVICE", "auto").strip().lower()
+    if device == "cuda" and torch.cuda.is_available():
+        return "cuda"
+    if device == "cpu":
+        return "cpu"
     return "cuda" if torch.cuda.is_available() else "cpu"
 
 

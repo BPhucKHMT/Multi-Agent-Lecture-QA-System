@@ -72,3 +72,26 @@ python -m src.data_pipeline.data_loader.pipeline --status
 
 - **GPU Acceleration**: Các bước OCR (Step 6) và Scene Detection (Step 5) sẽ tự động sử dụng CUDA nếu có GPU. Nếu chạy trên CPU, thời gian xử lý sẽ lâu hơn khoảng 5-10 lần.
 - **YouTube Blocking**: Nếu bị YouTube chặn IP (thường xảy ra ở Step 1 hoặc Step 4), hệ thống sẽ ghi log và tạm dừng. Bạn nên sử dụng Proxy hoặc chờ 24h trước khi chạy lại.
+
+## 🔗 Liên kết với runtime RAG
+
+Output của pipeline được backend/AI engine dùng ở runtime:
+
+```txt
+artifacts/data + artifacts/chunks
+  ↓
+Embedding/indexing
+  ↓
+artifacts/database_semantic
+  ↓
+src/retrieval
+  ↓
+Tutor agent trong src/rag_core
+```
+
+Nếu thay đổi schema metadata của chunk/video, cần kiểm tra:
+
+- `src/retrieval/`;
+- `src/rag_core/agents/tutor.py`;
+- backend stream context;
+- frontend citation renderer.

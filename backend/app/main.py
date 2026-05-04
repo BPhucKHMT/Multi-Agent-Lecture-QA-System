@@ -1,4 +1,10 @@
-"""FastAPI entry point cho Backend service."""
+"""FastAPI entry point cho backend service.
+
+Module này cấu hình application lifecycle, CORS, router API v1 và health check.
+Trong giai đoạn startup, backend tạo bảng DB cho môi trường dev, prewarm RAG
+resources và prewarm Redis semantic cache ở background để request đầu tiên không
+phải gánh toàn bộ chi phí khởi tạo model/vector DB.
+"""
 
 from contextlib import asynccontextmanager
 import logging
@@ -17,14 +23,18 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Startup và Shutdown events."""
-    # Startup: tạo tables nếu chưa có (chỉ dùng trong dev — prod dùng Alembic)
+    """Quản lý vòng đời backend: startup prewarm và shutdown logging.
+
+    Các tác vụ nặng được chạy trong background/threadpool để không block event
+    loop chính của FastAPI. Nếu Redis/RAG prewarm lỗi, backend vẫn tiếp tục chạy
+    và log nguyên nhân để người vận hành kiểm tra sau.
+    """
+    # Tạo bảng trong dev; production nên quản lý schema bằng Alembic migration.
     logger.info(" ============== Backend starting up...")
-    logger.info(f"DEBUG: DATABASE_URL is {settings.DATABASE_URL}")
     Base.metadata.create_all(bind=engine)
     logger.info("✅ Database tables ready.")
 
-    # Prewarm RAG resources (Embeddings, VectorDB, Reranker) in background
+    # Prewarm RAG resources trong background để không block FastAPI startup.
     import anyio
 
     async def _prewarm():
@@ -39,10 +49,39 @@ async def lifespan(app: FastAPI):
             logger.error(f"❌ Failed to prewarm RAG resources: {e}")
             logger.exception("❌ Prewarm traceback")
 
-    # Không dùng await ở đây để nó chạy ngầm
+    # Không await để prewarm chạy nền; request vẫn có thể vào backend ngay.
     import asyncio
 
     asyncio.create_task(_prewarm())
+
+    async def _prewarm_semantic_cache():
+        """Load các cặp Q/A gần nhất từ PostgreSQL sang Redis semantic cache."""
+        if not settings.SEMANTIC_CACHE_ENABLED or not settings.SEMANTIC_CACHE_PREWARM_ENABLED:
+            return
+        try:
+            from backend.app.core.cache.prewarm import prewarm_semantic_cache
+            from backend.app.core.cache.semantic import SemanticCache
+            from backend.app.db.redis import get_redis_binary
+            from backend.app.db.session import SessionLocal
+
+            def _run_prewarm() -> int:
+                db = SessionLocal()
+                try:
+                    cache = SemanticCache(get_redis_binary())
+                    return prewarm_semantic_cache(
+                        db,
+                        cache,
+                        settings.SEMANTIC_CACHE_PREWARM_LIMIT,
+                    )
+                finally:
+                    db.close()
+
+            indexed = await anyio.to_thread.run_sync(_run_prewarm)
+            logger.info("✅ Redis semantic cache prewarmed: %s items.", indexed)
+        except Exception as e:
+            logger.warning("⚠️ Redis semantic cache prewarm skipped: %s", e)
+
+    asyncio.create_task(_prewarm_semantic_cache())
 
     yield
     # Shutdown

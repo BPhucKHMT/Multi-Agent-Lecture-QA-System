@@ -1,9 +1,25 @@
+"""Coding Agent cho LangGraph workflow.
+
+Module này xử lý các yêu cầu lập trình bằng quy trình nhiều bước:
+1. Sinh code Python từ yêu cầu người dùng, có thể dùng context bài giảng nếu phù hợp.
+2. Phân loại code nhẹ/nặng để quyết định có chạy sandbox hay chỉ giải thích.
+3. Chạy code trong sandbox, tự sửa lỗi tối đa vài vòng nếu execution fail.
+4. Chuẩn hóa response dạng dict để backend lưu DB và frontend render thống nhất.
+
+Lưu ý vận hành:
+- Chỉ execute các bài toán nhẹ trong sandbox.
+- Code huấn luyện model/deep learning dài được trả về kèm hướng dẫn chạy local.
+- Response contract phải giữ các key citation để đồng bộ với Tutor/Quiz Agent.
+"""
+
+import re
 from typing import TypedDict
-from langgraph.graph import StateGraph, START, END
+
+from langchain_core.prompts import ChatPromptTemplate
+from langgraph.graph import END, START, StateGraph
+
 from src.generation.llm_model import get_llm
 from src.rag_core.tools.sandbox import execute_python_code, is_long_running
-from langchain_core.prompts import ChatPromptTemplate
-import re
 
 
 class CodingState(TypedDict):
@@ -19,6 +35,11 @@ class CodingState(TypedDict):
 
 
 def extract_code(text: str) -> str:
+    """Trích xuất code Python từ markdown fence mà LLM trả về.
+
+    Ưu tiên block có nhãn `python`, `py`, `python3`. Nếu LLM không dùng
+    markdown fence thì trả nguyên văn để downstream vẫn có cơ hội xử lý.
+    """
     fence_pattern = re.compile(r"```[ \t]*([^\r\n`]*)[ \t]*\r?\n?(.*?)```", re.DOTALL)
     matches = list(fence_pattern.finditer(text))
     if not matches:
@@ -33,6 +54,11 @@ def extract_code(text: str) -> str:
 
 
 async def generate_code(state: CodingState):
+    """Sinh code Python đầu tiên từ yêu cầu người dùng.
+
+    Nếu câu hỏi có liên quan nội dung bài giảng, agent lấy thêm context để
+    code bám sát thuật ngữ/mẫu trong khóa học. Node này chưa execute code.
+    """
     from src.rag_core.agents.coding_retrieval import should_use_rag, retrieve_lecture_context
 
     llm = get_llm()
@@ -77,6 +103,7 @@ def classify_code(state: CodingState):
 
 
 def execute_code_node(state: CodingState):
+    """Chạy code nhẹ trong sandbox và trả stdout/stderr cho graph."""
     code = state["code"]
     res = execute_python_code(code)
     return {
@@ -87,6 +114,7 @@ def execute_code_node(state: CodingState):
 
 
 async def fix_code(state: CodingState):
+    """Yêu cầu LLM sửa code dựa trên lỗi sandbox ở vòng chạy trước."""
     llm = get_llm()
     prompt = ChatPromptTemplate.from_template("""
 Bạn đã viết đoạn code sau:
@@ -178,6 +206,11 @@ def format_response(state: CodingState):
 
 
 def build_coding_subgraph():
+    """Build subgraph riêng cho Coding Agent.
+
+    Graph cố ý tách generate/classify/execute/fix/format để dễ quan sát
+    từng bước trong LangGraph tracing và tránh trộn logic LLM với execution.
+    """
     graph = StateGraph(CodingState)
 
     graph.add_node("generate", generate_code)

@@ -1,3 +1,4 @@
+import os
 import torch
 from typing import List
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
@@ -13,7 +14,12 @@ reranker = CrossEncoderReranker()
 
 class CrossEncoderReranker:
     def __init__(self, model_name: str = "BAAI/bge-reranker-base", device: str = None):
-        self.device = device or ("cuda" if torch.cuda.is_available() else "cpu")
+        requested_device = device or os.getenv("RAG_DEVICE", "auto")
+        if requested_device == "auto":
+            requested_device = "cuda" if torch.cuda.is_available() else "cpu"
+        if requested_device == "cuda" and not torch.cuda.is_available():
+            requested_device = "cpu"
+        self.device = requested_device
         print(f"Initializing CrossEncoderReranker on {self.device}...")
         self.tokenizer = AutoTokenizer.from_pretrained(model_name)
         self.model = AutoModelForSequenceClassification.from_pretrained(model_name)

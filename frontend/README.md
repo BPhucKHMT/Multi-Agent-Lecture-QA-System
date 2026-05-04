@@ -1,97 +1,133 @@
-# ⚛️ RAG QABot Frontend
+# Frontend — React Web Interface
 
-Giao diện người dùng cho hệ thống hỏi đáp bài giảng (RAG) sử dụng kiến trúc Multi-Agent. Được xây dựng với các công nghệ hiện đại nhằm tối ưu hóa trải nghiệm tương tác AI mượt mà và trực quan.
-
----
-
-## 🚀 Tính năng chính
-
-- **Gateway Selector**: Cổng lựa chọn không gian làm việc chuyên biệt (Chatspace hoặc Summary Hub).
-- **Summary Hub**: Tóm tắt video AI với Skeleton UI chuyên nghiệp và khả năng chuyển đổi trực tiếp sang thảo luận.
-- **Chatspace**: Giao diện hội thoại đa nhiệm, hỗ trợ stream nội dung thời gian thực và hiển thị nguồn tham khảo (Citations).
-- **Markdown & LaTeX Support**: Hiển thị đẹp mắt các đoạn code, công thức toán học và bảng biểu.
-- **Responsive Design**: Tối ưu hóa cho nhiều kích thước màn hình với Tailwind CSS và Framer Motion.
-- **Vietnamese Localization**: 100% giao diện đã được Việt hóa.
+`frontend/` là giao diện web của PUQ Q&A, xây dựng bằng React + Vite + TypeScript + Tailwind CSS. Frontend gọi FastAPI backend để đăng nhập, stream chat AI, xem lịch sử hội thoại và truy cập Summary Hub.
 
 ---
 
-## 🛠️ Công nghệ sử dụng (Tech Stack)
+## Chạy frontend
 
-### Core
-- **Framework**: React 18 + Vite
-- **Language**: TypeScript
-- **Routing**: React Router Dom v7
+Từ root project:
 
-### UI/UX
-- **Styling**: Tailwind CSS
-- **Animations**: Framer Motion
-- **Icons**: Lucide React
-- **Typography**: @tailwindcss/typography
-
-### AI & Data Rendering
-- **Markdown**: react-markdown + remark-gfm
-- **Math/LaTeX**: katex + remark-math + rehype-katex
-- **Code Highlighting**: react-syntax-highlighter
-
-### State Management
-- **Store**: Zustand (Custom Context Provider Implementation)
-
----
-
-## 📁 Cấu trúc thư mục
-
-```
-frontend/
-├── src/
-│   ├── app/                # Cấu hình Routing, Layouts và Providers
-│   ├── components/         # Thành phần giao diện tái sử dụng
-│   │   ├── chat/           # MarkdownRenderer, MessageList, ChatInput, v.v.
-│   │   ├── sidebar/        # ConversationSidebar, Navigation
-│   │   └── shared/         # Các icons và thành phần chung
-│   ├── lib/                # Logic nghiệp vụ và API
-│   │   ├── api/            # Chat API, Video API, Summary API
-│   │   └── utils/          # Các hàm tiện ích (Format, Citation)
-│   ├── pages/              # Các trang chính (Login, Gateway, Workspace)
-│   ├── store/              # Quản lý trạng thái toàn cục (Conversation Context)
-│   ├── types/              # Định nghĩa TypeScript (API, RAG, App)
-│   └── styles/             # Cấu hình CSS toàn cục
-└── package.json
+```powershell
+npm --prefix frontend install
+npm --prefix frontend run dev
 ```
 
----
+Hoặc vào thư mục frontend:
 
-## ⚙️ Cài đặt và Chạy thử
-
-### 1. Cài đặt dependencies
-```bash
+```powershell
+cd frontend
 npm install
-```
-
-### 2. Cấu hình môi trường
-Đảm bảo Backend đang chạy tại `http://localhost:8000` (hoặc cấu hình lại trong `src/lib/api/`).
-
-### 3. Chạy chế độ Development
-```bash
 npm run dev
 ```
 
-### 4. Build sản phẩm
-```bash
-npm run build
+App mặc định chạy tại:
+
+```txt
+http://localhost:5173
+```
+
+Backend cần chạy tại:
+
+```txt
+http://localhost:8000
 ```
 
 ---
 
-## 🧪 Kiểm thử (Testing)
-Dự án sử dụng **Vitest** để kiểm thử logic Store và Utils.
-```bash
-npm run test
+## Scripts
+
+| Lệnh | Mục đích |
+|---|---|
+| `npm run dev` | Chạy Vite dev server |
+| `npm run build` | Type-check + build production |
+| `npm run preview` | Preview build local |
+| `npm run test` | Chạy Vitest |
+
+---
+
+## Cấu trúc thư mục
+
+```txt
+frontend/
+├── src/
+│   ├── app/          # App shell, routing, providers
+│   ├── components/   # UI components tái sử dụng
+│   ├── lib/          # API clients và utilities
+│   ├── pages/        # Page-level screens
+│   ├── store/        # State/conversation management
+│   ├── styles/       # Global CSS/Tailwind entry
+│   ├── types/        # TypeScript types
+│   └── main.tsx      # React entry point
+├── docs/             # Tài liệu frontend nếu có
+├── ui2figma/         # Tool/phần phụ trợ xuất UI sang Figma
+├── package.json
+├── vite.config.ts
+└── tailwind.config.js
 ```
 
 ---
 
-## 📝 Quy ước code
-- **Component**: Ưu tiên Functional Components và Hooks.
-- **Styling**: Sử dụng Tailwind CSS class, hạn chế viết CSS thuần.
-- **State**: Các trạng thái liên quan đến hội thoại phải được quản lý qua `useConversationStore`.
-- **Localization**: Tất cả chuỗi văn bản hiển thị phải viết bằng tiếng Việt.
+## Luồng chính UI
+
+```txt
+Login/Register
+  ↓
+Gateway Selector
+  ├─ Chatspace
+  │    ↓
+  │  POST /api/v1/chat/stream
+  │    ↓
+  │  Render SSE token/context/metadata
+  │
+  └─ Summary Hub
+       ↓
+     Video list + summary + jump to chat
+```
+
+---
+
+## API integration
+
+Frontend gọi backend qua các module trong `src/lib/api/`.
+
+Các nhóm API chính:
+
+- auth: login/register/refresh/logout;
+- chat: stream message, history, sessions;
+- videos: danh sách video và metadata;
+- summary: tóm tắt video/bài giảng.
+
+Chat dùng **SSE streaming**. Backend gửi các event dạng JSON:
+
+```json
+{"type":"status","status":"Đang truy hồi tri thức..."}
+{"type":"token","content":"Nội dung trả lời..."}
+{"type":"context","docs":[]}
+{"type":"metadata","conversation_id":"...","response":{}}
+```
+
+---
+
+## Công nghệ
+
+- React 18
+- TypeScript
+- Vite
+- Tailwind CSS
+- React Router
+- Framer Motion
+- React Markdown + GFM
+- KaTeX cho LaTeX/math
+- Lucide React icons
+- Vitest
+
+---
+
+## Quy ước khi sửa frontend
+
+- UI text viết tiếng Việt.
+- Component nên nhỏ, tập trung một nhiệm vụ.
+- Logic gọi API để trong `src/lib/api/`, không nhét trực tiếp vào component lớn.
+- Kiểu dữ liệu API để trong `src/types/`.
+- Khi sửa chat stream, kiểm tra đủ event `status`, `token`, `context`, `metadata`, `error`, `[DONE]`.

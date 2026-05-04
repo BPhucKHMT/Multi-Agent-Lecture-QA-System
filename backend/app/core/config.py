@@ -1,9 +1,11 @@
 """Cấu hình ứng dụng backend — đọc từ file .env."""
 import os
-from pydantic_settings import BaseSettings
-from dotenv import load_dotenv
-
 from pathlib import Path
+
+from dotenv import load_dotenv
+from pydantic_settings import BaseSettings
+
+
 env_path = Path(__file__).parent.parent.parent.parent / ".env"
 load_dotenv(dotenv_path=env_path, override=True)
 
@@ -20,6 +22,28 @@ class Settings(BaseSettings):
     # --- Redis ---
     REDIS_URL: str = os.getenv("REDIS_URL", "redis://localhost:6379/0")
     SEMANTIC_CACHE_ENABLED: bool = os.getenv("SEMANTIC_CACHE_ENABLED", "True").lower() == "true"
+    SEMANTIC_CACHE_BACKEND: str = os.getenv("SEMANTIC_CACHE_BACKEND", "redis_stack")
+    SEMANTIC_CACHE_EMBEDDING_MODEL: str = os.getenv(
+        "SEMANTIC_CACHE_EMBEDDING_MODEL", "text-embedding-3-small"
+    )
+    SEMANTIC_CACHE_VECTOR_DIM: int = int(os.getenv("SEMANTIC_CACHE_VECTOR_DIM", "1536"))
+    SEMANTIC_CACHE_TOP_K: int = int(os.getenv("SEMANTIC_CACHE_TOP_K", "5"))
+    SEMANTIC_CACHE_STRONG_THRESHOLD: float = float(
+        os.getenv("SEMANTIC_CACHE_STRONG_THRESHOLD", "0.95")
+    )
+    SEMANTIC_CACHE_HYBRID_THRESHOLD: float = float(
+        os.getenv("SEMANTIC_CACHE_HYBRID_THRESHOLD", "0.90")
+    )
+    SEMANTIC_CACHE_KEYWORD_OVERLAP: float = float(
+        os.getenv("SEMANTIC_CACHE_KEYWORD_OVERLAP", "0.55")
+    )
+    SEMANTIC_CACHE_TTL_SECONDS: int = int(os.getenv("SEMANTIC_CACHE_TTL_SECONDS", "86400"))
+    SEMANTIC_CACHE_PREWARM_ENABLED: bool = (
+        os.getenv("SEMANTIC_CACHE_PREWARM_ENABLED", "True").lower() == "true"
+    )
+    SEMANTIC_CACHE_PREWARM_LIMIT: int = int(
+        os.getenv("SEMANTIC_CACHE_PREWARM_LIMIT", "1000")
+    )
 
     # --- OpenAI ---
     OPENAI_API_KEY: str = os.getenv("myAPIKey", "")

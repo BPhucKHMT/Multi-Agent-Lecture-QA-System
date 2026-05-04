@@ -3,6 +3,7 @@ Service xử lý hội thoại (Chat) với AI Engine.
 Hỗ trợ Streaming SSE, Semantic Caching, và lưu trữ lịch sử vào DB.
 """
 
+import asyncio
 import json as json_lib
 import logging
 import os
@@ -216,6 +217,32 @@ def _looks_like_json_fragment(token: str) -> bool:
     return False
 
 
+def _split_stream_token(token: str, max_chars: int = 24) -> List[str]:
+    """Chia token lớn thành các mảnh nhỏ để UI render mượt hơn."""
+    if len(token) <= max_chars:
+        return [token]
+
+    chunks = []
+    current = ""
+    for part in re.split(r"(\s+)", token):
+        if len(current) + len(part) > max_chars and current:
+            chunks.append(current)
+            current = part
+        else:
+            current += part
+
+    if current:
+        chunks.append(current)
+    return chunks
+
+
+async def _yield_token_events(token: str) -> AsyncGenerator[str, None]:
+    """Yield SSE token events theo mảnh nhỏ để tránh browser nhận một cục lớn."""
+    for chunk in _split_stream_token(token):
+        yield f"data: {json_lib.dumps({'type': 'token', 'content': chunk})}\n\n"
+        await asyncio.sleep(0)
+
+
 # --- Core Service Logic ---
 
 
@@ -233,27 +260,45 @@ async def generate_chat_stream(
     3. Stream từng token về client.
     4. Lưu kết quả vào PostgreSQL.
     """
-    # 1. Kiểm tra Semantic Cache (Nếu bật)
+    # 1. Lấy lịch sử hội thoại từ DB trước khi thêm message mới
+    history = (
+        db.query(ChatHistory)
+        .filter(ChatHistory.user_id == user_id, ChatHistory.session_id == session_id)
+        .order_by(ChatHistory.created_at.asc())
+        .all()
+    )
+    history = history[-MAX_HISTORY_MESSAGES:]
+
+    langchain_messages = []
+    for msg in history:
+        if msg.role == "user":
+            langchain_messages.append(HumanMessage(content=msg.content))
+        else:
+            langchain_messages.append(AIMessage(content=msg.content))
+
+    langchain_messages.append(HumanMessage(content=user_message))
+
+    # 2. Lưu user message trước cache lookup để history không bị thiếu khi cache hit
+    user_chat = ChatHistory(
+        user_id=user_id, session_id=session_id, role="user", content=user_message
+    )
+    db.add(user_chat)
+    db.commit()
+
+    # 3. Kiểm tra Semantic Cache sau khi DB đã có câu hỏi user
     cache_provider = None
     if SEMANTIC_CACHE_ENABLED and redis_client:
         cache_provider = SemanticCache(redis_client)
         cached_resp = await cache_provider.get(user_message)
         if cached_resp:
-            # Nếu là cache hit, stream kết quả ngay lập tức
-            yield f"data: {json_lib.dumps({'type': 'status', 'status': '🚀 Phản hồi nhanh từ bộ nhớ đệm...'})}\n\n"
+            yield f"data: {json_lib.dumps({'type': 'status', 'status': '✨ Đang tổng hợp câu trả lời phù hợp...'})}\n\n"
 
-            # Giả lập streaming cho UX tốt hơn
             full_text = cached_resp.get("text", "")
-            words = full_text.split(" ")
-            for i in range(0, len(words), 5):
-                chunk = " ".join(words[i : i + 5]) + " "
+            await asyncio.sleep(0.12)
+            for chunk in _split_stream_token(full_text, max_chars=18):
                 yield f"data: {json_lib.dumps({'type': 'token', 'content': chunk})}\n\n"
-                time.sleep(0.02)
+                await asyncio.sleep(0.018 if chunk.strip() else 0.006)
 
-            yield f"data: {json_lib.dumps({'type': 'metadata', 'conversation_id': session_id, 'response': cached_resp})}\n\n"
-            yield "data: [DONE]\n\n"
-
-            # Vẫn lưu vào lịch sử DB
             assistant_chat = ChatHistory(
                 user_id=user_id,
                 session_id=session_id,
@@ -264,36 +309,10 @@ async def generate_chat_stream(
             )
             db.add(assistant_chat)
             db.commit()
+
+            yield f"data: {json_lib.dumps({'type': 'metadata', 'conversation_id': session_id, 'response': cached_resp})}\n\n"
+            yield "data: [DONE]\n\n"
             return
-
-    # 2. Lấy lịch sử hội thoại từ DB
-    history = (
-        db.query(ChatHistory)
-        .filter(ChatHistory.user_id == user_id, ChatHistory.session_id == session_id)
-        .order_by(ChatHistory.created_at.asc())
-        .all()
-    )
-
-    # Giới hạn lịch sử
-    history = history[-MAX_HISTORY_MESSAGES:]
-
-    # Build LangChain messages
-    langchain_messages = []
-    for msg in history:
-        if msg.role == "user":
-            langchain_messages.append(HumanMessage(content=msg.content))
-        else:
-            langchain_messages.append(AIMessage(content=msg.content))
-
-    # Thêm tin nhắn mới của user
-    langchain_messages.append(HumanMessage(content=user_message))
-
-    # Lưu tin nhắn User vào DB ngay lập tức
-    user_chat = ChatHistory(
-        user_id=user_id, session_id=session_id, role="user", content=user_message
-    )
-    db.add(user_chat)
-    db.commit()
 
     initial_state = {"messages": langchain_messages}
     cleaner = JsonStreamCleaner()
@@ -330,8 +349,11 @@ async def generate_chat_stream(
                     continue
 
                 tags = event.get("tags", [])
-                # Bỏ qua luồng nội bộ như query expansion, nhưng vẫn bóc text từ final JSON answer.
-                if "internal_query" in tags:
+                # Chỉ stream token từ các LLM call được đánh dấu là câu trả lời cuối.
+                # Các node nội bộ như coding.generate/fix/explain chỉ dùng để tạo dữ liệu trung gian,
+                # nếu stream ra UI sẽ lộ code thô trước khi agent format response hoàn chỉnh.
+                is_final_answer_stream = "final_answer" in tags or "final_answer_json" in tags
+                if not is_final_answer_stream or "internal_query" in tags:
                     continue
 
                 token_text = _extract_stream_token_content(
@@ -342,7 +364,8 @@ async def generate_chat_stream(
                         continue
                     clean_token = cleaner.process_token(token_text)
                     if clean_token:
-                        yield f"data: {json_lib.dumps({'type': 'token', 'content': clean_token})}\n\n"
+                        async for token_event in _yield_token_events(clean_token):
+                            yield token_event
 
             # Capture Final Output of the winning node
             if event_type == "on_chain_end" and node_name in [
