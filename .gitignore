@@ -66,3 +66,17 @@ Thumbs.db
 # Documentation
 docs/
 **/docs/
+
+# AI Agents & Automation
+.agent/
+.agents/
+.claude/
+
+# Temporary & Test files
+test_cleaner.py
+temp.txt
+tests/
+
+# Design & System
+design-system/
+.github/
