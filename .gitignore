@@ -62,3 +62,7 @@ Thumbs.db
 .sixth/
 .worktrees/
 .pytest_cache/
+
+# Documentation
+docs/
+**/docs/
