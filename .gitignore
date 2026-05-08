@@ -76,6 +76,9 @@ docs/
 test_cleaner.py
 temp.txt
 tests/
+analyze_edges.py
+analyze_streaming.py
+analyze_tutor.py
 
 # Design & System
 design-system/
