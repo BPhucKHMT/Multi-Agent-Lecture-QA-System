@@ -79,6 +79,7 @@ tests/
 analyze_edges.py
 analyze_streaming.py
 analyze_tutor.py
+analyze_supervisor.py
 
 # Design & System
 design-system/
