@@ -1,51 +1,52 @@
 # RAG QABot — Multi-Agent Lecture QA System
 
-PUQ Q&A là hệ thống hỏi đáp bài giảng cho sinh viên UIT, kết hợp **Retrieval-Augmented Generation (RAG)**, **LangGraph Multi-Agent Supervisor**, FastAPI backend, React frontend, PostgreSQL và Redis semantic cache.
+[Tiếng Việt](README_VI.md)
 
-Mục tiêu: người dùng có thể hỏi về nội dung bài giảng/video, nhận câu trả lời tiếng Việt có citation, hoặc chuyển sang các tác vụ chuyên biệt như giải toán, hỗ trợ code và tạo quiz.
+PUQ Q&A is a lecture question-answering system for UIT students. It combines **Retrieval-Augmented Generation (RAG)**, a **LangGraph Multi-Agent Supervisor**, a FastAPI backend, a React frontend, PostgreSQL, and Redis semantic caching.
+
+The goal is to let users ask questions about lecture/video content, receive Vietnamese answers with citations, or switch to specialized tasks such as math solving, coding support, and quiz generation.
 
 ## Demo Preview
 
 | Chat Interface | Multi-Agent Workflow |
 |---|---|
-| ![Demo giao diện chat](public/Demo1.png) | ![Demo workflow agent](public/Demo2.png) |
+| ![Chat interface demo](public/Demo1.png) | ![Agent workflow demo](public/Demo2.png) |
 
-![Demo tổng quan hệ thống](public/Demo3.png)
-![Demo mở rộng hệ thống](public/Demo4.png)
+![System overview demo](public/Demo3.png)
+![System extension demo](public/Demo4.png)
 
 ---
 
+## Quick Start with Docker
 
-## Chạy nhanh bằng Docker
-
-Docker Compose hiện chạy theo **profiles** để tách container rõ ràng:
+Docker Compose uses **profiles** to separate services clearly:
 
 ```txt
 frontend       -> React/Vite dev server, http://localhost:5173
 api-cpu        -> FastAPI/RAG CPU, http://localhost:8000
-api-gpu        -> FastAPI/RAG GPU local, http://localhost:8000
+api-gpu        -> FastAPI/RAG local GPU, http://localhost:8000
 redis-stack    -> Redis Stack + RedisInsight, http://localhost:8001
-pipeline-cpu   -> Data pipeline CPU, chạy khi cần ingest dữ liệu
-pipeline-gpu   -> Data pipeline GPU, chạy khi cần ingest dữ liệu bằng GPU
+pipeline-cpu   -> CPU data pipeline, used when ingesting data
+pipeline-gpu   -> GPU data pipeline, used when ingesting data with GPU support
 ```
 
-> Frontend và backend là **2 container riêng**, nhưng được quản lý chung trong `docker-compose.yaml`.
+> Frontend and backend run as **two separate containers**, managed together by `docker-compose.yaml`.
 
-### 1. Chuẩn bị `.env`
+### 1. Prepare `.env`
 
 ```powershell
 Copy-Item .env.example .env
 ```
 
-Sau đó điền các biến cần thiết như `myAPIKey`, `DATABASE_URL`, `JWT_SECRET`, `REDIS_URL`.
+Then fill in the required values such as `myAPIKey`, `DATABASE_URL`, `JWT_SECRET`, and `REDIS_URL`.
 
-### 2. Chạy local CPU: frontend + backend + Redis
+### 2. Run local CPU stack: frontend + backend + Redis
 
 ```powershell
 docker compose --profile cpu --profile frontend --profile redis up --build
 ```
 
-Truy cập:
+Open:
 
 ```txt
 Frontend:     http://localhost:5173
@@ -53,29 +54,29 @@ Backend API:  http://localhost:8000
 RedisInsight: http://localhost:8001
 ```
 
-### 3. Chạy local GPU: backend GPU + Redis
+### 3. Run local GPU stack: GPU backend + Redis
 
-Dùng khi máy local có NVIDIA GPU, Docker Desktop đã bật GPU support/NVIDIA Container Toolkit.
+Use this when your local machine has an NVIDIA GPU and Docker Desktop GPU support/NVIDIA Container Toolkit is enabled.
 
 ```powershell
 docker compose --profile gpu --profile redis up --build
 ```
 
-Lệnh trên chạy **2 service**: `api-gpu` + `redis-stack`.
+This command starts **2 services**: `api-gpu` and `redis-stack`.
 
-Nếu muốn chạy cùng lúc **3 service** (frontend + backend GPU + Redis):
+To run **3 services** together (frontend + GPU backend + Redis):
 
 ```powershell
 docker compose --profile gpu --profile redis --profile frontend up --build
 ```
 
-Image GPU đã test build local:
+Locally tested GPU image size:
 
 ```txt
 rag-qabot:gpu = 12.5GB
 ```
 
-### 4. Chạy data pipeline bằng Docker
+### 4. Run the data pipeline with Docker
 
 CPU pipeline:
 
@@ -89,9 +90,9 @@ GPU pipeline:
 docker compose --profile pipeline-gpu run --rm pipeline-gpu
 ```
 
-Pipeline image chứa OCR/Whisper/video dependencies nặng, được tách riêng khỏi image deploy API.
+The pipeline image contains heavy OCR/Whisper/video dependencies and is separated from the API deployment image.
 
-### 5. Build image riêng nếu cần đo size
+### 5. Build standalone images for size checks
 
 CPU runtime:
 
@@ -107,7 +108,7 @@ docker build --target dev-gpu -t rag-qabot:gpu .
 docker images rag-qabot:gpu
 ```
 
-Size đã đo gần nhất:
+Latest measured sizes:
 
 ```txt
 rag-qabot:cpu-runtime = 3.97GB
@@ -116,7 +117,7 @@ rag-qabot:gpu         = 12.5GB
 
 ---
 
-## Tài khoản demo
+## Demo Account
 
 ```txt
 Email: nguyenlam.baophuc@gmail.com
@@ -125,21 +126,21 @@ Password: 123456789
 
 ---
 
-## Tính năng chính
+## Key Features
 
-- **Chat RAG tiếng Việt**: hỏi đáp từ transcript bài giảng.
-- **Citation video**: trả link/timestamp nguồn khi có context phù hợp.
-- **Multi-Agent Supervisor**: tự route sang tutor, coding, math, quiz hoặc direct.
-- **Math Agent**: dùng SymPy để tính toán rồi trình bày lại bằng LaTeX.
-- **Coding Agent**: sinh, chạy và tự sửa code trong sandbox khi phù hợp.
-- **Quiz Agent**: tạo câu hỏi trắc nghiệm từ nội dung học.
-- **Summary Hub**: xem danh sách video và tóm tắt nội dung.
-- **Auth + History**: đăng nhập, lưu session và lịch sử chat trong PostgreSQL.
-- **Redis semantic cache**: cache exact/semantic response để giảm latency và token.
+- **Vietnamese RAG chat**: answer questions from lecture transcripts.
+- **Video citations**: return source links/timestamps when relevant context is found.
+- **Multi-Agent Supervisor**: routes requests to tutor, coding, math, quiz, or direct agents.
+- **Math Agent**: uses SymPy for calculation and explains results with LaTeX.
+- **Coding Agent**: generates, executes, and self-corrects code in a sandbox when appropriate.
+- **Quiz Agent**: generates multiple-choice questions from learning content.
+- **Summary Hub**: browse videos and lecture summaries.
+- **Auth + History**: login, sessions, and chat history stored in PostgreSQL.
+- **Redis semantic cache**: exact/semantic response caching to reduce latency and token usage.
 
 ---
 
-## Kiến trúc tổng quan
+## Architecture Overview
 
 ```mermaid
 flowchart TD
@@ -162,7 +163,7 @@ flowchart TD
 
 ---
 
-## Cấu trúc thư mục chính
+## Main Directory Structure
 
 ```txt
 final_project/
@@ -171,140 +172,140 @@ final_project/
 ├── src/                     # AI/RAG engine: LangGraph, agents, retrieval, pipeline
 ├── artifacts/               # Runtime data: transcripts, chunks, ChromaDB, videos
 ├── docs/                    # Design docs, upgrade plans, architecture notes
-├── tests/                   # Test/smoke scripts cấp project
-├── requirements.txt         # Dependencies cho AI/RAG engine
-├── backend/requirements.txt # Dependencies riêng backend API service
-├── config.yaml              # Playlist/source config cho data pipeline
-└── .env.example             # Mẫu biến môi trường
+├── tests/                   # Project-level tests and smoke scripts
+├── requirements.txt         # Dependencies for the AI/RAG engine
+├── backend/requirements.txt # Backend API service dependencies
+├── config.yaml              # Playlist/source config for the data pipeline
+└── .env.example             # Environment variable template
 ```
 
 ---
 
-## Các README theo khu vực
+## Area-Specific READMEs
 
 - [backend/README.md](backend/README.md): FastAPI, PostgreSQL, Redis, auth, chat API.
-- [src/README.md](src/README.md): AI engine, LangGraph agents, retrieval và pipeline.
-- [frontend/README.md](frontend/README.md): React UI, cấu trúc component, scripts.
-- [src/rag_core/README.md](src/rag_core/README.md): Supervisor và agent workflow.
+- [src/README.md](src/README.md): AI engine, LangGraph agents, retrieval, and pipeline.
+- [frontend/README.md](frontend/README.md): React UI, component structure, scripts.
+- [src/rag_core/README.md](src/rag_core/README.md): Supervisor and agent workflow.
 - [src/retrieval/README.md](src/retrieval/README.md): Hybrid search, BM25, reranking.
-- [src/data_pipeline/README.md](src/data_pipeline/README.md): Crawl/xử lý dữ liệu bài giảng.
+- [src/data_pipeline/README.md](src/data_pipeline/README.md): Lecture crawling and data processing.
 - [backend/app/core/cache/README.md](backend/app/core/cache/README.md): Redis semantic cache.
 
 ---
 
-## Biến môi trường quan trọng
+## Important Environment Variables
 
-Copy `.env.example` thành `.env`, rồi điền các biến thực tế.
+Copy `.env.example` to `.env`, then fill in real values.
 
-| Biến | Mục đích |
+| Variable | Purpose |
 |---|---|
 | `DATABASE_URL` | PostgreSQL/Supabase connection string |
-| `JWT_SECRET` | Secret ký access/refresh token |
-| `myAPIKey` | OpenAI API key cho LLM/embedding |
-| `OPENAI_MODEL` | Model chat chính |
-| `REDIS_URL` | Redis Stack URL, mặc định `redis://localhost:6379/0` |
-| `SEMANTIC_CACHE_ENABLED` | Bật/tắt Redis semantic cache |
-| `YOUTUBE_API_KEY` | Dùng khi crawl playlist YouTube |
-| `PUQ_DATA_DIR` | Thư mục transcript/data |
-| `PUQ_VECTOR_DB_DIR` | Thư mục ChromaDB |
-| `PUQ_VIDEOS_DIR` | Thư mục metadata video |
+| `JWT_SECRET` | Secret used to sign access/refresh tokens |
+| `myAPIKey` | OpenAI API key for LLM/embedding |
+| `OPENAI_MODEL` | Main chat model |
+| `REDIS_URL` | Redis Stack URL, default `redis://localhost:6379/0` |
+| `SEMANTIC_CACHE_ENABLED` | Enable/disable Redis semantic cache |
+| `YOUTUBE_API_KEY` | Used when crawling YouTube playlists |
+| `PUQ_DATA_DIR` | Transcript/data directory |
+| `PUQ_VECTOR_DB_DIR` | ChromaDB directory |
+| `PUQ_VIDEOS_DIR` | Video metadata directory |
 
 ---
 
-## Workflow request chat
+## Chat Request Workflow
 
 ```txt
-User gửi câu hỏi
+User sends a question
   ↓
-Frontend stream request tới /api/v1/chat/stream
+Frontend streams request to /api/v1/chat/stream
   ↓
-Backend lưu user message vào PostgreSQL
+Backend stores user message in PostgreSQL
   ↓
 Redis exact/semantic cache lookup
-  ├─ Hit: stream response cache + lưu assistant vào DB
-  └─ Miss: gọi LangGraph workflow
+  ├─ Hit: stream cached response + store assistant message in DB
+  └─ Miss: call LangGraph workflow
           ↓
-      Supervisor route agent
+      Supervisor routes to an agent
           ↓
-      Agent tạo response
+      Agent generates response
           ↓
-      Lưu assistant vào DB
+      Store assistant message in DB
           ↓
-      Nếu cacheable thì ghi Redis
+      Cache in Redis when cacheable
 ```
 
 ---
 
-## Data/RAG workflow
+## Data/RAG Workflow
 
 ```txt
 YouTube/transcript data
   ↓
-Data pipeline xử lý nội dung
+Data pipeline processes content
   ↓
 Chunking + metadata
   ↓
-Embedding vào ChromaDB
+Embedding into ChromaDB
   ↓
 Runtime retrieval: vector + keyword
   ↓
-Reranker chọn context tốt nhất
+Reranker selects best context
   ↓
-Tutor agent sinh câu trả lời có citation
+Tutor agent generates answer with citations
 ```
 
 ---
 
-## Lệnh hữu ích
+## Useful Commands
 
-### Cài Python dependencies
+### Install Python dependencies
 
 ```powershell
 pip install -r requirements.txt
 pip install -r backend/requirements.txt
 ```
 
-### Chạy backend
+### Run backend
 
 ```powershell
 python -m uvicorn backend.app.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
-### Chạy frontend
+### Run frontend
 
 ```powershell
 npm --prefix frontend install
 npm --prefix frontend run dev
 ```
 
-### Chạy Redis local
+### Run Redis locally
 
-Nếu đã cài Redis local sẵn trên máy:
+If Redis is already installed locally:
 
 ```powershell
 redis-server
 ```
 
-Hoặc chạy bằng Docker:
+Or use Docker:
 
 ```powershell
 docker compose --profile redis up -d redis-stack
 ```
 
-Redis endpoint local:
+Local Redis endpoint:
 
 ```txt
 REDIS_URL=redis://localhost:6379/0
 RedisInsight: http://localhost:8001
 ```
 
-### Chạy data pipeline
+### Run data pipeline
 
 ```powershell
 python -m src.data_pipeline.pipeline
 ```
 
-### Compile nhanh Python files đã sửa
+### Quick compile check for modified Python files
 
 ```powershell
 python -m compileall backend/app src
@@ -312,17 +313,17 @@ python -m compileall backend/app src
 
 ---
 
-## Lưu ý vận hành
+## Operational Notes
 
-- PostgreSQL là **source of truth** cho user, session và chat history.
-- Redis chỉ là cache; mất Redis thì có thể rebuild từ DB bằng prewarm.
-- `artifacts/` là runtime data lớn, thường không commit toàn bộ.
-- Backend startup sẽ prewarm RAG resources và Redis cache ở background.
-- Prompt/response/UI ưu tiên tiếng Việt.
+- PostgreSQL is the **source of truth** for users, sessions, and chat history.
+- Redis is only a cache; if Redis data is lost, it can be rebuilt from the database via prewarm.
+- `artifacts/` stores large runtime data and is usually not fully committed.
+- Backend startup prewarms RAG resources and Redis cache in the background.
+- Prompts, responses, and UI prioritize Vietnamese.
 
 ---
 
-## Tài liệu nâng cấp liên quan
+## Related Upgrade Documentation
 
 - [Redis plan](docs/upgrade_system/redis.md)
 - [Redis architecture](docs/upgrade_system/redis_architecture.md)
