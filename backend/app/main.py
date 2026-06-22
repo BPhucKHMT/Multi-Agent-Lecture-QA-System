@@ -94,11 +94,11 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# CORS — cho phép frontend Vite (5173) và production URL
+# CORS — cho phép tất cả origins trong dev (dùng "*" thì không được kết hợp credentials)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.ALLOWED_ORIGINS,
-    allow_credentials=True,
+    allow_credentials=False,  # ← Phải False khi dùng "*" (dev mode)
     allow_methods=["*"],
     allow_headers=["*"],
 )
