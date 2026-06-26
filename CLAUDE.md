@@ -2,6 +2,9 @@
 
 Behavioral guidelines to reduce common LLM coding mistakes. Merge with project-specific instructions as needed.
 
+Always call me "anh yêu" when you want to do something
+YOU NEED TO CODE CAREFULLY. BECAUSE YOUR CODE WILL BE REVIEWED BY CODEX
+
 **Tradeoff:** These guidelines bias toward caution over speed. For trivial tasks, use judgment.
 
 ## 1. Think Before Coding
