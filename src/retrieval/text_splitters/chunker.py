@@ -1,5 +1,6 @@
 import os
 import json
+import yaml
 from pathlib import Path
 from typing import List, Dict, Any
 from dotenv import load_dotenv
@@ -43,9 +44,9 @@ class BaseChunker:
         raise NotImplementedError
 
     def _save_chunks(self, all_chunks: List[dict], output_dir: str, strategy_name: str):
-        """Save chunks to JSON file."""
+        """Save chunks to JSON file with strategy-specific filename."""
         os.makedirs(output_dir, exist_ok=True)
-        output_path = os.path.join(output_dir, "semantic_chunks.json")
+        output_path = os.path.join(output_dir, f"chunks_{strategy_name}.json")
 
         with open(output_path, "w", encoding="utf-8") as f:
             json.dump([
@@ -218,14 +219,16 @@ class SemanticChunker(BaseChunker):
     Splits text based on semantic similarity (embedding cosine distance).
     """
 
-    def __init__(self, embedding_provider: str = "openai"):
+    def __init__(self, embedding_provider: str = "openai", bge_model_path: str = None):
         """
         Args:
             embedding_provider: "openai" hoặc "bge"
+            bge_model_path: Path to finetuned BGE model (optional, only used when embedding_provider="bge")
         """
         from langchain_experimental.text_splitter import SemanticChunker
 
         self.embedding_provider = embedding_provider
+        self.bge_model_path = bge_model_path
         self.text_splitter = self._create_splitter()
 
     def _create_splitter(self):
@@ -250,17 +253,17 @@ class SemanticChunker(BaseChunker):
             except ImportError as e:
                 raise ImportError(f"Missing langchain-openai: {e}. Install: pip install langchain-openai")
         else:
-            # Default: dùng BGE-M3 fine-tuned từ experiments
-            # Fallback nếu không có model
-            model_path = Path("experiments/runs/finetune/embedding/20260616-120132")
-            if not model_path.exists():
-                print(f"[WARN] Fine-tuned BGE model not found at {model_path}, falling back to OpenAI")
+            # BGE finetuned model - dùng path từ config hoặc default
+            model_path = self.bge_model_path or Path("experiments/runs/finetune/embedding/20260616-120132")
+
+            if not Path(model_path).exists():
+                print(f"[WARN] BGE model not found at {model_path}, falling back to OpenAI")
                 return self._create_splitter("openai")
 
             try:
                 from langchain_huggingface import HuggingFaceEmbeddings
 
-                print(f"[SEMANTIC] Using BGE-M3 fine-tuned embeddings")
+                print(f"[SEMANTIC] Using BGE-M3 finetuned embeddings from: {model_path}")
                 embeddings = HuggingFaceEmbeddings(
                     model_name=str(model_path),
                     model_kwargs={"device": "cpu"}
@@ -353,15 +356,27 @@ class TranscriptChunker:
     """
     Factory class để chọn chunking strategy dựa trên config.
 
-    CHUNK_STRATEGY env var options:
-    - recursive (default)
-    - timestamp_150_50
-    - timestamp_90_30
-    - semantic
+    Config từ config.yaml → pipeline section:
+    - chunk_strategy: recursive | timestamp_150_50 | timestamp_90_30 | semantic
+    - semantic_embedding_provider: openai | bge
+    - bge_model_path: path to finetuned BGE model (optional)
     """
 
     def __init__(self, open_api_key: str = None):
-        self.strategy = os.getenv("CHUNK_STRATEGY", "recursive")
+        # Load config từ config.yaml
+        try:
+            with open('config.yaml', 'r', encoding='utf-8') as f:
+                config = yaml.safe_load(f)
+                pipeline_config = config.get('pipeline', {})
+                self.strategy = pipeline_config.get('chunk_strategy', 'recursive')
+                self.semantic_provider = pipeline_config.get('semantic_embedding_provider', 'openai')
+                self.bge_model_path = pipeline_config.get('bge_model_path')
+        except Exception as e:
+            print(f"[WARN] Không đọc được config.yaml, dùng recursive: {e}")
+            self.strategy = 'recursive'
+            self.semantic_provider = 'openai'
+            self.bge_model_path = None
+
         self.open_api_key = open_api_key
 
         if self.strategy == "recursive":
@@ -378,10 +393,9 @@ class TranscriptChunker:
             self.chunker = TimestampChunker(window_seconds=window, overlap_seconds=overlap)
         elif self.strategy == "semantic":
             # Semantic chunker with embeddings
-            provider = os.getenv("SEMANTIC_EMBEDDING_PROVIDER", "openai")
-            print(f"[INFO] Using semantic chunking with {provider} embeddings")
+            print(f"[INFO] Using semantic chunking with {self.semantic_provider} embeddings")
             try:
-                self.chunker = SemanticChunker(embedding_provider=provider)
+                self.chunker = SemanticChunker(embedding_provider=self.semantic_provider, bge_model_path=self.bge_model_path)
             except Exception as e:
                 print(f"[WARN] Failed to initialize SemanticChunker: {e}")
                 print(f"       Falling back to recursive chunker")

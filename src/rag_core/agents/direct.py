@@ -21,7 +21,32 @@ async def node_direct_answer(state: State):
     if not query and messages:
         last_message = messages[-1]
         if isinstance(last_message, HumanMessage):
-            query = last_message.content
+            val = str(last_message.content or "").strip().lower()
+            from src.rag_core.router_patterns import CHITCHAT_PATTERNS
+            is_greeting = False
+            if any(val == p for p in CHITCHAT_PATTERNS):
+                is_greeting = True
+            else:
+                words = val.split()
+                if len(words) <= 3:
+                    if any(val.startswith(f"{p} ") or val.endswith(f" {p}") for p in CHITCHAT_PATTERNS):
+                        is_greeting = True
+            if is_greeting:
+                query = last_message.content
+
+    if not str(query or "").strip():
+        return {
+            "response": {
+                "text": "Mình chưa nhận được nội dung rõ ràng, bạn thử diễn đạt lại giúp mình nhé.",
+                "video_url": [],
+                "title": [],
+                "filename": [],
+                "start_timestamp": [],
+                "end_timestamp": [],
+                "confidence": [],
+                "type": "direct"
+            }
+        }
 
     # Sử dụng LLM để trả lời một cách tự nhiên
     llm_for_chat = get_llm()

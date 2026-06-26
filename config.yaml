@@ -9,7 +9,7 @@ playlists:
     enabled: true
     # CS431
   - url: "https://www.youtube.com/playlist?list=PLb62OySGqC9xl1_deMF_UXP5tA2Tvt17_"
-    enabled: true  # Tạm thời không xử lý
+    enabled: true  
   
   - url: https://www.youtube.com/playlist?list=PLb62OySGqC9yGRvUaSe-iWFuXYuM8X6_n
     enabled: true
@@ -18,6 +18,28 @@ playlists:
 settings:
   # Thời gian nghỉ giữa 2 video (giây) để tránh YouTube block
   sleep_between_videos: 8.0
-  
+
   # Giới hạn số video xử lý mỗi playlist (null = xử lý hết)
   limit_per_playlist: null
+
+# Pipeline configuration - chunking strategy
+pipeline:
+  # Chiến lược chunking: recursive | timestamp_150_50 | timestamp_90_30 | semantic
+  chunk_strategy: timestamp_150_50
+
+  # Semantic embedding provider (chỉ dùng khi chunk_strategy=semantic)
+  # Options: openai | bge
+  semantic_embedding_provider: bge
+
+  # BGE finetuned model path (chỉ dùng khi semantic_embedding_provider=bge)
+  # Nếu null hoặc không tồn tại, tự fallback sang OpenAI
+  bge_model_path: models/production/bge-m3-v3
+
+  # Reranker model configuration
+  # HuggingFace model ID hoặc local path:
+  # - Local BGE finetuned: models/bge-reranker-finetuned
+  # - Jina v2 multilingual (tiếng Việt): jinaai/jina-reranker-v2-base-multilingual
+  # - Jina v1 tiny: jinaai/jina-reranker-v1-tiny
+  # - BGE base: BAAI/bge-reranker-base
+  # Default: models/bge-reranker-finetuned
+  reranker_model: jinaai/jina-reranker-v2-base-multilingual
