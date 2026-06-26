@@ -31,9 +31,9 @@ export default function QuizComponent({ questions }: QuizComponentProps) {
 
   return (
     <div className="flex flex-col gap-6 py-2">
-      <div className="flex items-center justify-between border-b border-violet-100 pb-4">
+      <div className="flex items-center justify-between border-b border-slate-200/60 pb-4">
         <div className="flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-violet-100 text-violet-600">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-teal-50 border border-teal-100 text-teal-600">
             <span className="text-sm font-bold">Q</span>
           </div>
           <h3 className="text-[16px] font-bold text-slate-900">Bài kiểm tra kiến thức nhanh</h3>
@@ -41,7 +41,7 @@ export default function QuizComponent({ questions }: QuizComponentProps) {
         {Object.keys(answers).length > 0 && (
           <button
             onClick={handleReset}
-            className="flex items-center gap-1.5 text-xs font-semibold text-slate-400 transition hover:text-violet-600"
+            className="flex items-center gap-1.5 text-xs font-semibold text-slate-400 transition hover:text-teal-600"
           >
             <RotateCcw className="h-3.5 w-3.5" />
             Làm lại
@@ -58,7 +58,7 @@ export default function QuizComponent({ questions }: QuizComponentProps) {
           return (
             <div key={qIndex} className="group relative">
               <div className="mb-4 flex items-start gap-3">
-                <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-violet-100/50 text-[11px] font-bold text-violet-600">
+                <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-slate-100 text-[11px] font-bold text-slate-600">
                   {qIndex + 1}
                 </span>
                 <p className="text-[17px] font-extrabold text-slate-900 leading-snug tracking-tight">{q.question}</p>
@@ -69,7 +69,7 @@ export default function QuizComponent({ questions }: QuizComponentProps) {
                   const isOptionSelected = selectedOption === option;
                   const isOptionCorrect = option === q.correct_answer;
                   
-                  let stateStyle = "border-slate-200 bg-white hover:border-violet-200 hover:bg-violet-50/30";
+                  let stateStyle = "border-slate-200 bg-white hover:border-teal-300 hover:bg-teal-50/30";
                   if (selectedOption) {
                     if (isOptionCorrect) {
                       stateStyle = "border-emerald-300 bg-emerald-50 text-emerald-900 ring-1 ring-emerald-300";
@@ -126,9 +126,9 @@ export default function QuizComponent({ questions }: QuizComponentProps) {
                                href={q.video_url}
                                target="_blank"
                                rel="noreferrer"
-                               className="inline-flex items-center gap-1.5 rounded-lg bg-white/60 px-2.5 py-1 text-[11px] font-bold text-slate-700 shadow-sm transition hover:bg-white hover:text-violet-600"
+                               className="inline-flex items-center gap-1.5 rounded-lg bg-white/60 px-2.5 py-1 text-[11px] font-bold text-slate-700 shadow-sm transition hover:bg-white hover:text-teal-600"
                              >
-                               <ExternalLink className="h-3 w-3 text-violet-500" />
+                               <ExternalLink className="h-3 w-3 text-teal-600" />
                                {q.video_title ? `${q.video_title} tại ${q.timestamp}` : `Xem bài giảng tại ${q.timestamp}`}
                              </a>
                            )}
@@ -152,7 +152,7 @@ export default function QuizComponent({ questions }: QuizComponentProps) {
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="mt-2 flex items-center justify-between rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 p-4 text-white shadow-lg shadow-violet-500/20"
+            className="mt-2 flex items-center justify-between rounded-xl bg-slate-900 border border-slate-950 p-5 text-white shadow-md shadow-slate-900/10"
           >
             <div>
               <p className="text-[10px] font-bold uppercase tracking-widest opacity-70">Kết quả tổng quan</p>

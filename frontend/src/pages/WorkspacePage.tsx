@@ -13,23 +13,23 @@ import type { AppSection, DiscussionContext } from "../types/app";
 const SummaryLoading = () => (
   <div className="space-y-6 p-2 animate-in fade-in duration-700">
     <div className="flex items-center gap-4">
-      <div className="relative flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-500 to-indigo-600 text-white shadow-lg shadow-violet-200">
-        <Sparkles className="h-6 w-6 animate-pulse" />
-        <div className="absolute -right-1 -top-1 h-3 w-3 rounded-full bg-emerald-400 border-2 border-white" />
+      <div className="relative flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-slate-900 text-white shadow-md shadow-slate-900/10">
+        <Sparkles className="h-5 w-5 text-teal-400 animate-pulse" />
+        <div className="absolute -right-1 -top-1 h-3 w-3 rounded-full bg-emerald-500 border-2 border-white animate-pulse" />
       </div>
       <div className="flex-1 space-y-2">
         <div className="h-4 w-32 animate-pulse rounded-full bg-slate-200" />
         <div className="flex items-center gap-2">
-          <Loader2 className="h-3 w-3 animate-spin text-violet-500" />
+          <Loader2 className="h-3 w-3 animate-spin text-teal-600" />
           <div className="h-3 w-48 animate-pulse rounded-full bg-slate-100" />
         </div>
       </div>
     </div>
     <div className="space-y-4 pl-16">
-      <div className="h-4 w-full animate-pulse rounded-full bg-slate-100/80" />
-      <div className="h-4 w-[92%] animate-pulse rounded-full bg-slate-100/80 [animation-delay:0.2s]" />
-      <div className="h-4 w-[96%] animate-pulse rounded-full bg-slate-100/80 [animation-delay:0.4s]" />
-      <div className="h-4 w-[40%] animate-pulse rounded-full bg-slate-100/80 [animation-delay:0.6s]" />
+      <div className="h-3 w-full animate-pulse rounded-full bg-slate-100/80" />
+      <div className="h-3 w-[92%] animate-pulse rounded-full bg-slate-100/80 [animation-delay:0.2s]" />
+      <div className="h-3 w-[96%] animate-pulse rounded-full bg-slate-100/80 [animation-delay:0.4s]" />
+      <div className="h-3 w-[40%] animate-pulse rounded-full bg-slate-100/80 [animation-delay:0.6s]" />
     </div>
   </div>
 );
@@ -172,11 +172,11 @@ function SummaryHubPanel({
               type="button"
               onClick={handleSummarize}
               disabled={!selectedVideo || isSummarizing}
-              className="group flex items-center justify-center gap-2 rounded-xl bg-violet-100/60 px-5 py-3 text-sm font-semibold text-violet-700 transition hover:bg-violet-200 active:scale-95 disabled:pointer-events-none disabled:opacity-50"
+              className="group flex items-center justify-center gap-2 rounded-xl bg-teal-50 px-5 py-3 text-sm font-semibold text-teal-800 border border-teal-100 transition hover:bg-teal-100 active:scale-95 disabled:pointer-events-none disabled:opacity-50"
             >
               {isSummarizing ? "Đang xử lý..." : (
                 <>
-                   <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                   <svg className="h-4 w-4 text-teal-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                      <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
                    </svg>
                    Tóm tắt Audio/Video
@@ -195,7 +195,7 @@ function SummaryHubPanel({
                 });
               }}
               disabled={!canDiscussInChat}
-              className="group flex items-center justify-center gap-2 rounded-xl bg-indigo-50/60 px-5 py-3 text-sm font-semibold text-indigo-700 transition hover:bg-indigo-100 active:scale-95 disabled:pointer-events-none disabled:opacity-50"
+              className="group flex items-center justify-center gap-2 rounded-xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 active:scale-95 disabled:pointer-events-none disabled:opacity-50"
             >
                Thảo luận trong Chatspace &rarr;
             </button>
@@ -209,14 +209,14 @@ function SummaryHubPanel({
         </div>
 
         {isSummarizing ? (
-          <div className="puq-pane rounded-xl bg-white p-8 shadow-sm border border-violet-100/50">
+          <div className="puq-pane rounded-xl bg-white p-8 shadow-sm border border-slate-200/60">
              <SummaryLoading />
           </div>
         ) : null}
 
         {summaryText ? (
-          <div className="puq-pane rounded-xl bg-white/80 p-5 shadow-sm pr-2">
-            <p className="mb-2 text-sm font-semibold text-violet-800">Kết quả tóm tắt AI</p>
+          <div className="puq-pane rounded-xl bg-white/80 p-5 shadow-sm pr-2 border border-slate-200/60">
+            <p className="mb-2 text-sm font-semibold text-teal-800">Kết quả tóm tắt AI</p>
             <MessageList 
               messages={[{ id: "1", role: "assistant", content: summaryText }]} 
             />
