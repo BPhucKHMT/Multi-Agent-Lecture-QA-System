@@ -52,15 +52,15 @@ export default function RegisterPage() {
 
   return (
     <div className="relative min-h-screen text-slate-800 font-['Inter',sans-serif]">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_left_top,rgba(0,123,255,0.08),transparent_42%),radial-gradient(circle_at_right_top,rgba(0,212,255,0.08),transparent_40%),radial-gradient(circle_at_right_bottom,rgba(40,167,69,0.08),transparent_40%),radial-gradient(circle_at_left_bottom,rgba(0,89,187,0.08),transparent_44%)]" />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_left_top,rgba(13,148,136,0.06),transparent_42%),radial-gradient(circle_at_right_top,rgba(15,23,42,0.04),transparent_40%),radial-gradient(circle_at_right_bottom,rgba(16,185,129,0.04),transparent_40%),radial-gradient(circle_at_left_bottom,rgba(15,23,42,0.05),transparent_44%)]" />
 
       <header className="relative z-10 border-b border-slate-200/90 bg-white/80 px-4 py-4 backdrop-blur-sm sm:px-6">
         <div className="mx-auto flex w-full max-w-[1280px] items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="grid h-8 w-8 place-items-center rounded-lg bg-[#0070ea]">
+            <div className="grid h-8 w-8 place-items-center rounded-lg bg-teal-600">
               <SparkIcon />
             </div>
-            <span className="font-['Plus_Jakarta_Sans',sans-serif] text-xl font-bold tracking-[-0.02em] text-blue-600">
+            <span className="font-['Plus_Jakarta_Sans',sans-serif] text-xl font-bold tracking-[-0.02em] text-slate-900">
               PUQ Chatbot
             </span>
           </div>
@@ -72,9 +72,9 @@ export default function RegisterPage() {
 
       <main className="relative z-10 mx-auto flex min-h-[calc(100vh-165px)] w-full max-w-[1280px] items-center justify-center px-4 py-10 sm:px-6 sm:py-16">
         <div className="w-full max-w-[480px]">
-          <div className="rounded-xl border border-[rgba(193,198,215,0.35)] bg-white p-6 shadow-[0_20px_25px_-5px_rgba(30,58,138,0.06),0_8px_10px_-6px_rgba(30,58,138,0.06)] sm:p-10">
+          <div className="rounded-xl border border-[rgba(193,198,215,0.35)] bg-white p-6 shadow-[0_20px_25px_-5px_rgba(15,23,42,0.04),0_8px_10px_-6px_rgba(15,23,42,0.04)] sm:p-10">
             <div className="mb-8 flex flex-col items-center text-center">
-              <div className="mb-4 grid h-16 w-16 place-items-center rounded-xl bg-[#e0f2fe]">
+              <div className="mb-4 grid h-16 w-16 place-items-center rounded-xl bg-teal-50 border border-teal-100 text-teal-600">
                 <UserIcon />
               </div>
               <h1 className="font-['Plus_Jakarta_Sans',sans-serif] text-3xl font-extrabold tracking-[-0.03em] text-[#181c23]">
@@ -95,7 +95,7 @@ export default function RegisterPage() {
                     required
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
-                    className="w-full rounded-lg border border-[#c1c6d7] bg-white py-2.5 pl-10 pr-3 text-base outline-none transition placeholder:text-[#c1c6d7] focus:border-[#0070ea]"
+                    className="w-full rounded-lg border border-[#c1c6d7] bg-white py-2.5 pl-10 pr-3 text-base outline-none transition placeholder:text-[#c1c6d7] focus:border-slate-800 focus:ring-1 focus:ring-slate-800"
                     placeholder="example_user"
                   />
                 </span>
@@ -112,7 +112,7 @@ export default function RegisterPage() {
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="w-full rounded-lg border border-[#c1c6d7] bg-white py-2.5 pl-10 pr-3 text-base outline-none transition placeholder:text-[#c1c6d7] focus:border-[#0070ea]"
+                    className="w-full rounded-lg border border-[#c1c6d7] bg-white py-2.5 pl-10 pr-3 text-base outline-none transition placeholder:text-[#c1c6d7] focus:border-slate-800 focus:ring-1 focus:ring-slate-800"
                     placeholder="name@example.com"
                   />
                 </span>
@@ -129,7 +129,7 @@ export default function RegisterPage() {
                     required
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="w-full rounded-lg border border-[#c1c6d7] bg-white py-2.5 pl-10 pr-10 text-base outline-none transition placeholder:text-[#c1c6d7] focus:border-[#0070ea]"
+                    className="w-full rounded-lg border border-[#c1c6d7] bg-white py-2.5 pl-10 pr-10 text-base outline-none transition placeholder:text-[#c1c6d7] focus:border-slate-800 focus:ring-1 focus:ring-slate-800"
                     placeholder="••••••••"
                   />
                   <button
@@ -153,7 +153,7 @@ export default function RegisterPage() {
                     required
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
-                    className="w-full rounded-lg border border-[#c1c6d7] bg-white py-2.5 pl-10 pr-3 text-base outline-none transition placeholder:text-[#c1c6d7] focus:border-[#0070ea]"
+                    className="w-full rounded-lg border border-[#c1c6d7] bg-white py-2.5 pl-10 pr-3 text-base outline-none transition placeholder:text-[#c1c6d7] focus:border-slate-800 focus:ring-1 focus:ring-slate-800"
                     placeholder="••••••••"
                   />
                 </span>
@@ -162,7 +162,7 @@ export default function RegisterPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full mt-4 rounded-lg bg-[#0070ea] py-3 text-lg font-bold text-[#fefcff] shadow-[0_10px_15px_-3px_rgba(0,89,187,0.2)] transition hover:bg-[#0065d2] disabled:opacity-70"
+                className="w-full mt-4 rounded-lg bg-slate-900 py-3 text-lg font-bold text-white shadow-md shadow-slate-900/10 transition hover:bg-slate-800 disabled:opacity-70"
               >
                 {loading ? "Đang đăng ký..." : "Đăng ký"}
               </button>
@@ -171,7 +171,7 @@ export default function RegisterPage() {
             </form>
 
             <p className="mt-7 text-center text-sm text-[#414754]">
-              Đã có tài khoản? <Link to="/login" className="font-bold text-[#0059bb] hover:underline">Đăng nhập ngay</Link>
+              Đã có tài khoản? <Link to="/login" className="font-bold text-teal-600 hover:text-teal-700 hover:underline">Đăng nhập ngay</Link>
             </p>
           </div>
         </div>
@@ -179,7 +179,7 @@ export default function RegisterPage() {
 
       <footer className="relative z-10 border-t border-slate-200 bg-[#f8fafc] px-4 py-8 sm:px-6">
         <div className="mx-auto flex w-full max-w-[1280px] flex-col items-center justify-between gap-5 text-sm sm:flex-row">
-          <p className="font-bold text-blue-600">Cognitive Luminary</p>
+          <p className="font-bold text-teal-600">Cognitive Luminary</p>
           <p className="text-[#64748b]">© 2024 PUQ Chatbot. Bảo lưu mọi quyền.</p>
         </div>
       </footer>
