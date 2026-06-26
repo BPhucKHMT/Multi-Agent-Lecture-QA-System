@@ -6,6 +6,9 @@ resources và prewarm Redis semantic cache ở background để request đầu t
 phải gánh toàn bộ chi phí khởi tạo model/vector DB.
 """
 
+import warnings
+warnings.filterwarnings("ignore")
+
 from contextlib import asynccontextmanager
 import logging
 
