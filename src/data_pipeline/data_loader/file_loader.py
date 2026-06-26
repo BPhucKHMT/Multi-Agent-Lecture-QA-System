@@ -11,7 +11,7 @@ from dotenv import load_dotenv
 
 from src.storage.vectorstore import VectorDB # để kiểm tra các file đã chunk chưa
 from src.shared.config import get_path
-from src.retrieval.text_splitters.semantic import TranscriptChunker # để chunk transcript
+from src.retrieval.text_splitters.chunker import TranscriptChunker # để chunk transcript
 
 # ==========================================================
 '''
