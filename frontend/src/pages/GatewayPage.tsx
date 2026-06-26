@@ -19,16 +19,16 @@ const GatewayCard = memo(({
   title: string;
   description: string;
   cta: string;
-  tone: "violet" | "cyan";
+  tone: "slate" | "cyan";
   active: boolean;
   onClick: () => void;
   onHover: () => void;
   onLeave: () => void;
   icon: React.ReactNode;
 }) => {
-  const iconBoxClass = tone === "violet" ? "bg-violet-600 text-white" : "bg-cyan-500 text-white";
-  const ctaClass = tone === "violet" ? "text-violet-700" : "text-cyan-700";
-  const toneGlowClass = tone === "violet" ? "from-violet-200/90 to-fuchsia-100/70" : "from-cyan-100/90 to-emerald-100/70";
+  const iconBoxClass = tone === "slate" ? "bg-slate-900 text-white" : "bg-cyan-500 text-white";
+  const ctaClass = tone === "slate" ? "text-slate-800" : "text-cyan-700";
+  const toneGlowClass = tone === "slate" ? "from-slate-200/90 to-slate-100/70" : "from-cyan-100/90 to-emerald-100/70";
 
   return (
     <motion.button
@@ -84,7 +84,7 @@ export default function GatewayPage() {
     <div className="relative z-10 min-h-screen">
       <header className="sticky top-0 z-20 flex h-16 items-center justify-between border-b border-slate-200/80 bg-white/80 px-6 shadow-[0_1px_2px_rgba(0,0,0,0.05)] backdrop-blur-sm">
         <div className="flex items-center gap-8">
-          <h1 className="font-['Plus_Jakarta_Sans',sans-serif] text-[1.35rem] font-bold text-[#2563eb]">Chọn không gian làm việc</h1>
+          <h1 className="font-['Plus_Jakarta_Sans',sans-serif] text-[1.35rem] font-bold text-[#0f172a]">Chọn không gian làm việc</h1>
           <div className="hidden items-center rounded-lg bg-[#f1f3fe] px-4 py-2.5 md:flex md:w-64">
             <span className="mr-2 text-slate-400">⌕</span>
             <span className="text-sm text-slate-500">Tìm kiếm không gian...</span>
@@ -132,7 +132,7 @@ export default function GatewayPage() {
                 title="Chuyên gia Chatspace"
                 description="Thảo luận tự nhiên với tài liệu kỹ thuật. Đào sâu vào các API phức tạp và bài giảng với độ chính xác từ AI."
                 cta="Vào không gian"
-                tone="violet"
+                tone="slate"
                 active={hoveredCard === "chatspace"}
                 onClick={() => navigate("/workspace/chatspace")}
                 onHover={() => handleHover("chatspace")}

@@ -34,7 +34,7 @@ const CodeBlock = ({ language, value }: { language: string; value: string }) => 
     <div className={`not-prose group relative my-6 overflow-hidden rounded-2xl border shadow-lg transition-all duration-300 
       ${isOutput ? 'border-emerald-500/20 bg-[#0d1117] shadow-emerald-500/5' : 
         isError ? 'border-rose-500/20 bg-[#0d1117] shadow-rose-500/5' : 
-        'border-violet-100/50 bg-[#1e1e1e] shadow-violet-500/5'}`}>
+        'border-slate-800/80 bg-[#1e1e1e] shadow-md shadow-slate-950/10'}`}>
       
       {/* Header */}
       <div className={`flex items-center justify-between px-4 py-2.5 border-b 
@@ -56,7 +56,7 @@ const CodeBlock = ({ language, value }: { language: string; value: string }) => 
             ) : isError ? (
               <AlertCircle className="h-3.5 w-3.5 text-rose-400" />
             ) : (
-              <Code className="h-3.5 w-3.5 text-violet-400" />
+              <Code className="h-3.5 w-3.5 text-teal-400" />
             )}
             <span className={`text-[11px] font-black uppercase tracking-widest 
               ${isOutput ? 'text-emerald-400/80' : 
@@ -180,12 +180,12 @@ export default function MarkdownRenderer({
       <div className={`prose prose-slate prose-base max-w-none 
       prose-headings:font-bold prose-headings:text-slate-900 
       prose-p:leading-[1.75] prose-p:text-slate-800 prose-p:my-4
-      prose-strong:font-bold prose-strong:text-violet-950
+      prose-strong:font-bold prose-strong:text-slate-900
       prose-ul:my-4 prose-ul:list-disc prose-ul:pl-6
       prose-ol:my-4 prose-ol:list-decimal prose-ol:pl-6
       prose-li:my-1.5 prose-li:leading-relaxed
-      prose-a:text-violet-600 prose-a:no-underline hover:prose-a:underline
-      prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded-md prose-code:bg-slate-100 prose-code:text-violet-600 prose-code:before:content-none prose-code:after:content-none prose-code:break-words prose-code:whitespace-pre-wrap
+      prose-a:text-teal-600 prose-a:no-underline hover:prose-a:underline
+      prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded-md prose-code:bg-slate-100 prose-code:text-teal-700 prose-code:before:content-none prose-code:after:content-none prose-code:break-words prose-code:whitespace-pre-wrap
       prose-pre:bg-transparent prose-pre:p-0 prose-pre:my-0 prose-pre:max-w-full prose-pre:overflow-x-auto
       prose-table:block prose-table:max-w-full prose-table:overflow-x-auto
       break-words ${className}`}>
@@ -225,7 +225,7 @@ export default function MarkdownRenderer({
                     href={citation.video_url}
                     target="_blank"
                     rel="noreferrer"
-                    className="mx-0.5 inline-flex items-center justify-center rounded-md bg-violet-100/60 px-1.5 py-0.5 text-[12.5px] font-bold text-violet-700 transition-all hover:bg-violet-600 hover:text-white hover:scale-110 active:scale-95 no-underline decoration-transparent"
+                    className="mx-0.5 inline-flex items-center justify-center rounded-md bg-teal-50 border border-teal-100 px-1.5 py-0.5 text-[12.5px] font-bold text-teal-800 transition-all hover:bg-teal-600 hover:text-white hover:scale-105 active:scale-95 no-underline decoration-transparent"
                     title={citation.title || "Xem nguồn video"}
                   >
                     {children}
