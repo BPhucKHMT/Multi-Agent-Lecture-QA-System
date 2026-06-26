@@ -379,18 +379,28 @@ async def generate_chat_stream(
                 if isinstance(output, dict) and "response" in output:
                     final_response = output.get("response")
 
+        # Fallback nếu câu trả lời trống hoặc chỉ có khoảng trắng
+        if not final_response or not isinstance(final_response, dict) or not final_response.get("text", "").strip():
+            final_response = {
+                "text": "Không nhận được phản hồi từ AI. Vui lòng thử lại.",
+                "type": "error",
+                "metadata": {}
+            }
+
         # Lưu phản hồi Assistant vào DB
         if final_response and isinstance(final_response, dict):
-            assistant_chat = ChatHistory(
-                user_id=user_id,
-                session_id=session_id,
-                role="assistant",
-                content=final_response.get("text", ""),
-                agent_type=node_name,
-                metadata_json=final_response,
-            )
-            db.add(assistant_chat)
-            db.commit()
+            # Chỉ lưu các câu trả lời thực tế (không lưu lỗi kỹ thuật phát sinh từ luồng)
+            if final_response.get("type") != "error" or final_response.get("text") == "Không nhận được phản hồi từ AI. Vui lòng thử lại.":
+                assistant_chat = ChatHistory(
+                    user_id=user_id,
+                    session_id=session_id,
+                    role="assistant",
+                    content=final_response.get("text", ""),
+                    agent_type=node_name if final_response.get("type") != "error" else "error",
+                    metadata_json=final_response,
+                )
+                db.add(assistant_chat)
+                db.commit()
 
             # 5. Lưu vào Semantic Cache (Nếu thành công)
             if cache_provider and final_response.get("text"):

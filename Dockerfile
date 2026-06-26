@@ -72,7 +72,7 @@ FROM dev-gpu AS pipeline-gpu
 COPY requirements.pipeline.txt ./
 RUN pip install -r requirements.pipeline.txt
 
-CMD ["python", "-m", "src.data_pipeline.pipeline"]
+CMD ["python", "-m", "src.data_pipeline.data_loader.pipeline"]
 
 FROM dev-gpu AS prod-gpu
 ENV RAG_DEVICE=cuda

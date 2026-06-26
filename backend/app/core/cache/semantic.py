@@ -20,7 +20,10 @@ import numpy as np
 import redis
 from langchain_openai import OpenAIEmbeddings
 from redis.commands.search.field import NumericField, TagField, TextField, VectorField
-from redis.commands.search.indexDefinition import IndexDefinition, IndexType
+try:
+    from redis.commands.search.indexDefinition import IndexDefinition, IndexType
+except ModuleNotFoundError:
+    from redis.commands.search.index_definition import IndexDefinition, IndexType
 from redis.commands.search.query import Query
 
 from backend.app.core.config import settings
@@ -111,10 +114,25 @@ class SemanticCache:
 
     def __init__(self, redis_client: redis.Redis):
         self.redis = redis_client
-        self.embeddings = OpenAIEmbeddings(
-            model=settings.SEMANTIC_CACHE_EMBEDDING_MODEL,
-            openai_api_key=settings.OPENAI_API_KEY,
-        )
+        model_name = settings.SEMANTIC_CACHE_EMBEDDING_MODEL
+        
+        # Nếu cấu hình model OpenAI thì dùng OpenAIEmbeddings
+        if "text-embedding" in model_name or "openai" in model_name.lower():
+            from langchain_openai import OpenAIEmbeddings
+            self.embeddings = OpenAIEmbeddings(
+                model=model_name,
+                openai_api_key=settings.OPENAI_API_KEY,
+            )
+        else:
+            # Sử dụng model local (như BGE-M3) chạy trên GPU/CPU để MIỄN PHÍ 100%
+            from langchain_community.embeddings import HuggingFaceEmbeddings
+            import torch
+            device = "cuda" if torch.cuda.is_available() else "cpu"
+            logger.info("🧠 Khởi tạo local Semantic Cache Embeddings (%s) trên %s...", model_name, device)
+            self.embeddings = HuggingFaceEmbeddings(
+                model_name=model_name,
+                model_kwargs={"device": device}
+            )
 
     def ensure_index(self) -> None:
         """Tạo Redis Stack index nếu chưa tồn tại."""

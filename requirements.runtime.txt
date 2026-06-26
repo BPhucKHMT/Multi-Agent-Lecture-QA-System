@@ -47,6 +47,7 @@ accelerate==1.10.1
 tokenizers==0.22.1
 safetensors==0.6.2
 hf_transfer==0.1.9
+einops==0.8.1
 
 # Text processing & utilities
 pyvi==0.1.1
