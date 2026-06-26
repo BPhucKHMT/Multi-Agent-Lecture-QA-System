@@ -3,7 +3,7 @@ File: preprocess.py
 Chức năng:
 - Duyệt qua tất cả transcript trong data/<playlist>/transcripts/
 - Phát hiện file transcript bị lỗi (rỗng, ký tự lạ, hallucination, lặp, language switching, timestamp)
-- Sửa chính tả bằng Gemini API (free)
+- Sửa chính tả bằng OpenAI API (GPT)
 - Refetch lại transcript bị lỗi bằng Whisper (thử nhiều model)
 - Lưu TẤT CẢ file đã xử lý vào data/<playlist>/processed_transcripts/
 - GIỮ NGUYÊN file gốc trong transcripts/
@@ -21,13 +21,16 @@ import json
 import argparse
 import re
 import os
+import sys
 from dotenv import load_dotenv
 
-try:
-    import google.generativeai as genai
-except ImportError:
-    print("⚠️ Cần cài đặt: pip install google-generativeai")
-    genai = None
+# Fix Unicode encoding on Windows
+if sys.stdout.encoding is None or sys.stdout.encoding.lower() != 'utf-8':
+    try:
+        sys.stdout.reconfigure(encoding='utf-8')
+    except AttributeError:
+        # Python < 3.7 không có reconfigure
+        pass
 
 from .youtube_fetchers import (
     TranscriptWhisperFetcher,
@@ -170,35 +173,37 @@ class TranscriptValidator:
 
 
 # =====================================================================
-# LLMSpellChecker - Sửa chính tả bằng LLM
+# LLMSpellChecker - Sửa chính tả bằng LLM (OpenAI)
 # =====================================================================
 class LLMSpellChecker:
-    """Sửa chính tả bằng LLM."""
+    """Sửa chính tả bằng OpenAI LLM."""
 
     def __init__(self):
-        print("✅ LLM spell checker đã sẵn sàng")
+        print("[OK] LLM spell checker (OpenAI) da san sang")
 
     def correct_text(self, text: str, language: str = "vi") -> Optional[str]:
         """Sửa chính tả theo từng batch để tránh bị LLM cắt cụt văn bản."""
-        if not text: return text
-        
+        if not text:
+            return text
+
         lines = text.split('\n')
-        batch_size = 20 # Sửa 20 dòng một lần
+        batch_size = 20  # Sửa 20 dòng một lần
         corrected_lines = []
-        
+
         print(f"   (Batching: {len(lines)} dòng -> {len(lines)//batch_size + 1} đợt)")
-        
+
         for i in range(0, len(lines), batch_size):
             batch = "\n".join(lines[i:i + batch_size])
-            if not batch.strip(): continue
-            
+            if not batch.strip():
+                continue
+
             corrected_batch = correct_transcript_spelling(batch)
             if corrected_batch:
                 corrected_lines.append(corrected_batch)
             else:
                 # Nếu API lỗi, lấy lại bản gốc của batch đó để không mất dữ liệu
                 corrected_lines.append(batch)
-                
+
         return "\n".join(corrected_lines)
 
 
@@ -221,7 +226,7 @@ class TranscriptPreprocessor:
     def process_all_playlists(self, force_refetch: bool = False):
         """Duyệt tất cả playlist trong data/"""
         if not DATA_ROOT.exists():
-            print(f"⚠️ Không tìm thấy thư mục data: {DATA_ROOT}")
+            print(f"[WARN] Không tìm thấy thư mục data: {DATA_ROOT}")
             return
 
         for playlist_folder in DATA_ROOT.iterdir():
@@ -239,13 +244,13 @@ class TranscriptPreprocessor:
         """Xử lý một playlist"""
         transcripts_dir = playlist_folder / "transcripts"
         if not transcripts_dir.exists():
-            print(f"⏭️ Không có thư mục transcripts, bỏ qua")
+            print(f"[SKIP] Không có thư mục transcripts, bỏ qua")
             return
 
         # Tạo thư mục processed_transcripts
         processed_dir = playlist_folder / "processed_transcripts"
         processed_dir.mkdir(exist_ok=True)
-        print(f"📁 Output folder: {processed_dir.resolve()}\n")
+        print(f"[DIR] Output folder: {processed_dir.resolve()}\n")
 
         # Load metadata để lấy video titles và index
         metadata_file = playlist_folder / "metadata.json"
@@ -259,7 +264,7 @@ class TranscriptPreprocessor:
                         "index": idx,
                     }
             except Exception as e:
-                print(f"⚠️ Không đọc được metadata: {e}")
+                print(f"[WARN] Không đọc được metadata: {e}")
 
         audio_dir = playlist_folder / "audio"
         corrupted_log = playlist_folder / "corrupted_transcripts.json"
@@ -267,10 +272,10 @@ class TranscriptPreprocessor:
 
         txt_files = list(transcripts_dir.glob("*.txt"))
         if not txt_files:
-            print("⏭️ Không có file transcript nào")
+            print("[SKIP] Không có file transcript nào")
             return
 
-        print(f"📊 Tìm thấy {len(txt_files)} transcript\n")
+        print(f"[STAT] Tìm thấy {len(txt_files)} transcript\n")
 
         processed_count = 0
         skipped_count = 0
@@ -280,14 +285,14 @@ class TranscriptPreprocessor:
             info = video_info.get(video_id, {"title": "Unknown", "index": "?"})
 
             print(f"\n{'─' * 70}")
-            print(f"🔍 Video #{info['index']}: {info['title']}")
+            print(f"[SEARCH] Video #{info['index']}: {info['title']}")
             print(f"📄 Source: {txt_file.resolve()}")
 
             # Đọc transcript gốc
             try:
                 text = txt_file.read_text(encoding="utf-8")
             except Exception as e:
-                print(f"❌ Không đọc được file: {e}")
+                print(f"[ERR] Không đọc được file: {e}")
                 skipped_count += 1
                 continue
 
@@ -295,7 +300,7 @@ class TranscriptPreprocessor:
             output_file = processed_dir / f"{video_id}.txt"
 
             if output_file.exists() and not force_refetch:
-                print(f"⏭️ Đã xử lý trước đó, bỏ qua")
+                print(f"[SKIP] Đã xử lý trước đó, bỏ qua")
                 skipped_count += 1
                 continue
 
@@ -303,7 +308,7 @@ class TranscriptPreprocessor:
             is_corrupted, reason = self.validator.is_corrupted(text)
 
             if is_corrupted:
-                print(f"❌ File bị lỗi: {reason}")
+                print(f"[ERR] File bị lỗi: {reason}")
                 corrupted_data.append(
                     {
                         "video_id": video_id,
@@ -315,7 +320,7 @@ class TranscriptPreprocessor:
                 )
 
                 if force_refetch:
-                    print(f"🔄 Refetching transcript...")
+                    print(f"[RETRY] Refetching transcript...")
                     refetched_text = self._refetch_transcript(video_id, audio_dir)
 
                     if refetched_text:
@@ -325,19 +330,19 @@ class TranscriptPreprocessor:
                         print(f"💾 Saved: {output_file.resolve()}")
                         processed_count += 1
                     else:
-                        print(f"⚠️ Không thể refetch, bỏ qua file này")
+                        print(f"[WARN] Không thể refetch, bỏ qua file này")
                         skipped_count += 1
                 else:
-                    print(f"⚠️ Dùng --force-refetch để tự động refetch")
+                    print(f"[WARN] Dùng --force-refetch để tự động refetch")
                     skipped_count += 1
                 continue
 
             # 2. File OK - Sửa chính tả (nếu có Gemini)
-            print(f"✅ File OK")
+            print(f"[OK] File OK")
             final_text = text
 
             if self.spell_checker:
-                print(f"✏️ Đang sửa chính tả với LLM...")
+                print(f"[EDIT] Đang sửa chính tả với LLM...")
                 corrected = self.spell_checker.correct_text(text)
 
                 if corrected:
@@ -347,19 +352,19 @@ class TranscriptPreprocessor:
                     )
 
                     if is_corrupted_after:
-                        print(f"⚠️ Gemini sửa bị lỗi ({reason_after}), dùng bản gốc")
+                        print(f"[WARN] Gemini sửa bị lỗi ({reason_after}), dùng bản gốc")
                         final_text = text
                     else:
                         if corrected != text:
-                            print(f"✅ Đã sửa chính tả")
+                            print(f"[OK] Đã sửa chính tả")
                         else:
-                            print(f"⏭️ Không cần sửa")
+                            print(f"[SKIP] Không cần sửa")
                         final_text = corrected
                 else:
-                    print(f"⚠️ LLM lỗi, dùng bản gốc")
+                    print(f"[WARN] LLM lỗi, dùng bản gốc")
                     final_text = text
             else:
-                print(f"⏭️ Bỏ qua sửa chính tả (không có Gemini API key)")
+                print(f"[SKIP] Bỏ qua sửa chính tả (không có Gemini API key)")
 
             # 3. Lưu vào processed_transcripts
             output_file = processed_dir / f"{video_id}.txt"
@@ -375,10 +380,10 @@ class TranscriptPreprocessor:
 
         # Summary
         print(f"\n{'=' * 70}")
-        print(f"📊 SUMMARY:")
-        print(f"   ✅ Processed: {processed_count}")
-        print(f"   ⏭️ Skipped: {skipped_count}")
-        print(f"   ❌ Corrupted: {len(corrupted_data)}")
+        print(f"[STAT] SUMMARY:")
+        print(f"   [OK] Processed: {processed_count}")
+        print(f"   [SKIP] Skipped: {skipped_count}")
+        print(f"   [ERR] Corrupted: {len(corrupted_data)}")
         print(f"{'=' * 70}")
 
     def _refetch_transcript(self, video_id: str, audio_dir: Path) -> Optional[str]:
@@ -393,7 +398,7 @@ class TranscriptPreprocessor:
         try:
             # Thử từng model size
             for model_size in model_sizes:
-                print(f"   🔄 Thử Whisper model '{model_size}'...")
+                print(f"   [RETRY] Thử Whisper model '{model_size}'...")
 
                 try:
                     # Tạo fetcher mới với model size khác
@@ -409,7 +414,7 @@ class TranscriptPreprocessor:
                     )
 
                     if not whisper_data or not whisper_data.get("segments"):
-                        print(f"   ⚠️ Model '{model_size}' không trả về segments")
+                        print(f"   [WARN] Model '{model_size}' không trả về segments")
                         continue
 
                     # Normalize
@@ -420,25 +425,25 @@ class TranscriptPreprocessor:
                     is_corrupted, reason = self.validator.is_corrupted(txt)
 
                     if is_corrupted:
-                        print(f"   ⚠️ Model '{model_size}' vẫn bị lỗi: {reason}")
+                        print(f"   [WARN] Model '{model_size}' vẫn bị lỗi: {reason}")
                         continue
 
                     # OK - cleanup audio và return
-                    print(f"   ✅ Thành công với model '{model_size}'!")
+                    print(f"   [OK] Thành công với model '{model_size}'!")
                     self._cleanup_audio(video_id, audio_dir)
                     return txt
 
                 except Exception as e:
-                    print(f"   ❌ Lỗi với model '{model_size}': {e}")
+                    print(f"   [ERR] Lỗi với model '{model_size}': {e}")
                     continue
 
             # Nếu tất cả model đều thất bại
-            print(f"   ❌ Tất cả Whisper models đều thất bại")
+            print(f"   [ERR] Tất cả Whisper models đều thất bại")
             self._cleanup_audio(video_id, audio_dir)
             return None
 
         except Exception as e:
-            print(f"   ❌ Lỗi refetch: {e}")
+            print(f"   [ERR] Lỗi refetch: {e}")
             self._cleanup_audio(video_id, audio_dir)
             return None
 
@@ -448,9 +453,9 @@ class TranscriptPreprocessor:
             audio_file = audio_dir / f"{video_id}.wav"
             if audio_file.exists():
                 audio_file.unlink()
-                print(f"   🧹 Đã xóa audio tạm")
+                print(f"   [CLEAN] Đã xóa audio tạm")
         except Exception as e:
-            print(f"   ⚠️ Không xóa được audio: {e}")
+            print(f"   [WARN] Không xóa được audio: {e}")
 
 
 # =====================================================================
@@ -486,10 +491,14 @@ Ví dụ:
     parser.add_argument(
         "--api-key",
         type=str,
-        help="Gemini API key (hoặc set GEMINI_API_KEY trong .env)",
+        help="OpenAI API key (myAPIKey). Mặc định lấy từ biến môi trường myAPIKey",
     )
 
     args = parser.parse_args()
+
+    # Override API key nếu có truyền qua CLI
+    if args.api_key:
+        os.environ["myAPIKey"] = args.api_key
 
     preprocessor = TranscriptPreprocessor(use_llm=True)
 
@@ -497,7 +506,7 @@ Ví dụ:
         # Xử lý 1 playlist
         playlist_folder = DATA_ROOT / args.playlist
         if not playlist_folder.exists():
-            print(f"❌ Không tìm thấy playlist: {args.playlist}")
+            print(f"[ERR] Không tìm thấy playlist: {args.playlist}")
         else:
             preprocessor.process_playlist(playlist_folder, args.force_refetch)
     else:

@@ -81,7 +81,9 @@ services:
     ports:
       - "8000:8000"
     volumes:
-      - .:/app
+      - ./backend:/app/backend
+      - ./src:/app/src
+      - ./artifacts:/app/artifacts
       - hf_cache:/app/.cache/huggingface
     networks:
       default:
@@ -111,7 +113,9 @@ services:
       TRANSFORMERS_CACHE: /app/.cache/huggingface
       TOKENIZERS_PARALLELISM: "false"
     volumes:
-      - .:/app
+      - ./backend:/app/backend
+      - ./src:/app/src
+      - ./artifacts:/app/artifacts
       - hf_cache:/app/.cache/huggingface
     deploy:
       resources:

@@ -77,7 +77,8 @@ class KeyframeExtractor:
                 continue
                 
             with open(scene_json, "r") as f:
-                scenes = json.load(f)
+                scene_data = json.load(f)
+            scenes = scene_data.get("scenes", []) if isinstance(scene_data, dict) else scene_data
                 
             print(f"🖼️ Đang trích xuất keyframes: {v_path.name}")
             num = self.extract_keyframes(str(v_path), scenes, v_output_dir)

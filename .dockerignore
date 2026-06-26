@@ -37,3 +37,6 @@ frontend/dist
 
 # Reports/cache
 report
+
+# Experiments data (mounted separately via volumes)
+experiments/
