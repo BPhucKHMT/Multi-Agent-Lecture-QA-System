@@ -13,6 +13,9 @@ services:
       RAG_RETRIEVER_K: ${RAG_RETRIEVER_K:-40}
       RAG_RETRIEVER_FETCH_K: ${RAG_RETRIEVER_FETCH_K:-80}
       REDIS_URL: redis://redis-stack:6379/0
+      TRANSNET_V2_PATH: /app/artifacts/data_extraction/TransNetV2
+      SEMANTIC_CACHE_ENABLED: ${SEMANTIC_CACHE_ENABLED:-true}
+      SEMANTIC_CACHE_PREWARM_ENABLED: ${SEMANTIC_CACHE_PREWARM_ENABLED:-false}
       HF_HOME: /app/.cache/huggingface
       TRANSFORMERS_CACHE: /app/.cache/huggingface
       TOKENIZERS_PARALLELISM: "false"
@@ -54,6 +57,7 @@ services:
       - .env
     environment:
       RAG_DEVICE: cpu
+      TRANSNET_V2_PATH: /app/artifacts/data_extraction/TransNetV2
       HF_HOME: /app/.cache/huggingface
       TRANSFORMERS_CACHE: /app/.cache/huggingface
       TOKENIZERS_PARALLELISM: "false"
@@ -75,6 +79,9 @@ services:
       RAG_DEVICE: cuda
       RAG_RETRIEVER_K: ${RAG_RETRIEVER_K:-40}
       RAG_RETRIEVER_FETCH_K: ${RAG_RETRIEVER_FETCH_K:-80}
+      TRANSNET_V2_PATH: /app/artifacts/data_extraction/TransNetV2
+      SEMANTIC_CACHE_ENABLED: ${SEMANTIC_CACHE_ENABLED:-true}
+      SEMANTIC_CACHE_PREWARM_ENABLED: ${SEMANTIC_CACHE_PREWARM_ENABLED:-false}
       HF_HOME: /app/.cache/huggingface
       TRANSFORMERS_CACHE: /app/.cache/huggingface
       TOKENIZERS_PARALLELISM: "false"
@@ -109,6 +116,7 @@ services:
       - .env
     environment:
       RAG_DEVICE: cuda
+      TRANSNET_V2_PATH: /app/artifacts/data_extraction/TransNetV2
       HF_HOME: /app/.cache/huggingface
       TRANSFORMERS_CACHE: /app/.cache/huggingface
       TOKENIZERS_PARALLELISM: "false"
