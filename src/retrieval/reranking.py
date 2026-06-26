@@ -1,5 +1,6 @@
 import os
 import torch
+import yaml
 from typing import List
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
 
@@ -13,7 +14,22 @@ reranker = CrossEncoderReranker()
 
 
 class CrossEncoderReranker:
-    def __init__(self, model_name: str = "BAAI/bge-reranker-base", device: str = None):
+    def __init__(self, model_name: str = None, device: str = None):
+        # Load config từ config.yaml
+        try:
+            with open('config.yaml', 'r', encoding='utf-8') as f:
+                config = yaml.safe_load(f)
+                pipeline_config = config.get('pipeline', {})
+                default_model = pipeline_config.get('reranker_model', 'BAAI/bge-reranker-base')
+        except Exception as e:
+            print(f"[WARN] Không đọc được config.yaml, dùng default reranker: {e}")
+            default_model = 'BAAI/bge-reranker-base'
+
+        # Use param nếu có, nếu không dùng config
+        if model_name is None:
+            model_name = default_model
+        self.model_name = model_name
+
         requested_device = device or os.getenv("RAG_DEVICE", "auto")
         if requested_device == "auto":
             requested_device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -21,8 +37,16 @@ class CrossEncoderReranker:
             requested_device = "cpu"
         self.device = requested_device
         print(f"Initializing CrossEncoderReranker on {self.device}...")
+        print(f"Loading reranker model: {self.model_name}")
+
+        # Jina v2 models cần trust_remote_code=True
+        trust_remote = "jina-reranker-v2" in model_name
+
         self.tokenizer = AutoTokenizer.from_pretrained(model_name)
-        self.model = AutoModelForSequenceClassification.from_pretrained(model_name)
+        self.model = AutoModelForSequenceClassification.from_pretrained(
+            model_name,
+            trust_remote_code=trust_remote
+        )
         self.model.to(self.device)
         self.model.eval()
         self.BAD_HINTS = ("Cảm ơn các bạn đã xem", "đăng ký kênh", "subscribe", "like và share")

@@ -11,6 +11,10 @@ type MessageListProps = {
   streamingStatus?: string | null;
 };
 
+export function getMessageAnimationDelay(): string {
+  return "0ms";
+}
+
 function LoadingSteps({ status }: { status?: string | null }) {
   const currentStatus = status || "Đang phân tích dữ liệu bài giảng...";
   const steps = [
@@ -84,7 +88,7 @@ export default function MessageList({ messages, isLoading = false, streamingStat
           <div
             key={message.id}
             className={`puq-message-enter flex w-full min-w-0 gap-4 ${isUser ? "flex-row-reverse" : "flex-row"}`}
-            style={{ animationDelay: `${index * 40}ms` }}
+            style={{ animationDelay: getMessageAnimationDelay() }}
           >
             <div className={`mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl shadow-sm border ${
               isUser ? "bg-violet-700 text-white border-violet-800" : "bg-white text-violet-600 border-violet-100"

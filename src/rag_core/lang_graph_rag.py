@@ -129,7 +129,8 @@ SUPERVISOR_SYSTEM_PROMPT = (
 
     "QUY TẮC CỰC KỲ QUAN TRỌNG:\n"
     "- Bạn là một bộ điều phối thuần túy. BẮT BUỘC phải gọi đúng 1 công cụ.\n"
-    "- KHÔNG được trả lời nội dung.\n\n"
+    "- KHÔNG được trả lời nội dung.\n"
+    "- Khi đã quyết định gọi công cụ, chỉ trả về tool call. Không viết câu trả lời giải thích thêm.\n\n"
 
     "QUY TẮC PHÂN LOẠI (ƯU TIÊN CAO):\n"
     "- Nếu câu hỏi chứa thuật ngữ kỹ thuật (ví dụ: diffusion, transformer, CNN, loss, model, training, AI) "
@@ -240,7 +241,20 @@ def _is_greeting_input(input_text: str) -> bool:
     normalized = str(input_text or "").strip().lower()
     if not normalized:
         return False
-    return any(normalized == pattern or normalized.startswith(f"{pattern} ") for pattern in CHITCHAT_PATTERNS)
+    
+    # 1. Nếu khớp chính xác 100% với một mẫu chitchat
+    if any(normalized == pattern for pattern in CHITCHAT_PATTERNS):
+        return True
+        
+    # 2. Nếu bắt đầu/kết thúc bằng một chitchat pattern nhưng câu cực kỳ ngắn (tối đa 3 từ)
+    # Ví dụ: "chào bạn", "hello bot", "alo em" -> là greeting thuần túy.
+    # Nhưng "alo linear regression là gì" -> có chứa nội dung dài, không tự động coi là greeting.
+    words = normalized.split()
+    if len(words) <= 3:
+        if any(normalized.startswith(f"{pattern} ") or normalized.endswith(f" {pattern}") for pattern in CHITCHAT_PATTERNS):
+            return True
+            
+    return False
 
 async def node_supervisor(state: State):
     """Route request sang đúng agent bằng deterministic rules trước, LLM sau."""
@@ -301,9 +315,13 @@ async def node_supervisor(state: State):
         tool_calls = []
         if hasattr(response, "tool_calls") and response.tool_calls:
             for tc in response.tool_calls:
+                args = tc["args"] or {}
+                if tc["name"] == "GenerateQuiz":
+                    if "num_questions" not in args and "number_of_questions" in args:
+                        args["num_questions"] = args.get("number_of_questions")
                 tool_calls.append({
                     "name": tc["name"],
-                    "args": tc["args"]
+                    "args": args
                 })
 
         # Logic Fallback nếu LLM không gọi tool (Pure Supervisor fallback)
