@@ -1,0 +1,15 @@
+{
+  "query_count": 2,
+  "no_qrels_query_count": 0,
+  "recall@5": 1.0,
+  "recall@10": 1.0,
+  "recall@20": 1.0,
+  "recall@40": 1.0,
+  "recall@100": 1.0,
+  "mrr@10": 1.0,
+  "mrr@20": 1.0,
+  "mrr@40": 1.0,
+  "ndcg@10": 1.0,
+  "ndcg@20": 1.0,
+  "ndcg@40": 1.0
+}

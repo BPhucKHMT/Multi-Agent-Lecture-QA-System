@@ -1,0 +1,42 @@
+dataset_version: phase2_pilot_v1
+strategy_id: baseline_recursive
+split: test
+chunks_dir: experiments/data/chunks/baseline_recursive
+query_path: experiments/data/processed/test.jsonl
+qrels_path: experiments/data/processed/qrels_baseline_recursive.jsonl
+run_root: experiments/runs/embedding
+registry_path: experiments/runs/registry.jsonl
+top_k: 40
+retrieval_backend: langchain_chroma_mmr
+search_type: mmr
+search_kwargs:
+  k: 40
+  fetch_k: 80
+  lambda_mult: 0.7
+metrics:
+  recall_at:
+    - 5
+    - 10
+    - 20
+    - 40
+  mrr_at:
+    - 10
+    - 20
+    - 40
+  ndcg_at:
+    - 10
+    - 20
+    - 40
+models:
+  - name: BAAI/bge-m3
+    batch_size: 16
+    normalize_embeddings: true
+  - name: intfloat/multilingual-e5-large
+    batch_size: 8
+    normalize_embeddings: true
+  - name: dangvantuan/vietnamese-embedding
+    batch_size: 16
+    normalize_embeddings: true
+  - name: bkai-foundation-models/vietnamese-bi-encoder
+    batch_size: 16
+    normalize_embeddings: true

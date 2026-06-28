@@ -22,12 +22,12 @@ The goal is to let users ask questions about lecture/video content, receive Viet
 Docker Compose uses **profiles** to separate services clearly:
 
 ```txt
-frontend       -> React/Vite dev server, http://localhost:5173
-api-cpu        -> FastAPI/RAG CPU, http://localhost:8000
-api-gpu        -> FastAPI/RAG local GPU, http://localhost:8000
-redis-stack    -> Redis Stack + RedisInsight, http://localhost:8001
-pipeline-cpu   -> CPU data pipeline, used when ingesting data
-pipeline-gpu   -> GPU data pipeline, used when ingesting data with GPU support
+frontend -> React/Vite dev server, http://localhost:5173
+api-cpu -> FastAPI/RAG CPU, http://localhost:8000
+api-gpu -> FastAPI/RAG local GPU, http://localhost:8000
+redis-stack -> Redis Stack + RedisInsight, http://localhost:8001
+pipeline-cpu -> CPU data pipeline, used when ingesting data
+pipeline-gpu -> GPU data pipeline, used when ingesting data with GPU support
 ```
 
 > Frontend and backend run as **two separate containers**, managed together by `docker-compose.yaml`.
@@ -49,8 +49,8 @@ docker compose --profile cpu --profile frontend --profile redis up --build
 Open:
 
 ```txt
-Frontend:     http://localhost:5173
-Backend API:  http://localhost:8000
+Frontend: http://localhost:5173
+Backend API: http://localhost:8000
 RedisInsight: http://localhost:8001
 ```
 
@@ -112,8 +112,81 @@ Latest measured sizes:
 
 ```txt
 rag-qabot:cpu-runtime = 3.97GB
-rag-qabot:gpu         = 12.5GB
+rag-qabot:gpu = 12.5GB
 ```
+
+---
+
+## Run Locally (Without Docker)
+
+If you prefer to run the system directly on your host machine without Docker:
+
+### Prerequisites
+
+1. **Python 3.12+**
+2. **Node.js** (v18 or higher) & **npm**
+3. **PostgreSQL** (running locally or in the cloud)
+4. **Redis** (running locally, required for semantic cache)
+
+### Step 1: Install Python Dependencies
+
+Create and activate a virtual environment, then install the required libraries:
+
+```powershell
+# Create virtual environment
+python -m venv venv
+
+# Activate virtual environment
+# On Windows (PowerShell):
+.\venv\Scripts\Activate.ps1
+# On Linux/macOS:
+source venv/bin/activate
+
+# Install dependencies
+pip install -r requirements.txt
+pip install -r backend/requirements.txt
+```
+
+### Step 2: Configure Environment Variables
+
+Create your `.env` file from the template:
+
+```powershell
+cp .env.example .env
+```
+
+Open `.env` and fill in the necessary values:
+- `DATABASE_URL`: Your PostgreSQL connection string (e.g. `postgresql://postgres:password@localhost:5432/rag_qabot`)
+- `myAPIKey`: Your OpenAI API key
+- `REDIS_URL`: Your Redis connection URL (e.g. `redis://localhost:6379/0`)
+
+### Step 3: Run Database Migrations
+
+Apply the database schema to your PostgreSQL instance using Alembic:
+
+```powershell
+cd backend
+alembic upgrade head
+cd ..
+```
+
+### Step 4: Run the Services
+
+1. **Start Redis**:
+   Make sure your Redis server is running (typically on `localhost:6379`).
+2. **Run Backend API**:
+   ```powershell
+   python -m uvicorn backend.app.main:app --host 0.0.0.0 --port 8000 --reload
+   ```
+3. **Run Frontend**:
+   In a separate terminal:
+   ```powershell
+   cd frontend
+   npm install
+   npm run dev
+   ```
+
+Open your browser at `http://localhost:5173`.
 
 ---
 
@@ -144,21 +217,21 @@ Password: 123456789
 
 ```mermaid
 flowchart TD
-    User[Browser] --> FE[React + Vite Frontend]
-    FE --> API[FastAPI Backend]
-    API --> Auth[Auth + PostgreSQL]
-    API --> Chat[Chat Service]
-    Chat --> Redis[Redis Stack Semantic Cache]
-    Chat --> Graph[LangGraph Supervisor]
-    Graph --> Tutor[Tutor RAG Agent]
-    Graph --> Code[Coding Agent]
-    Graph --> Math[Math Agent]
-    Graph --> Quiz[Quiz Agent]
-    Graph --> Direct[Direct Agent]
-    Tutor --> Retrieval[Hybrid Search + Reranker]
-    Retrieval --> Chroma[ChromaDB]
-    Retrieval --> Artifacts[artifacts/data, videos, chunks]
-    Graph --> LLM[OpenAI Chat Model]
+User[Browser] --> FE[React + Vite Frontend]
+FE --> API[FastAPI Backend]
+API --> Auth[Auth + PostgreSQL]
+API --> Chat[Chat Service]
+Chat --> Redis[Redis Stack Semantic Cache]
+Chat --> Graph[LangGraph Supervisor]
+Graph --> Tutor[Tutor RAG Agent]
+Graph --> Code[Coding Agent]
+Graph --> Math[Math Agent]
+Graph --> Quiz[Quiz Agent]
+Graph --> Direct[Direct Agent]
+Tutor --> Retrieval[Hybrid Search + Reranker]
+Retrieval --> Chroma[ChromaDB]
+Retrieval --> Artifacts[artifacts/data, videos, chunks]
+Graph --> LLM[OpenAI Chat Model]
 ```
 
 ---
@@ -167,16 +240,49 @@ flowchart TD
 
 ```txt
 final_project/
-├── backend/                 # Modular FastAPI app: auth, chat, DB, Redis cache
-├── frontend/                # React + Vite UI: Chatspace, Summary Hub, auth pages
-├── src/                     # AI/RAG engine: LangGraph, agents, retrieval, pipeline
-├── artifacts/               # Runtime data: transcripts, chunks, ChromaDB, videos
-├── docs/                    # Design docs, upgrade plans, architecture notes
-├── tests/                   # Project-level tests and smoke scripts
-├── requirements.txt         # Dependencies for the AI/RAG engine
-├── backend/requirements.txt # Backend API service dependencies
-├── config.yaml              # Playlist/source config for the data pipeline
-└── .env.example             # Environment variable template
+├── backend/            # Modular FastAPI app: auth, chat, DB, Redis cache
+│   ├── app/
+│   │   ├── api/        # REST endpoints (auth, chat, videos)
+│   │   ├── core/       # Config, security, Redis semantic cache
+│   │   ├── db/         # PostgreSQL session, Redis client
+│   │   ├── models/     # SQLAlchemy User model
+│   │   ├── schemas/    # Pydantic schemas
+│   │   └── services/   # Business logic (auth, chat, summary, videos)
+│   ├── alembic/        # DB migrations
+│   └── requirements.txt
+├── frontend/           # React + Vite UI
+│   ├── src/
+│   │   ├── app/        # App shell, routing, providers
+│   │   ├── components/ # Chat, sidebar, shared UI
+│   │   ├── lib/        # API clients, utilities
+│   │   ├── pages/      # Gateway, Login, Workspace
+│   │   ├── store/      # Zustand state management
+│   │   ├── styles/     # Global CSS
+│   │   └── types/      # TypeScript types
+│   └── ui2figma/       # Figma integration tool
+├── src/                # AI/RAG engine
+│   ├── rag_core/       # LangGraph supervisor + 5 agents + tools
+│   ├── retrieval/      # Hybrid search, BM25, reranker, chunkers
+│   ├── storage/        # ChromaDB vectorstore
+│   ├── generation/     # LLM factory (ChatOpenAI)
+│   ├── data_pipeline/  # Crawl/load/preprocess/chunk lecture data
+│   │   └── data_loader/ # OCR, scene detection, video download
+│   ├── shared/         # Shared config, logging
+│   └── notebook_baseline/ # Research notebooks
+├── experiments/        # Benchmark & evaluation
+│   ├── configs/        # YAML configs (embedding, index)
+│   ├── docs/           # Evaluation reports, ground truth guide
+│   ├── scripts/        # CLI runners (benchmark, fine-tune, build)
+│   ├── src/            # Core library (metrics, benchmark, indexing)
+│   ├── tests/          # Unit tests
+│   └── runs/           # Benchmark outputs
+├── artifacts/          # Runtime data: transcripts, chunks, ChromaDB, videos
+├── docs/               # Design docs, upgrade plans
+├── tests/              # Project-level smoke tests
+├── requirements.txt    # Core AI/RAG dependencies
+├── backend/requirements.txt  # Backend-only dependencies
+├── config.yaml         # Playlist/source config cho data pipeline
+└── .env.example        # Environment variable template
 ```
 
 ---
@@ -216,22 +322,22 @@ Copy `.env.example` to `.env`, then fill in real values.
 
 ```txt
 User sends a question
-  ↓
+↓
 Frontend streams request to /api/v1/chat/stream
-  ↓
+↓
 Backend stores user message in PostgreSQL
-  ↓
+↓
 Redis exact/semantic cache lookup
-  ├─ Hit: stream cached response + store assistant message in DB
-  └─ Miss: call LangGraph workflow
-          ↓
-      Supervisor routes to an agent
-          ↓
-      Agent generates response
-          ↓
-      Store assistant message in DB
-          ↓
-      Cache in Redis when cacheable
+├─ Hit: stream cached response + store assistant message in DB
+└─ Miss: call LangGraph workflow
+↓
+Supervisor routes to an agent
+↓
+Agent generates response
+↓
+Store assistant message in DB
+↓
+Cache in Redis when cacheable
 ```
 
 ---
@@ -240,17 +346,17 @@ Redis exact/semantic cache lookup
 
 ```txt
 YouTube/transcript data
-  ↓
+↓
 Data pipeline processes content
-  ↓
+↓
 Chunking + metadata
-  ↓
+↓
 Embedding into ChromaDB
-  ↓
+↓
 Runtime retrieval: vector + keyword
-  ↓
+↓
 Reranker selects best context
-  ↓
+↓
 Tutor agent generates answer with citations
 ```
 
@@ -320,6 +426,52 @@ python -m compileall backend/app src
 - `artifacts/` stores large runtime data and is usually not fully committed.
 - Backend startup prewarms RAG resources and Redis cache in the background.
 - Prompts, responses, and UI prioritize Vietnamese.
+
+---
+
+## Benchmark & Evaluation
+
+Full retrieval benchmark pipeline lives in `experiments/`. See [experiments/README.md](experiments/README.md) for setup and reproduction.
+
+### Benchmark results summary
+
+22 configs tested across chunking strategies, embedding models, and rerankers. Winner: **C21** — hybrid search + `timestamp_150_50_raw` chunking + `bge_m3-finetuned-v3` embedding + Jina reranker.
+
+| Config | Chunk strategy | Embedding | Hit@5 | MRR@10 | NDCG@10 |
+|---|---|---|---:|---:|---:|
+| **C21** | `timestamp_150_50_raw` | `bge_m3-finetuned-v3` | **0.9467** | **0.8085** | **0.6092** |
+| C02 | `recursive` | `bge_m3` | 0.8967 | 0.7471 | 0.5205 |
+| C19 | `semantic` | `bge_m3-finetuned-v3` | 0.9033 | 0.7387 | 0.5355 |
+| C22 | `parent_child_180s_45s` | `bge_m3-finetuned-v3` | 0.9067 | 0.6723 | 0.5494 |
+
+### Detailed evaluation reports
+
+- [End-to-end retrieval benchmark (22 configs)](experiments/docs/evaluation/end_to_end_retrieval.md) — full results table, selection rationale, winner analysis
+- [Embedding model comparison (7 models)](experiments/docs/evaluation/embedding.md) — BGE-M3 variants, multilingual-e5-large, halong_embedding
+- [Reranker comparison (6 models)](experiments/docs/evaluation/reranker.md) — Jina v2 winner, latency analysis
+- [QA quality metrics (BERTScore + RAGAS)](experiments/docs/evaluation/qa_metrics.md) — faithfulness, context precision/recall, answer relevancy
+- [Ground truth dataset guide](experiments/docs/data/groundtruth.md) — how the 350-question evaluation set was created
+
+### Reproduce benchmarks
+
+```powershell
+# Build ChromaDB index
+python experiments/scripts/build_index.py --config experiments/configs/index/<config>.yaml
+
+# Run end-to-end retrieval benchmark
+python experiments/scripts/benchmark_end_to_end_retrieval.py
+
+# Run embedding benchmark
+python experiments/scripts/benchmark_embeddings.py --config experiments/configs/embedding/<config>.yaml
+
+# Run reranker benchmark
+python experiments/scripts/benchmark_rerankers.py
+
+# Run QA quality benchmark (BERTScore + RAGAS)
+python experiments/scripts/benchmark_qa_metrics.py
+```
+
+Outputs go to `experiments/runs/`.
 
 ---
 

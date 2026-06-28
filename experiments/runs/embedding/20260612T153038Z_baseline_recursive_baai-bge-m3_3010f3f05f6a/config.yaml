@@ -1,0 +1,20 @@
+{
+  "dataset_version": "phase2_pilot_v1",
+  "strategy_id": "baseline_recursive",
+  "chunks_dir": "experiments/data/chunks/baseline_recursive",
+  "query_path": "experiments/data/processed/test.jsonl",
+  "qrels_path": "experiments/data/processed/qrels_baseline_recursive.jsonl",
+  "run_root": "experiments/runs/embedding",
+  "registry_path": "experiments/runs/registry.jsonl",
+  "top_k": 10,
+  "metrics": {
+    "recall_at": [5, 10],
+    "mrr_at": [10],
+    "ndcg_at": [10]
+  },
+  "model": {
+    "name": "BAAI/bge-m3",
+    "batch_size": 16,
+    "normalize_embeddings": true
+  }
+}

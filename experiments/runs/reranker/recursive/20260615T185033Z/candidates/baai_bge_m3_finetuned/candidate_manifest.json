@@ -1,0 +1,19 @@
+{
+  "component": "reranker",
+  "task": "candidate_generation",
+  "created_at": "2026-06-15T18:50:34.799901+00:00",
+  "query_count": 300,
+  "chunk_count": 4448,
+  "candidate_top_n": 40,
+  "retriever": {
+    "embedding_model": "BAAI/bge-m3",
+    "batch_size": 16,
+    "normalize_embeddings": true,
+    "retrieval_backend": "precomputed"
+  },
+  "index_info": {
+    "retrieval_backend": "precomputed",
+    "candidate_source_path": "experiments/runs/embedding/recursive/experiments-runs-finetune-embedding-20260616-010550/20260615T184943Z_e5d8ecbc002d/eval_results.json",
+    "embedding_model": "BAAI/bge-m3-finetuned"
+  }
+}

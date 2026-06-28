@@ -1,0 +1,19 @@
+{
+  "component": "reranker",
+  "task": "candidate_generation",
+  "created_at": "2026-06-15T14:05:16.237125+00:00",
+  "query_count": 300,
+  "chunk_count": 4448,
+  "candidate_top_n": 40,
+  "retriever": {
+    "embedding_model": "BAAI/bge-m3",
+    "batch_size": 16,
+    "normalize_embeddings": true,
+    "retrieval_backend": "precomputed"
+  },
+  "index_info": {
+    "retrieval_backend": "precomputed",
+    "candidate_source_path": "experiments/runs/embedding/recursive/contextboxai-halong-embedding/20260615T132354Z_0b32bc3e1b9a/eval_results.json",
+    "embedding_model": "contextboxai/halong_embedding"
+  }
+}

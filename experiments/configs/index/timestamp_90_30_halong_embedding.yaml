@@ -1,0 +1,10 @@
+dataset_version: phase2_pilot_v1
+strategy_id: timestamp_90_30
+chunks_dir: experiments/data/chunks/timestamp_90_30
+index_dir: experiments/indexes/chroma/timestamp_90_30/halong-embedding
+retrieval_backend: chroma
+collection_name: idx-timestamp-90-30-halong-embedding
+model:
+  name: contextboxai/halong_embedding
+  batch_size: 16
+  normalize_embeddings: true

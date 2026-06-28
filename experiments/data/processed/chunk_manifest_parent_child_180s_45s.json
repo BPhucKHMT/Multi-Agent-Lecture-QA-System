@@ -1,0 +1,9 @@
+{
+  "strategy_id": "parent_child_180s_45s",
+  "source_dir": "experiments\\data\\chunks\\parent_child_180s_45s",
+  "generated_at": "2026-06-14T06:51:29.793449+00:00",
+  "chunk_count": 10323,
+  "missing_timestamp_count": 0,
+  "course_count": 4,
+  "video_count": 295
+}

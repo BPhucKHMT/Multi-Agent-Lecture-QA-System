@@ -1,0 +1,10 @@
+{
+  "strategy_id": "recursive",
+  "dataset_version": "phase2_pilot_v1",
+  "retrieval_backend": "chroma",
+  "model": "contextboxai/halong_embedding",
+  "chunks_dir": "C:\\uit_HK5\\CS431\\final_project\\experiments\\data\\chunks\\recursive",
+  "index_dir": "C:\\uit_HK5\\CS431\\final_project\\experiments\\runs\\embedding\\recursive\\contextboxai-halong-embedding\\20260615T133347Z_3350548e41e7\\chroma_langchain_mmr",
+  "collection_name": "emb-recursive-contextboxai-halong-embedding",
+  "chunk_count": 4460
+}

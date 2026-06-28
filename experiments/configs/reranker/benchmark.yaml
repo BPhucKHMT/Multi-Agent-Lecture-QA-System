@@ -1,0 +1,92 @@
+dataset_version: phase4_reranker_v1
+strategy_id: recursive
+split: test
+chunks_dir: experiments/data/chunks/recursive
+query_path: experiments/data/ground_truth/ground_truth_pilot.jsonl
+qrels_path: experiments/data/processed/qrels_recursive.jsonl
+run_root: experiments/runs/reranker
+registry_path: experiments/runs/registry.jsonl
+candidate_top_n: 40
+candidate_source_path: experiments/runs/embedding/recursive/baai-bge-m3/20260613T103551Z_b1209b1b6138/eval_results.json
+device: auto
+retriever:
+  embedding_model: BAAI/bge-m3
+  batch_size: 16
+  normalize_embeddings: true
+  retrieval_backend: brute_force
+latency_gates:
+  demo_target_p95_ms: 800
+  demo_hard_cap_p95_ms: 1500
+lanes:
+  demo_safe:
+    candidate_pool_sizes: [10, 20]
+    max_length: 512
+  offline_quality:
+    candidate_pool_sizes: [40]
+    max_length: 1024
+metrics:
+  recall_at: [1, 5, 10, 20, 50, 100]
+  mrr_at: [10]
+  ndcg_at: [5, 10]
+  precision_at: [1]
+  map_at: [10]
+models:
+  - name: no_rerank
+    type: baseline
+    enabled: true
+    lanes: [demo_safe, offline_quality]
+  - name: cross-encoder/ms-marco-MiniLM-L-6-v2
+    type: sentence_transformers_cross_encoder
+    enabled: true
+    lanes: [demo_safe]
+    batch_size: 8
+  - name: BAAI/bge-reranker-base
+    type: sentence_transformers_cross_encoder
+    enabled: true
+    lanes: [demo_safe, offline_quality]
+    batch_size: 8
+  - name: BAAI/bge-reranker-v2-m3
+    type: sentence_transformers_cross_encoder
+    enabled: true
+    lanes: [demo_safe, offline_quality]
+    batch_size: 4
+  - name: jinaai/jina-reranker-v2-base-multilingual
+    type: sentence_transformers_cross_encoder
+    enabled: true
+    lanes: [offline_quality]
+    batch_size: 4
+    trust_remote_code: true
+    license_note: CC-BY-NC-4.0
+  - name: namdp-ptit/ViRanker
+    type: sentence_transformers_cross_encoder
+    enabled: true
+    lanes: [demo_safe, offline_quality]
+    batch_size: 4
+  - name: flashrank/ms-marco-TinyBERT-L-2-v2
+    type: flashrank
+    enabled: true
+    lanes: [demo_safe]
+    batch_size: 8
+  - name: flashrank/ms-marco-MiniLM-L-12-v2
+    type: flashrank
+    enabled: true
+    lanes: [demo_safe]
+    batch_size: 8
+  - name: BAAI/bge-reranker-large
+    type: sentence_transformers_cross_encoder
+    enabled: false
+    optional_reason: heavy_offline_only
+    lanes: [offline_quality]
+    batch_size: 2
+  - name: BAAI/bge-reranker-v2-minicpm-layerwise
+    type: flagembedding_layerwise
+    enabled: false
+    optional_reason: heavy_requires_flagembedding
+    lanes: [offline_quality]
+    batch_size: 2
+  - name: Qwen/Qwen3-Reranker-0.6B
+    type: sentence_transformers_cross_encoder
+    enabled: false
+    optional_reason: heavy_runtime_uncertain
+    lanes: [offline_quality]
+    batch_size: 2

@@ -1,0 +1,47 @@
+{
+  "query_count": 1800,
+  "sources": {
+    "BAAI/bge-m3": {
+      "query_count": 300,
+      "no_qrels_query_count": 0,
+      "recall@40": 0.5265239066489067,
+      "mrr@10": 0.6301706349206349,
+      "ndcg@10": 0.44042821593235343
+    },
+    "BAAI/bge-m3-finetuned": {
+      "query_count": 300,
+      "no_qrels_query_count": 0,
+      "recall@40": 0.5355869547119547,
+      "mrr@10": 0.5848915343915344,
+      "ndcg@10": 0.4088645856612054
+    },
+    "intfloat/multilingual-e5-large": {
+      "query_count": 300,
+      "no_qrels_query_count": 0,
+      "recall@40": 0.5384313510563511,
+      "mrr@10": 0.6569880952380952,
+      "ndcg@10": 0.4464064852755051
+    },
+    "bkai-foundation-models/vietnamese-bi-encoder": {
+      "query_count": 300,
+      "no_qrels_query_count": 0,
+      "recall@40": 0.369621225996226,
+      "mrr@10": 0.4382208994708995,
+      "ndcg@10": 0.28013839245905015
+    },
+    "dangvantuan/vietnamese-embedding": {
+      "query_count": 300,
+      "no_qrels_query_count": 0,
+      "recall@40": 0.24019670607170607,
+      "mrr@10": 0.28552248677248676,
+      "ndcg@10": 0.1722914029139554
+    },
+    "contextboxai/halong_embedding": {
+      "query_count": 300,
+      "no_qrels_query_count": 0,
+      "recall@40": 0.5168065684315684,
+      "mrr@10": 0.5955529100529101,
+      "ndcg@10": 0.403114312416789
+    }
+  }
+}
