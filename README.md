@@ -451,6 +451,7 @@ Full retrieval benchmark pipeline lives in `experiments/`. See [experiments/READ
 - [Reranker comparison (6 models)](experiments/docs/evaluation/reranker.md) — Jina v2 winner, latency analysis
 - [QA quality metrics (BERTScore + RAGAS)](experiments/docs/evaluation/qa_metrics.md) — faithfulness, context precision/recall, answer relevancy
 - [Ground truth dataset guide](experiments/docs/data/groundtruth.md) — how the 350-question evaluation set was created
+- [**Ablation Study Report**](docs/ablation_report.md) — full 4-stage ablation: embedding → reranker → chunking (E2E) → generation quality. Explains why C21 was selected as production config.
 
 ### Reproduce benchmarks
 
@@ -481,3 +482,4 @@ Outputs go to `experiments/runs/`.
 - [Redis architecture](docs/upgrade_system/redis_architecture.md)
 - [Deployment notes](DEPLOYMENT.md)
 - [Agent rules](AGENTS.md)
+- [Fine-tuned Embedding Model Card](models/bge-m3-finetuned/MODEL_CARD.md) — training details, dataset, hyperparameters, evaluation results for `bge-m3-finetuned-v3`
