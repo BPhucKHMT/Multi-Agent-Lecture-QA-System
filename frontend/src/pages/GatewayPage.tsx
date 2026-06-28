@@ -30,34 +30,99 @@ const GatewayCard = memo(({
   const ctaClass = tone === "slate" ? "text-slate-800" : "text-cyan-700";
   const toneGlowClass = tone === "slate" ? "from-slate-200/90 to-slate-100/70" : "from-cyan-100/90 to-emerald-100/70";
 
+  const [coords, setCoords] = useState({ x: 0, y: 0 });
+  const [isHovered, setIsHovered] = useState(false);
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLButtonElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    setCoords({
+      x: e.clientX - rect.left,
+      y: e.clientY - rect.top,
+    });
+  };
+
   return (
     <motion.button
       type="button"
       onClick={onClick}
-      onMouseEnter={onHover}
-      onMouseLeave={onLeave}
-      whileHover={{ scale: 1.012, y: -5 }}
-      whileTap={{ scale: 0.985 }}
-      transition={{ 
-        scale: { type: "spring", stiffness: 400, damping: 30 },
-        y: { type: "spring", stiffness: 400, damping: 30 }
+      onMouseEnter={() => {
+        setIsHovered(true);
+        onHover();
       }}
-      className={`puq-gateway-card group relative flex min-h-[540px] w-full flex-col justify-between overflow-hidden rounded-2xl bg-white/80 p-9 text-left backdrop-blur-md shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_20px_50px_rgba(37,99,235,0.1)] ${
-        active ? "ring-2 ring-cyan-300/70 shadow-[0_20px_50px_rgba(6,182,212,0.15)]" : "opacity-95"
+      onMouseLeave={() => {
+        setIsHovered(false);
+        onLeave();
+      }}
+      onMouseMove={handleMouseMove}
+      whileHover={{ scale: 1.015, y: -8 }}
+      whileTap={{ scale: 0.98 }}
+      transition={{ 
+        scale: { type: "spring", stiffness: 350, damping: 25 },
+        y: { type: "spring", stiffness: 350, damping: 25 }
+      }}
+      style={{
+        background: isHovered
+          ? `radial-gradient(450px circle at ${coords.x}px ${coords.y}px, ${
+              tone === "slate" ? "rgba(15,23,42,0.04)" : "rgba(6,182,212,0.06)"
+            }, transparent 80%), rgba(255, 255, 255, 0.82)`
+          : "rgba(255, 255, 255, 0.75)",
+      }}
+      className={`puq-gateway-card group relative flex min-h-[320px] w-full flex-col justify-between overflow-hidden rounded-3xl border border-slate-200/80 p-7 text-left backdrop-blur-md shadow-[0_8px_30px_rgb(0,0,0,0.03)] transition-colors duration-300 hover:border-slate-300/80 hover:shadow-[0_20px_50px_rgba(15,23,42,0.08)] ${
+        active ? "ring-2 ring-cyan-400/50 shadow-[0_20px_50px_rgba(6,182,212,0.12)]" : "opacity-95"
       }`}
     >
-      <div className={`pointer-events-none absolute -right-20 -top-14 h-48 w-48 rounded-full bg-gradient-to-br ${toneGlowClass}`} />
-      <div className="pointer-events-none absolute -left-16 bottom-4 h-24 w-24 rounded-full bg-white/55 blur-md" />
-      <div>
-        <div className={`mb-6 grid h-16 w-16 place-items-center rounded-xl shadow-lg shadow-slate-200 ${iconBoxClass}`}>
+      {/* Glow border overlay following cursor */}
+      {isHovered && (
+        <div
+          className="pointer-events-none absolute inset-0 rounded-3xl transition-opacity duration-300"
+          style={{
+            background: `radial-gradient(300px circle at ${coords.x}px ${coords.y}px, ${
+              tone === "slate" ? "rgba(15,23,42,0.08)" : "rgba(6,182,212,0.15)"
+            }, transparent 80%)`,
+            border: "1px solid transparent",
+            WebkitMaskImage: "linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff)",
+            WebkitMaskComposite: "xor",
+            maskComposite: "exclude",
+          }}
+        />
+      )}
+
+      {/* Decorative Grid Lines inside Bento Card */}
+      <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808008_1px,transparent_1px),linear-gradient(to_bottom,#80808008_1px,transparent_1px)] bg-[size:16px_16px] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] opacity-70 group-hover:opacity-100 transition-opacity duration-500" />
+
+      {/* Pulsing Ambient Orbs */}
+      <motion.div 
+        animate={isHovered ? { scale: 1.1, x: [0, 5, -5, 0], y: [0, -5, 5, 0] } : { scale: 1 }}
+        transition={{ duration: 6, repeat: Infinity, ease: "linear" }}
+        className={`pointer-events-none absolute -right-20 -top-14 h-48 w-48 rounded-full bg-gradient-to-br blur-sm opacity-80 ${toneGlowClass}`} 
+      />
+      <div className="pointer-events-none absolute -left-16 bottom-4 h-24 w-24 rounded-full bg-white/40 blur-md" />
+      
+      <div className="relative z-10">
+        <motion.div 
+          whileHover={{ rotate: [0, -5, 5, 0] }}
+          transition={{ duration: 0.5 }}
+          className={`mb-4 grid h-14 w-14 place-items-center rounded-2xl shadow-lg shadow-slate-200/50 transition-all duration-300 group-hover:shadow-xl ${
+            tone === "slate" 
+              ? "group-hover:shadow-slate-300/30" 
+              : "group-hover:shadow-cyan-200/30"
+          } ${iconBoxClass}`}
+        >
           {icon}
-        </div>
-        <h3 className="font-['Plus_Jakarta_Sans',sans-serif] text-[2rem] font-bold leading-9 text-[#181c23]">{title}</h3>
-        <p className="mt-4 max-w-xl text-xl leading-8 text-[#414754]">{description}</p>
+        </motion.div>
+        <h3 className="font-['Plus_Jakarta_Sans',sans-serif] text-[1.6rem] font-bold leading-8 tracking-tight text-[#181c23] group-hover:text-black transition-colors duration-300">{title}</h3>
+        <p className="mt-2 max-w-xl text-[0.95rem] leading-6 text-[#414754]/95">{description}</p>
       </div>
-      <div className={`mt-8 flex items-center gap-2 text-lg font-semibold ${ctaClass}`}>
+      
+      <div className={`relative z-10 mt-5 flex items-center gap-2 text-base font-bold ${ctaClass}`}>
         <span>{cta}</span>
-        <span aria-hidden="true" className="transition group-hover:translate-x-1">→</span>
+        <motion.span 
+          animate={isHovered ? { x: 5 } : { x: 0 }}
+          transition={{ type: "spring", stiffness: 300, damping: 20 }}
+          aria-hidden="true"
+        >
+          →
+        </motion.span>
       </div>
     </motion.button>
   );
@@ -81,7 +146,7 @@ export default function GatewayPage() {
   }, []);
 
   return (
-    <div className="relative z-10 min-h-screen">
+    <div className="relative z-10 flex h-screen flex-col overflow-hidden">
       <header className="sticky top-0 z-20 flex h-16 items-center justify-between border-b border-slate-200/80 bg-white/80 px-6 shadow-[0_1px_2px_rgba(0,0,0,0.05)] backdrop-blur-sm">
         <div className="flex items-center gap-8">
           <h1 className="font-['Plus_Jakarta_Sans',sans-serif] text-[1.35rem] font-bold text-[#0f172a]">Chọn không gian làm việc</h1>
@@ -105,19 +170,19 @@ export default function GatewayPage() {
         </div>
       </header>
 
-      <main className="relative overflow-hidden px-6 py-10">
+      <main className="relative flex min-h-0 flex-1 flex-col overflow-hidden px-6 py-5">
         <div className="puq-float-orb pointer-events-none absolute -left-20 -top-20 h-60 w-60 rounded-full bg-cyan-300/25 blur-3xl" />
         <div className="puq-float-orb pointer-events-none absolute -bottom-16 -right-20 h-60 w-60 rounded-full bg-emerald-300/25 blur-3xl" style={{ animationDelay: "600ms" }} />
 
         <div className="mx-auto max-w-[1280px]">
-          <div className="mb-10 text-center">
-            <span className="mb-4 inline-flex rounded-full border border-cyan-200 bg-cyan-50 px-3 py-1 text-xs font-semibold text-cyan-800">
+          <div className="mb-5 text-center">
+            <span className="mb-2 inline-flex rounded-full border border-cyan-200 bg-cyan-50 px-3 py-1 text-xs font-semibold text-cyan-800">
               Giao diện mới • Chuyển động v2
             </span>
-            <h2 className="font-['Plus_Jakarta_Sans',sans-serif] text-5xl font-extrabold tracking-[-0.02em] text-[#181c23]">
+            <h2 className="font-['Plus_Jakarta_Sans',sans-serif] text-4xl font-extrabold tracking-[-0.02em] text-[#181c23]">
               Cổng không gian
             </h2>
-            <p className="mt-3 text-xl text-[#414754]">
+            <p className="mt-2 text-base text-[#414754]">
               Chọn môi trường chuyên dụng của bạn để bắt đầu phiên làm việc năng suất cao.
             </p>
           </div>
@@ -125,9 +190,9 @@ export default function GatewayPage() {
           <motion.div 
             layout
             transition={{ type: "spring", stiffness: 260, damping: 20 }}
-            className="puq-split flex flex-col lg:flex-row gap-10"
+            className="puq-split flex flex-1 flex-col lg:flex-row gap-6"
           >
-            <div className={`${getFlexClass("chatspace")}`}>
+            <div className={`flex h-full ${getFlexClass("chatspace")}`}>
               <GatewayCard
                 title="Chuyên gia Chatspace"
                 description="Thảo luận tự nhiên với tài liệu kỹ thuật. Đào sâu vào các API phức tạp và bài giảng với độ chính xác từ AI."
@@ -140,7 +205,7 @@ export default function GatewayPage() {
                 icon={<ChatBubbleIcon />}
               />
             </div>
-            <div className={`${getFlexClass("summaryhub")}`}>
+            <div className={`flex h-full ${getFlexClass("summaryhub")}`}>
               <GatewayCard
                 title="Trung tâm tóm tắt"
                 description="Chắt lọc nội dung video thành thông tin hữu ích ngay lập tức. Tiết kiệm hàng giờ xem video với bản gỡ băng và tóm tắt tự động."
@@ -156,8 +221,6 @@ export default function GatewayPage() {
           </motion.div>
         </div>
       </main>
-
-      <footer className="px-6 py-8 text-center text-sm text-[#717786]">© 2024 Hub Central. Hệ thống thông minh doanh nghiệp.</footer>
     </div>
   );
 }
