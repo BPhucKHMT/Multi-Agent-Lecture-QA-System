@@ -1,0 +1,42 @@
+==================================================
+      GROUND TRUTH DATASET AUDIT REPORT           
+==================================================
+Total Records: 350
+
+--- Distribution of Answerable Questions by course_id ---
+  CS114: 78
+  CS116: 73
+  CS315: 75
+  CS431: 74
+
+Summary:
+  Answerable questions (CS114, CS116, CS315, CS431): 300
+  No-answer questions (category='no_answer'): 50
+
+--- Validation Results ---
+Errors found: 0
+Warnings found: 19
+  [PASS] No structural or logical errors found!
+
+WARNINGS:
+  [WARN] [q073]: Question is a duplicate of q067 -> 'Làm thế nào để tính đạo hàm của tham số W1 trong một mô hình...'
+  [WARN] [q076]: Question is a duplicate of q070 -> 'Tại sao hàm kích hoạt phi tuyến lại quan trọng trong các mô ...'
+  [WARN] [q215]: Question is a duplicate of q207 -> 'Sự khác biệt chính giữa autoencoder và decoder là gì?...'
+  [WARN] [q218]: Question is a duplicate of q209 -> 'Mục tiêu chính của việc huấn luyện một mô hình máy học là gì...'
+  [WARN] [q219]: Question is a duplicate of q210 -> 'Trong mô hình GLIP, dữ liệu hình ảnh và văn bản được kết hợp...'
+  [WARN] [q220]: Question is a duplicate of q211 -> 'Random Forest được xây dựng dựa trên nguyên tắc gì?...'
+  [WARN] [q221]: Question is a duplicate of q212 -> 'Những khoảng hở trong không gian Latent Space có ý nghĩa gì ...'
+  [WARN] [q224]: Question is a duplicate of q221 -> 'Những khoảng hở trong không gian Latent Space có ý nghĩa gì ...'
+  [WARN] [q225]: Question is a duplicate of q213 -> 'Có mô hình nào có thể segment đối tượng mà không cần sử dụng...'
+  [WARN] [q226]: Question is a duplicate of q214 -> 'Mô hình nào được sử dụng để mã hóa hình ảnh trong kiến trúc ...'
+  [WARN] [q300]: Question is a duplicate of q295 -> 'Làm thế nào để xác định các tham số theta trong mô hình logi...'
+  [WARN] [q322]: Question is a duplicate of q321 -> 'Làm thế nào để đánh giá khả năng tổng quát của một mô hình h...'
+  [WARN] [q323]: Question is a duplicate of q322 -> 'Làm thế nào để đánh giá khả năng tổng quát của một mô hình h...'
+  [WARN] [q328]: Question is a duplicate of q323 -> 'Làm thế nào để đánh giá khả năng tổng quát của một mô hình h...'
+  [WARN] [q334]: Question is a duplicate of q333 -> 'Làm thế nào để xác định và tối ưu hóa các siêu tham số cho m...'
+  [WARN] [q336]: Question is a duplicate of q334 -> 'Làm thế nào để xác định và tối ưu hóa các siêu tham số cho m...'
+  [WARN] [q342]: Question is a duplicate of q339 -> 'Tại sao hàm kích hoạt ReLU có thể gây ra vấn đề 'dying ReLU'...'
+  [WARN] [q347]: Question is a duplicate of q345 -> 'Khi áp dụng các mô hình học sâu cho các tập dữ liệu không đồ...'
+  [WARN] [q349]: Question is a duplicate of q347 -> 'Khi áp dụng các mô hình học sâu cho các tập dữ liệu không đồ...'
+
+==================================================

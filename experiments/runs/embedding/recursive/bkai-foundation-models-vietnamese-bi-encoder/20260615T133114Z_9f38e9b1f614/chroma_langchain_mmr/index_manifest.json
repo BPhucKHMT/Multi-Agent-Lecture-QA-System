@@ -1,0 +1,10 @@
+{
+  "strategy_id": "recursive",
+  "dataset_version": "phase2_pilot_v1",
+  "retrieval_backend": "chroma",
+  "model": "bkai-foundation-models/vietnamese-bi-encoder",
+  "chunks_dir": "C:\\uit_HK5\\CS431\\final_project\\experiments\\data\\chunks\\recursive",
+  "index_dir": "C:\\uit_HK5\\CS431\\final_project\\experiments\\runs\\embedding\\recursive\\bkai-foundation-models-vietnamese-bi-encoder\\20260615T133114Z_9f38e9b1f614\\chroma_langchain_mmr",
+  "collection_name": "emb-recursive-bkai-foundation-models-vietnamese-bi",
+  "chunk_count": 4460
+}

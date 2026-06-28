@@ -1,0 +1,10 @@
+{
+  "strategy_id": "recursive",
+  "dataset_version": "phase2_pilot_v1",
+  "retrieval_backend": "chroma",
+  "model": "intfloat/multilingual-e5-large",
+  "chunks_dir": "C:\\uit_HK5\\CS431\\final_project\\experiments\\data\\chunks\\recursive",
+  "index_dir": "C:\\uit_HK5\\CS431\\final_project\\experiments\\runs\\embedding\\recursive\\intfloat-multilingual-e5-large\\20260615T132824Z_0db6d20fb819\\chroma_langchain_mmr",
+  "collection_name": "emb-recursive-intfloat-multilingual-e5-large",
+  "chunk_count": 4460
+}

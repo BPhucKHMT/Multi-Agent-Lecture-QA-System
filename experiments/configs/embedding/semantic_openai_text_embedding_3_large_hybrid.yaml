@@ -1,0 +1,28 @@
+dataset_version: phase2_pilot_v1
+strategy_id: semantic_openai_large
+split: test
+chunks_dir: experiments/data/chunks/semantic_openai_large
+index_dir: experiments/indexes/chroma/semantic_openai_large/openai-text-embedding-3-large
+collection_name: emb-semantic-openai-large
+query_path: experiments/data/ground_truth/ground_truth_pilot.jsonl
+qrels_path: experiments/data/processed/qrels_semantic.jsonl
+run_root: experiments/runs/hybrid
+registry_path: experiments/runs/registry.jsonl
+top_k: 40
+retrieval_backend: hybrid_0_5_0_5
+hybrid_weights: [0.5, 0.5]
+metrics:
+  recall_at: [10, 40]
+  mrr_at: [10]
+  ndcg_at: [10]
+  hit_at: [5, 40]
+  aliases:
+    candidate_hit@40: hit@40
+    candidate_recall@40: recall@40
+    final_hit@5: hit@5
+    final_recall@10: recall@10
+model:
+  type: openai
+  name: text-embedding-3-large
+  dimensions: 3072
+  chunk_size: 256

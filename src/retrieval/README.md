@@ -1,24 +1,6 @@
-# retrieval — Search & Reranking
+# retrieval — Hybrid Search, BM25, Reranker, Text Splitters
 
-`src/retrieval/` chứa các thành phần truy hồi context cho Tutor/RAG agent. Mục tiêu là tìm đúng đoạn transcript/chunk liên quan nhất trước khi đưa vào LLM.
-
----
-
-## Luồng retrieval
-
-```txt
-User query
-  ↓
-Vector search từ ChromaDB
-  +
-Keyword/BM25 search
-  ↓
-Hybrid merge candidates
-  ↓
-CrossEncoder reranker
-  ↓
-Top context docs cho Tutor agent
-```
+`src/retrieval/` chứa toàn bộ pipeline retrieval cho RAG: hybrid search (dense vector + BM25 keyword), CrossEncoder reranking, và text chunking strategies.
 
 ---
 
@@ -26,25 +8,83 @@ Top context docs cho Tutor agent
 
 ```txt
 retrieval/
-├── hybrid_search.py       # Kết hợp vector + keyword search
-├── keyword_search.py      # BM25/keyword retriever
-├── reranking.py           # BGE CrossEncoder reranker
-└── text_splitters/        # Logic chia chunk văn bản
+├── __init__.py
+├── hybrid_search.py   # Kết hợp vector search + BM25 keyword search
+├── keyword_search.py  # BM25 keyword search đơn lẻ
+├── reranking.py       # CrossEncoder reranking
+└── text_splitters/
+    ├── __init__.py
+    ├── chunker.py     # Text chunking strategies
+    └── README.md      # Chi tiết chunking
 ```
 
 ---
 
-## Khi nào sửa module này?
+## Hybrid search
 
-- Muốn cải thiện chất lượng context/citation.
-- Muốn thay threshold, top-k hoặc cách merge kết quả.
-- Muốn đổi reranker model.
-- Muốn đổi chunking strategy cho transcript.
+`hybrid_search.py` kết hợp 2 retrieval paths:
+
+1. **Dense (vector)**: ChromaDB similarity search bằng embedding model
+2. **Sparse (keyword)**: BM25 over `page_content + OCR text`
+
+Fusion: weighted sum, mặc định `weights=[0.5, 0.5]`.
+
+```python
+from src.retrieval.hybrid_search import HybridSearch
+
+hs = HybridSearch(
+    chroma_collection=collection,
+    bm25_index=bm25_index,
+    weights=[0.5, 0.5],
+)
+results = hs.search(query, top_k=40)
+```
 
 ---
 
-## Lưu ý
+## Keyword search (BM25)
 
-- Retrieval ảnh hưởng trực tiếp độ đúng của Tutor agent.
-- Đừng chỉ tối ưu latency nếu làm giảm citation quality.
-- Nếu sửa output shape của docs, kiểm tra backend stream context và frontend citation rendering.
+`keyword_search.py` wrapper BM25Lucene/BM25Okapi. Dùng enriched text (`page_content + OCR`) làm document body.
+
+---
+
+## Reranking
+
+`reranking.py` wrap CrossEncoder model (Jina reranker v2). Input: top-K candidates từ hybrid search → output: ranked top-N.
+
+```python
+from src.retrieval.reranking import Reranker
+
+reranker = Reranker(model_name="jina-reranker-v2-base-multilingual")
+ranked = reranker.rerank(query, candidates, top_n=10)
+```
+
+---
+
+## Text splitters
+
+Xem chi tiết tại [text_splitters/README.md](text_splitters/README.md).
+
+Strategies:
+
+| Strategy | Mô tả |
+|---|---|
+| `recursive` | Recursive character splitting, mặc định |
+| `timestamp_90_30` | Chunk theo transcript timestamp: 90s window, 30s overlap |
+| `timestamp_150_50_raw` | 150s window, 50s overlap, raw transcript |
+| `semantic` | LLM-based semantic chunking |
+| `parent_child_180s_45s` | Parent 180s + child 45s, retrieval dùng child, evaluation dùng parent |
+
+---
+
+## Kết nối với experiments
+
+Config retrieval trong `experiments/configs/embedding/` và `experiments/configs/index/` xác định:
+- Strategy chunking
+- Embedding model
+- Hybrid weights
+- Reranker model
+
+Chạy benchmark: `python experiments/scripts/benchmark_end_to_end_retrieval.py`
+
+Kết quả: `experiments/docs/evaluation/end_to_end_retrieval.md`
