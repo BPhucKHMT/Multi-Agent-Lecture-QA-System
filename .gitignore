@@ -71,15 +71,49 @@ docs/
 .agent/
 .agents/
 .claude/
+.gemini/
+.specify/
+agent-skills/
 
-# Temporary & Test files
+# Temporary, Test, & Result files
 test_cleaner.py
 temp.txt
-tests/
+tests/result/
 analyze_edges.py
 analyze_streaming.py
 analyze_tutor.py
 analyze_supervisor.py
+scratch/
+experiments/scratch/
+checkpoints/
+mlflow.db
+mlruns/
+wandb/
+
+# Models & Large Binaries
+models/**/*.bin
+models/**/*.safetensors
+models/**/*.pth
+models/**/*.onnx
+models/**/*.model
+models/**/tokenizer.json
+models/**/sentencepiece.bpe.model
+
+# Experiments Large Binaries & Database Cache
+**/chroma/
+experiments/indexes/
+experiments/runs/**/models/
+experiments/runs/**/*.safetensors
+experiments/runs/**/*.bin
+experiments/runs/**/*.pth
+experiments/runs/**/*.onnx
+experiments/runs/**/*.model
+experiments/runs/**/tokenizer.json
+experiments/data/finetune/train_hard_negatives.jsonl
+
+# Project Reports & Templates
+Bao_cao_tien_do_he_thong_hoi_dap_bai_giang_updated.docx
+report/SE365 Template Report.pdf
 
 # Design & System
 design-system/

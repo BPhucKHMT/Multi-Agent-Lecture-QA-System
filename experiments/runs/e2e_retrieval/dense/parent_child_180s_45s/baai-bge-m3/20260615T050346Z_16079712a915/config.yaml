@@ -1,0 +1,19 @@
+dataset_version: phase2_pilot_v1
+strategy_id: parent_child_180s_45s
+chunks_dir: experiments/data/chunks/parent_child_180s_45s
+query_path: experiments/data/ground_truth/ground_truth_pilot.jsonl
+qrels_path: experiments/data/processed/qrels_parent_child_180s_45s_child.jsonl
+run_root: experiments/runs/embedding
+registry_path: experiments/runs/registry.jsonl
+retrieval_backend: chroma
+index_dir: experiments/indexes/chroma/parent_child_180s_45s/bge-m3-child
+collection_name: idx-parent-child-180s-45s-bge-m3-child
+top_k: 100
+model:
+  name: BAAI/bge-m3
+  batch_size: 16
+  normalize_embeddings: true
+metrics:
+  recall_at: [10, 40, 100]
+  mrr_at: [10]
+  ndcg_at: [10]

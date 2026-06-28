@@ -1,0 +1,21 @@
+{
+  "run_id": "20260614T164941Z_4ffd83189eb0",
+  "component": "embedding",
+  "task": "rag_retrieval_benchmark",
+  "strategy_id": "recursive",
+  "model": "BAAI/bge-m3",
+  "dataset_version": "phase2_pilot_v1",
+  "config_hash": "4ffd83189eb0",
+  "created_at": "2026-06-14T16:49:43.940638+00:00",
+  "split": "test",
+  "query_count": 1,
+  "top_k": 100,
+  "index_dir": "C:\\uit_HK5\\CS431\\final_project\\experiments\\indexes\\chroma\\recursive\\bge-m3",
+  "query_path": "C:\\uit_HK5\\CS431\\final_project\\experiments\\data\\processed\\test.jsonl",
+  "qrels_path": "C:\\uit_HK5\\CS431\\final_project\\experiments\\data\\processed\\qrels_recursive.jsonl",
+  "run_dir": "C:\\uit_HK5\\CS431\\final_project\\experiments\\runs\\e2e_retrieval\\dense\\recursive\\baai-bge-m3\\20260614T164941Z_4ffd83189eb0",
+  "metrics_path": "C:\\uit_HK5\\CS431\\final_project\\experiments\\runs\\e2e_retrieval\\dense\\recursive\\baai-bge-m3\\20260614T164941Z_4ffd83189eb0\\metrics.json",
+  "retrieval_backend": "chroma",
+  "index_path": "C:\\uit_HK5\\CS431\\final_project\\experiments\\indexes\\chroma\\recursive\\bge-m3",
+  "collection_name": "emb-recursive-baai-bge-m3-69d428327621"
+}

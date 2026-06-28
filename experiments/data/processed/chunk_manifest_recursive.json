@@ -1,0 +1,9 @@
+{
+  "strategy_id": "recursive",
+  "source_dir": "experiments\\data\\chunks\\recursive",
+  "generated_at": "2026-06-14T02:50:39.255734+00:00",
+  "chunk_count": 4460,
+  "missing_timestamp_count": 0,
+  "course_count": 4,
+  "video_count": 295
+}

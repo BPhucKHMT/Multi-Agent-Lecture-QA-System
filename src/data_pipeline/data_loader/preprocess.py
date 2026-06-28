@@ -337,7 +337,7 @@ class TranscriptPreprocessor:
                     skipped_count += 1
                 continue
 
-            # 2. File OK - Sửa chính tả (nếu có Gemini)
+            # 2. File OK - Sửa chính tả bằng LLM
             print(f"[OK] File OK")
             final_text = text
 
@@ -352,7 +352,7 @@ class TranscriptPreprocessor:
                     )
 
                     if is_corrupted_after:
-                        print(f"[WARN] Gemini sửa bị lỗi ({reason_after}), dùng bản gốc")
+                        print(f"[WARN] LLM sửa bị lỗi ({reason_after}), dùng bản gốc")
                         final_text = text
                     else:
                         if corrected != text:
@@ -364,7 +364,7 @@ class TranscriptPreprocessor:
                     print(f"[WARN] LLM lỗi, dùng bản gốc")
                     final_text = text
             else:
-                print(f"[SKIP] Bỏ qua sửa chính tả (không có Gemini API key)")
+                print(f"[SKIP] Bỏ qua sửa chính tả (không có OpenAI API key)")
 
             # 3. Lưu vào processed_transcripts
             output_file = processed_dir / f"{video_id}.txt"

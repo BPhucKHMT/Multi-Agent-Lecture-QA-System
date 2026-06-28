@@ -1,0 +1,482 @@
+[
+  {
+    "query_id": "q137",
+    "question": "Hàm sigmoid có đặc điểm gì nổi bật trong việc tính đạo hàm?",
+    "results": [
+      {
+        "rank": 1,
+        "doc_id": "NCSIAbS9gWs_124_185",
+        "score": 0.6387231945991516,
+        "video_id": "NCSIAbS9gWs",
+        "video_url": "https://www.youtube.com/watch?v=NCSIAbS9gWs",
+        "start_timestamp": "0:02:04",
+        "end_timestamp": "0:03:05"
+      },
+      {
+        "rank": 2,
+        "doc_id": "DSmR6JSwx5I_278_328",
+        "score": 0.6336992979049683,
+        "video_id": "DSmR6JSwx5I",
+        "video_url": "https://www.youtube.com/watch?v=DSmR6JSwx5I",
+        "start_timestamp": "0:04:38",
+        "end_timestamp": "0:05:28"
+      },
+      {
+        "rank": 3,
+        "doc_id": "GRB4B1tWnEo_113_184",
+        "score": 0.6311155557632446,
+        "video_id": "GRB4B1tWnEo",
+        "video_url": "https://www.youtube.com/watch?v=GRB4B1tWnEo",
+        "start_timestamp": "0:01:53",
+        "end_timestamp": "0:03:04"
+      },
+      {
+        "rank": 4,
+        "doc_id": "DSmR6JSwx5I_380_450",
+        "score": 0.6122963428497314,
+        "video_id": "DSmR6JSwx5I",
+        "video_url": "https://www.youtube.com/watch?v=DSmR6JSwx5I",
+        "start_timestamp": "0:06:20",
+        "end_timestamp": "0:07:30"
+      },
+      {
+        "rank": 5,
+        "doc_id": "T2xJmTiRM5o_332_383",
+        "score": 0.6078518033027649,
+        "video_id": "T2xJmTiRM5o",
+        "video_url": "https://www.youtube.com/watch?v=T2xJmTiRM5o",
+        "start_timestamp": "0:05:32",
+        "end_timestamp": "0:06:23"
+      },
+      {
+        "rank": 6,
+        "doc_id": "DSmR6JSwx5I_319_388",
+        "score": 0.603972852230072,
+        "video_id": "DSmR6JSwx5I",
+        "video_url": "https://www.youtube.com/watch?v=DSmR6JSwx5I",
+        "start_timestamp": "0:05:19",
+        "end_timestamp": "0:06:28"
+      },
+      {
+        "rank": 7,
+        "doc_id": "T2xJmTiRM5o_262_342",
+        "score": 0.595988392829895,
+        "video_id": "T2xJmTiRM5o",
+        "video_url": "https://www.youtube.com/watch?v=T2xJmTiRM5o",
+        "start_timestamp": "0:04:22",
+        "end_timestamp": "0:05:42"
+      },
+      {
+        "rank": 8,
+        "doc_id": "NCSIAbS9gWs_179_238",
+        "score": 0.5953498482704163,
+        "video_id": "NCSIAbS9gWs",
+        "video_url": "https://www.youtube.com/watch?v=NCSIAbS9gWs",
+        "start_timestamp": "0:02:59",
+        "end_timestamp": "0:03:58"
+      },
+      {
+        "rank": 9,
+        "doc_id": "IKD0O35NOUI_421_486",
+        "score": 0.5718005299568176,
+        "video_id": "IKD0O35NOUI",
+        "video_url": "https://www.youtube.com/watch?v=IKD0O35NOUI",
+        "start_timestamp": "0:07:01",
+        "end_timestamp": "0:08:06"
+      },
+      {
+        "rank": 10,
+        "doc_id": "iQqNUKgIZpc_67_130",
+        "score": 0.5670709609985352,
+        "video_id": "iQqNUKgIZpc",
+        "video_url": "https://www.youtube.com/watch?v=iQqNUKgIZpc",
+        "start_timestamp": "0:01:07",
+        "end_timestamp": "0:02:10"
+      }
+    ]
+  },
+  {
+    "query_id": "q217",
+    "question": "Sự khác biệt chính giữa Stochastic Gradient Descent và Batch Gradient Descent là gì?",
+    "results": [
+      {
+        "rank": 1,
+        "doc_id": "JSVPNZhpf2g_443_499",
+        "score": 0.6949217319488525,
+        "video_id": "JSVPNZhpf2g",
+        "video_url": "https://www.youtube.com/watch?v=JSVPNZhpf2g",
+        "start_timestamp": "0:07:23",
+        "end_timestamp": "0:08:19"
+      },
+      {
+        "rank": 2,
+        "doc_id": "JSVPNZhpf2g_392_457",
+        "score": 0.6590225100517273,
+        "video_id": "JSVPNZhpf2g",
+        "video_url": "https://www.youtube.com/watch?v=JSVPNZhpf2g",
+        "start_timestamp": "0:06:32",
+        "end_timestamp": "0:07:37"
+      },
+      {
+        "rank": 3,
+        "doc_id": "JSVPNZhpf2g_14_41",
+        "score": 0.6477862596511841,
+        "video_id": "JSVPNZhpf2g",
+        "video_url": "https://www.youtube.com/watch?v=JSVPNZhpf2g",
+        "start_timestamp": "0:00:14",
+        "end_timestamp": "0:00:41"
+      },
+      {
+        "rank": 4,
+        "doc_id": "JSVPNZhpf2g_344_406",
+        "score": 0.6443861722946167,
+        "video_id": "JSVPNZhpf2g",
+        "video_url": "https://www.youtube.com/watch?v=JSVPNZhpf2g",
+        "start_timestamp": "0:05:44",
+        "end_timestamp": "0:06:46"
+      },
+      {
+        "rank": 5,
+        "doc_id": "CtOfKuiy_uc_14_110",
+        "score": 0.6439796090126038,
+        "video_id": "CtOfKuiy_uc",
+        "video_url": "https://www.youtube.com/watch?v=CtOfKuiy_uc",
+        "start_timestamp": "0:00:14",
+        "end_timestamp": "0:01:50"
+      },
+      {
+        "rank": 6,
+        "doc_id": "CtOfKuiy_uc_541_604",
+        "score": 0.6314310431480408,
+        "video_id": "CtOfKuiy_uc",
+        "video_url": "https://www.youtube.com/watch?v=CtOfKuiy_uc",
+        "start_timestamp": "0:09:01",
+        "end_timestamp": "0:10:04"
+      },
+      {
+        "rank": 7,
+        "doc_id": "CtOfKuiy_uc_487_551",
+        "score": 0.6297723054885864,
+        "video_id": "CtOfKuiy_uc",
+        "video_url": "https://www.youtube.com/watch?v=CtOfKuiy_uc",
+        "start_timestamp": "0:08:07",
+        "end_timestamp": "0:09:11"
+      },
+      {
+        "rank": 8,
+        "doc_id": "HWWlm40wQ-s_443_511",
+        "score": 0.6281570196151733,
+        "video_id": "HWWlm40wQ-s",
+        "video_url": "https://www.youtube.com/watch?v=HWWlm40wQ-s",
+        "start_timestamp": "0:07:23",
+        "end_timestamp": "0:08:31"
+      },
+      {
+        "rank": 9,
+        "doc_id": "CtOfKuiy_uc_586_631",
+        "score": 0.6270083785057068,
+        "video_id": "CtOfKuiy_uc",
+        "video_url": "https://www.youtube.com/watch?v=CtOfKuiy_uc",
+        "start_timestamp": "0:09:46",
+        "end_timestamp": "0:10:31"
+      },
+      {
+        "rank": 10,
+        "doc_id": "HWWlm40wQ-s_347_402",
+        "score": 0.6220091581344604,
+        "video_id": "HWWlm40wQ-s",
+        "video_url": "https://www.youtube.com/watch?v=HWWlm40wQ-s",
+        "start_timestamp": "0:05:47",
+        "end_timestamp": "0:06:42"
+      }
+    ]
+  },
+  {
+    "query_id": "q017",
+    "question": "Neural Machine Translation là bài toán gì trong nội dung dịch máy?",
+    "results": [
+      {
+        "rank": 1,
+        "doc_id": "--JpgsDEL40_0_66",
+        "score": 0.7222726345062256,
+        "video_id": "--JpgsDEL40",
+        "video_url": "https://www.youtube.com/watch?v=--JpgsDEL40",
+        "start_timestamp": "0:00:00",
+        "end_timestamp": "0:01:06"
+      },
+      {
+        "rank": 2,
+        "doc_id": "4EdX3Ga9YoM_45_112",
+        "score": 0.6856095790863037,
+        "video_id": "4EdX3Ga9YoM",
+        "video_url": "https://www.youtube.com/watch?v=4EdX3Ga9YoM",
+        "start_timestamp": "0:00:45",
+        "end_timestamp": "0:01:52"
+      },
+      {
+        "rank": 3,
+        "doc_id": "4EdX3Ga9YoM_220_295",
+        "score": 0.6566118001937866,
+        "video_id": "4EdX3Ga9YoM",
+        "video_url": "https://www.youtube.com/watch?v=4EdX3Ga9YoM",
+        "start_timestamp": "0:03:40",
+        "end_timestamp": "0:04:55"
+      },
+      {
+        "rank": 4,
+        "doc_id": "my3qRjVJ7VM_796_849",
+        "score": 0.6431018114089966,
+        "video_id": "my3qRjVJ7VM",
+        "video_url": "https://www.youtube.com/watch?v=my3qRjVJ7VM",
+        "start_timestamp": "0:13:16",
+        "end_timestamp": "0:14:09"
+      },
+      {
+        "rank": 5,
+        "doc_id": "4EdX3Ga9YoM_92_164",
+        "score": 0.6297658085823059,
+        "video_id": "4EdX3Ga9YoM",
+        "video_url": "https://www.youtube.com/watch?v=4EdX3Ga9YoM",
+        "start_timestamp": "0:01:32",
+        "end_timestamp": "0:02:44"
+      },
+      {
+        "rank": 6,
+        "doc_id": "4EdX3Ga9YoM_148_210",
+        "score": 0.6289596557617188,
+        "video_id": "4EdX3Ga9YoM",
+        "video_url": "https://www.youtube.com/watch?v=4EdX3Ga9YoM",
+        "start_timestamp": "0:02:28",
+        "end_timestamp": "0:03:30"
+      },
+      {
+        "rank": 7,
+        "doc_id": "4EdX3Ga9YoM_660_720",
+        "score": 0.6228345632553101,
+        "video_id": "4EdX3Ga9YoM",
+        "video_url": "https://www.youtube.com/watch?v=4EdX3Ga9YoM",
+        "start_timestamp": "0:11:00",
+        "end_timestamp": "0:12:00"
+      },
+      {
+        "rank": 8,
+        "doc_id": "--JpgsDEL40_295_361",
+        "score": 0.6192947626113892,
+        "video_id": "--JpgsDEL40",
+        "video_url": "https://www.youtube.com/watch?v=--JpgsDEL40",
+        "start_timestamp": "0:04:55",
+        "end_timestamp": "0:06:01"
+      },
+      {
+        "rank": 9,
+        "doc_id": "--JpgsDEL40_180_266",
+        "score": 0.6092193722724915,
+        "video_id": "--JpgsDEL40",
+        "video_url": "https://www.youtube.com/watch?v=--JpgsDEL40",
+        "start_timestamp": "0:03:00",
+        "end_timestamp": "0:04:26"
+      },
+      {
+        "rank": 10,
+        "doc_id": "4EdX3Ga9YoM_0_50",
+        "score": 0.600252628326416,
+        "video_id": "4EdX3Ga9YoM",
+        "video_url": "https://www.youtube.com/watch?v=4EdX3Ga9YoM",
+        "start_timestamp": "0:00:00",
+        "end_timestamp": "0:00:50"
+      }
+    ]
+  },
+  {
+    "query_id": "q177",
+    "question": "Khi tạo ra một cụm mới trong phân cụm, chúng ta cần làm gì để xác định khoảng cách của cụm đó với các cụm khác?",
+    "results": [
+      {
+        "rank": 1,
+        "doc_id": "5vs9uLeRy3Q_332_366",
+        "score": 0.7068132758140564,
+        "video_id": "5vs9uLeRy3Q",
+        "video_url": "https://www.youtube.com/watch?v=5vs9uLeRy3Q",
+        "start_timestamp": "0:05:32",
+        "end_timestamp": "0:06:06"
+      },
+      {
+        "rank": 2,
+        "doc_id": "5vs9uLeRy3Q_355_419",
+        "score": 0.6873296499252319,
+        "video_id": "5vs9uLeRy3Q",
+        "video_url": "https://www.youtube.com/watch?v=5vs9uLeRy3Q",
+        "start_timestamp": "0:05:55",
+        "end_timestamp": "0:06:59"
+      },
+      {
+        "rank": 3,
+        "doc_id": "9bI07JfvEh8_734_789",
+        "score": 0.6561243534088135,
+        "video_id": "9bI07JfvEh8",
+        "video_url": "https://www.youtube.com/watch?v=9bI07JfvEh8",
+        "start_timestamp": "0:12:14",
+        "end_timestamp": "0:13:09"
+      },
+      {
+        "rank": 4,
+        "doc_id": "5vs9uLeRy3Q_463_526",
+        "score": 0.6517866253852844,
+        "video_id": "5vs9uLeRy3Q",
+        "video_url": "https://www.youtube.com/watch?v=5vs9uLeRy3Q",
+        "start_timestamp": "0:07:43",
+        "end_timestamp": "0:08:46"
+      },
+      {
+        "rank": 5,
+        "doc_id": "5vs9uLeRy3Q_279_338",
+        "score": 0.6503548622131348,
+        "video_id": "5vs9uLeRy3Q",
+        "video_url": "https://www.youtube.com/watch?v=5vs9uLeRy3Q",
+        "start_timestamp": "0:04:39",
+        "end_timestamp": "0:05:38"
+      },
+      {
+        "rank": 6,
+        "doc_id": "9bI07JfvEh8_559_610",
+        "score": 0.6496104598045349,
+        "video_id": "9bI07JfvEh8",
+        "video_url": "https://www.youtube.com/watch?v=9bI07JfvEh8",
+        "start_timestamp": "0:09:19",
+        "end_timestamp": "0:10:10"
+      },
+      {
+        "rank": 7,
+        "doc_id": "9bI07JfvEh8_604_654",
+        "score": 0.6489275693893433,
+        "video_id": "9bI07JfvEh8",
+        "video_url": "https://www.youtube.com/watch?v=9bI07JfvEh8",
+        "start_timestamp": "0:10:04",
+        "end_timestamp": "0:10:54"
+      },
+      {
+        "rank": 8,
+        "doc_id": "5vs9uLeRy3Q_609_663",
+        "score": 0.6398063898086548,
+        "video_id": "5vs9uLeRy3Q",
+        "video_url": "https://www.youtube.com/watch?v=5vs9uLeRy3Q",
+        "start_timestamp": "0:10:09",
+        "end_timestamp": "0:11:03"
+      },
+      {
+        "rank": 9,
+        "doc_id": "o7R9x8C9SSo_343_400",
+        "score": 0.6383212804794312,
+        "video_id": "o7R9x8C9SSo",
+        "video_url": "https://www.youtube.com/watch?v=o7R9x8C9SSo",
+        "start_timestamp": "0:05:43",
+        "end_timestamp": "0:06:40"
+      },
+      {
+        "rank": 10,
+        "doc_id": "NJ0rjEK0L78_1_45",
+        "score": 0.6364477276802063,
+        "video_id": "NJ0rjEK0L78",
+        "video_url": "https://www.youtube.com/watch?v=NJ0rjEK0L78",
+        "start_timestamp": "0:00:01",
+        "end_timestamp": "0:00:45"
+      }
+    ]
+  },
+  {
+    "query_id": "q290",
+    "question": "Hệ số learning rate trong thuật toán cây quyết định có vai trò gì trong quá trình dự đoán?",
+    "results": [
+      {
+        "rank": 1,
+        "doc_id": "K9YoXQq0TjI_732_817",
+        "score": 0.7336267828941345,
+        "video_id": "K9YoXQq0TjI",
+        "video_url": "https://www.youtube.com/watch?v=K9YoXQq0TjI",
+        "start_timestamp": "0:12:12",
+        "end_timestamp": "0:13:37"
+      },
+      {
+        "rank": 2,
+        "doc_id": "K9YoXQq0TjI_851_926",
+        "score": 0.6679137945175171,
+        "video_id": "K9YoXQq0TjI",
+        "video_url": "https://www.youtube.com/watch?v=K9YoXQq0TjI",
+        "start_timestamp": "0:14:11",
+        "end_timestamp": "0:15:26"
+      },
+      {
+        "rank": 3,
+        "doc_id": "K9YoXQq0TjI_799_864",
+        "score": 0.6636965870857239,
+        "video_id": "K9YoXQq0TjI",
+        "video_url": "https://www.youtube.com/watch?v=K9YoXQq0TjI",
+        "start_timestamp": "0:13:19",
+        "end_timestamp": "0:14:24"
+      },
+      {
+        "rank": 4,
+        "doc_id": "wdIjgotVuQM_858_885",
+        "score": 0.6449773907661438,
+        "video_id": "wdIjgotVuQM",
+        "video_url": "https://www.youtube.com/watch?v=wdIjgotVuQM",
+        "start_timestamp": "0:14:18",
+        "end_timestamp": "0:14:45"
+      },
+      {
+        "rank": 5,
+        "doc_id": "pCeNKsO8prM_941_1008",
+        "score": 0.627434492111206,
+        "video_id": "pCeNKsO8prM",
+        "video_url": "https://www.youtube.com/watch?v=pCeNKsO8prM",
+        "start_timestamp": "0:15:41",
+        "end_timestamp": "0:16:48"
+      },
+      {
+        "rank": 6,
+        "doc_id": "GdKIVY6CsTw_641_701",
+        "score": 0.6262117624282837,
+        "video_id": "GdKIVY6CsTw",
+        "video_url": "https://www.youtube.com/watch?v=GdKIVY6CsTw",
+        "start_timestamp": "0:10:41",
+        "end_timestamp": "0:11:41"
+      },
+      {
+        "rank": 7,
+        "doc_id": "wdIjgotVuQM_86_147",
+        "score": 0.6240267157554626,
+        "video_id": "wdIjgotVuQM",
+        "video_url": "https://www.youtube.com/watch?v=wdIjgotVuQM",
+        "start_timestamp": "0:01:26",
+        "end_timestamp": "0:02:27"
+      },
+      {
+        "rank": 8,
+        "doc_id": "K9YoXQq0TjI_967_1032",
+        "score": 0.618925154209137,
+        "video_id": "K9YoXQq0TjI",
+        "video_url": "https://www.youtube.com/watch?v=K9YoXQq0TjI",
+        "start_timestamp": "0:16:07",
+        "end_timestamp": "0:17:12"
+      },
+      {
+        "rank": 9,
+        "doc_id": "ccgq3dzD0A4_136_728",
+        "score": 0.6090866923332214,
+        "video_id": "ccgq3dzD0A4",
+        "video_url": "https://www.youtube.com/watch?v=ccgq3dzD0A4",
+        "start_timestamp": "0:02:16",
+        "end_timestamp": "0:12:08"
+      },
+      {
+        "rank": 10,
+        "doc_id": "wdIjgotVuQM_517_591",
+        "score": 0.6084705591201782,
+        "video_id": "wdIjgotVuQM",
+        "video_url": "https://www.youtube.com/watch?v=wdIjgotVuQM",
+        "start_timestamp": "0:08:37",
+        "end_timestamp": "0:09:51"
+      }
+    ]
+  }
+]

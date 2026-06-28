@@ -1,0 +1,10 @@
+dataset_version: phase2_pilot_v1
+strategy_id: parent_child_180s_45s
+chunks_dir: experiments/data/chunks/parent_child_180s_45s
+index_dir: experiments/indexes/chroma/parent_child_180s_45s/halong-embedding-child
+retrieval_backend: chroma
+collection_name: idx-parent-child-180s-45s-halong-child
+model:
+  name: contextboxai/halong_embedding
+  batch_size: 16
+  normalize_embeddings: true

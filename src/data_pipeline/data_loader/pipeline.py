@@ -44,7 +44,6 @@ class DataPipeline:
     
     def __init__(self, no_backup: bool = False):
         self.gpt_key = os.getenv("myAPIKey")
-        self.gemini_key = os.getenv("googleAPIKey") # Fix: rule mentioned googleAPIKey
         self.state = PipelineState()
         self.no_backup = no_backup
         self._vector_db = None

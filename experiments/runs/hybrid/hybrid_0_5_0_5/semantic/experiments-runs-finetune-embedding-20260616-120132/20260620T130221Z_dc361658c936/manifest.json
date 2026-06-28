@@ -1,0 +1,27 @@
+{
+  "run_id": "20260620T130221Z_dc361658c936",
+  "component": "hybrid_retrieval",
+  "task": "rag_retrieval_benchmark",
+  "strategy_id": "semantic",
+  "model": "experiments/runs/finetune/embedding/20260616-120132",
+  "dataset_version": "phase2_pilot_v1",
+  "config_hash": "dc361658c936",
+  "created_at": "2026-06-20T13:02:30.362791+00:00",
+  "split": "test",
+  "query_count": 300,
+  "top_k": 40,
+  "index_dir": "C:\\uit_HK5\\CS431\\final_project\\experiments\\indexes\\chroma\\semantic\\bge-m3-finetuned-v3",
+  "query_path": "C:\\uit_HK5\\CS431\\final_project\\experiments\\data\\ground_truth\\ground_truth_pilot.jsonl",
+  "qrels_path": "C:\\uit_HK5\\CS431\\final_project\\experiments\\data\\processed\\qrels_semantic.jsonl",
+  "run_dir": "C:\\uit_HK5\\CS431\\final_project\\experiments\\runs\\hybrid\\hybrid_0_5_0_5\\semantic\\experiments-runs-finetune-embedding-20260616-120132\\20260620T130221Z_dc361658c936",
+  "metrics_path": "C:\\uit_HK5\\CS431\\final_project\\experiments\\runs\\hybrid\\hybrid_0_5_0_5\\semantic\\experiments-runs-finetune-embedding-20260616-120132\\20260620T130221Z_dc361658c936\\metrics.json",
+  "retrieval_backend": "hybrid_0_5_0_5",
+  "dense_backend": "chroma",
+  "bm25_field": "page_content + OCR",
+  "hybrid_weights": [
+    0.5,
+    0.5
+  ],
+  "index_path": "C:\\uit_HK5\\CS431\\final_project\\experiments\\indexes\\chroma\\semantic\\bge-m3-finetuned-v3",
+  "collection_name": "emb-semantic-baai-bge-m3-finetuned-v3"
+}

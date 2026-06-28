@@ -1,169 +1,137 @@
-# Backend — FastAPI API Service
+# backend — FastAPI Service
 
-`backend/` là backend web/API của hệ thống PUQ Q&A. Module này chịu trách nhiệm xác thực người dùng, quản lý session/chat history, stream câu trả lời AI về frontend và tích hợp Redis semantic cache.
-
----
-
-## Vai trò trong hệ thống
-
-```txt
-Frontend React
-  ↓ HTTP/SSE
-backend/app/main.py
-  ↓
-API v1 endpoints
-  ↓
-services: auth, chat, videos, summary
-  ↓
-PostgreSQL + Redis + src RAG engine
-```
-
-Backend không chứa toàn bộ logic RAG. Nó gọi AI engine trong `src/`, đặc biệt là `src.rag_core.lang_graph_rag.workflow`.
+`backend/` là FastAPI service chính của PUQ Q&A: auth, chat streaming, video management, PostgreSQL persistence, Redis semantic cache. Service này gọi vào `src/rag_core` để tạo câu trả lời AI.
 
 ---
 
-## Cấu trúc thư mục
+## Cấu trúc thư mục chi tiết
 
 ```txt
 backend/
+├── requirements.txt          # Backend dependencies
+├── alembic.ini               # Alembic DB migration config
+├── alembic/
+│   ├── README
+│   ├── env.py                # Alembic environment
+│   ├── script.py.mako        # Migration template
+│   └── versions/
+│       └── 82e56a755f71_initial_migration.py  # Initial DB migration
+├── docs/
+│   ├── backend.md
+│   └── backend_research.md
 ├── app/
-│   ├── main.py              # FastAPI entry point + lifespan startup
-│   ├── api/v1/endpoints/    # REST/SSE endpoints: auth, chat, videos
-│   ├── core/                # Config, security, cache
-│   ├── db/                  # SQLAlchemy session + Redis clients
-│   ├── models/              # SQLAlchemy models: User, ChatHistory...
-│   ├── schemas/             # Pydantic schemas
-│   ├── services/            # Business logic cho auth/chat/video/summary
-│   └── deps.py              # FastAPI dependencies
-├── alembic/                 # DB migrations
-├── alembic.ini
-└── requirements.txt
+│   ├── __init__.py
+│   ├── main.py               # FastAPI entry point + lifespan startup
+│   ├── deps.py               # FastAPI dependencies
+│   ├── api/
+│   │   ├── __init__.py
+│   │   ├── README.md
+│   │   └── v1/
+│   │       ├── __init__.py
+│   │       ├── router.py     # API v1 router
+│   │       └── endpoints/
+│   │           ├── __init__.py
+│   │           ├── auth.py   # Auth endpoints (register, login, refresh)
+│   │           ├── chat.py   # Chat streaming endpoint
+│   │           ├── schemas.py # Pydantic schemas
+│   │           └── videos.py # Video listing endpoints
+│   ├── core/
+│   │   ├── __init__.py
+│   │   ├── README.md
+│   │   ├── config.py         # App configuration (Pydantic Settings)
+│   │   ├── security.py       # JWT + password hashing
+│   │   └── cache/
+│   │       ├── __init__.py
+│   │       ├── README.md
+│   │       ├── prewarm.py    # Cache prewarming on startup
+│   │       └── semantic.py   # Semantic cache logic (Redis)
+│   ├── db/
+│   │   ├── __init__.py
+│   │   ├── README.md
+│   │   ├── session.py        # SQLAlchemy async DB session
+│   │   └── redis.py          # Redis client
+│   ├── models/
+│   │   ├── __init__.py
+│   │   ├── README.md
+│   │   └── user.py           # SQLAlchemy User model
+│   ├── schemas/
+│   │   ├── __init__.py
+│   │   ├── README.md
+│   │   └── chat.py           # Chat Pydantic schemas
+│   └── services/
+│       ├── __init__.py
+│       ├── README.md
+│       ├── auth.py           # Auth business logic
+│       ├── chat.py           # Chat service (calls src.rag_core)
+│       ├── summary.py        # Summary service
+│       └── videos.py         # Video business logic
+└── README.md
+```
+
+---
+
+## Dependencies chính
+
+- FastAPI 0.115.0 + uvicorn
+- SQLAlchemy 2.0 + asyncpg + Alembic (PostgreSQL)
+- redis 5.1.1
+- python-jose + passlib (JWT + bcrypt)
+- pydantic 2.9.2 + pydantic-settings
+- httpx (internal HTTP calls)
+
+---
+
+## API endpoints
+
+| Endpoint | Mô tả |
+|---|---|
+| `POST /api/v1/auth/register` | Đăng ký user mới |
+| `POST /api/v1/auth/login` | Đăng nhập, nhận access + refresh token |
+| `POST /api/v1/auth/refresh` | Làm mới access token |
+| `POST /api/v1/auth/logout` | Đăng xuất |
+| `POST /api/v1/chat/stream` | Stream chat SSE (status, token, context, metadata) |
+| `GET /api/v1/videos` | Danh sách video bài giảng |
+
+---
+
+## Chat streaming contract
+
+Backend gửi SSE events về frontend:
+
+```json
+{"type":"status","status":"Đang truy hồi tri thức..."}
+{"type":"token","content":"Nội dung trả lời..."}
+{"type":"context","docs":[...]}
+{"type":"metadata","conversation_id":"...","response":{...}}
+{"type":"error","content":"..."}
+{"type":"[DONE]"}
 ```
 
 ---
 
 ## Chạy backend
 
-Từ root project:
-
 ```powershell
+# Cài dependencies
 pip install -r backend/requirements.txt
+
+# Chạy dev server
 python -m uvicorn backend.app.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
-Health check:
-
-```txt
-http://localhost:8000/health
-```
-
-OpenAPI docs:
-
-```txt
-http://localhost:8000/docs
-```
-
 ---
 
-## Dịch vụ phụ thuộc
+## Database
 
-### PostgreSQL
-
-Dùng để lưu:
-
-- user account;
-- password hash;
-- refresh/session token nếu có;
-- chat sessions;
-- `ChatHistory` gồm cả question và response.
-
-Biến môi trường:
-
-```env
-DATABASE_URL=postgresql+psycopg2://...
-```
-
-### Redis Stack
-
-Dùng cho:
-
-- JWT blacklist/rate-limit helpers hiện có;
-- Redis semantic cache cho chat response;
-- RediSearch vector index.
-
-Local dev:
-
-```powershell
-docker run --name puq-redis-stack -p 6379:6379 -p 8001:8001 -v redis_stack_data:/data redis/redis-stack:latest
-```
-
-Biến môi trường:
-
-```env
-REDIS_URL=redis://localhost:6379/0
-SEMANTIC_CACHE_ENABLED=True
-```
-
----
-
-## Chat streaming flow
-
-```txt
-POST /api/v1/chat/stream
-  ↓
-get_current_user + DB session + Redis binary client
-  ↓
-generate_chat_stream()
-  ↓
-Load history từ DB
-  ↓
-Lưu user message vào DB
-  ↓
-SemanticCache.get(user_message)
-  ├─ Hit: stream cached text + lưu assistant vào DB
-  └─ Miss: gọi LangGraph workflow từ src/rag_core
-          ↓
-      Stream status/token/context về frontend
-          ↓
-      Lưu assistant response vào DB
-          ↓
-      SemanticCache.set() nếu response cacheable
-```
-
----
-
-## API chính
-
-| Endpoint | Mục đích |
-|---|---|
-| `POST /api/v1/auth/register` | Tạo tài khoản |
-| `POST /api/v1/auth/login` | Đăng nhập, nhận token |
-| `POST /api/v1/auth/refresh` | Làm mới access token |
-| `POST /api/v1/chat/stream` | SSE stream chat AI |
-| `GET /api/v1/chat/history` | Lấy lịch sử chat |
-| `GET /api/v1/chat/sessions` | Lấy danh sách session |
-| `GET /api/v1/videos` | Lấy danh sách video |
-
-Tên path chính xác phụ thuộc router trong `app/api/v1/router.py`.
-
----
-
-## Startup behavior
-
-Trong `app/main.py`, lifespan startup sẽ:
-
-1. tạo bảng DB trong dev bằng `Base.metadata.create_all()`;
-2. prewarm RAG resources ở background;
-3. prewarm Redis semantic cache từ N cặp Q/A gần nhất trong DB.
-
-Nếu Redis hoặc prewarm lỗi, backend chỉ log warning/error và vẫn tiếp tục chạy.
+- PostgreSQL là **source of truth** cho user, session và chat history.
+- Alembic quản lý migrations trong `backend/alembic/`.
+- Redis chỉ là cache; mất Redis thì rebuild từ DB bằng prewarm.
 
 ---
 
 ## Quy ước khi sửa backend
 
-- Comments/docstrings viết bằng tiếng Việt.
-- Import dùng absolute path.
-- Không để Redis cache thay PostgreSQL history.
-- Với chat flow, luôn lưu user message trước cache lookup.
-- Redis vector cache phải dùng client `decode_responses=False`.
+- Endpoint mới thêm vào `app/api/v1/endpoints/` và register trong `router.py`.
+- Service logic để trong `app/services/`, không nhét trực tiếp vào endpoint.
+- Pydantic schemas để trong `app/schemas/`.
+- Khi sửa chat stream, kiểm tra đủ event types: `status`, `token`, `context`, `metadata`, `error`, `[DONE]`.

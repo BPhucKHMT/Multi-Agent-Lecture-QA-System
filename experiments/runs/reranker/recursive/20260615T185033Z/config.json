@@ -1,0 +1,140 @@
+{
+  "dataset_version": "phase4_reranker_final_slide_v1",
+  "strategy_id": "recursive",
+  "split": "test",
+  "chunks_dir": "C:\\uit_HK5\\CS431\\final_project\\experiments\\data\\chunks\\recursive",
+  "query_path": "C:\\uit_HK5\\CS431\\final_project\\experiments\\data\\ground_truth\\ground_truth_pilot.jsonl",
+  "qrels_path": "C:\\uit_HK5\\CS431\\final_project\\experiments\\data\\processed\\qrels_recursive.jsonl",
+  "run_root": "C:\\uit_HK5\\CS431\\final_project\\experiments\\runs\\reranker",
+  "registry_path": "C:\\uit_HK5\\CS431\\final_project\\experiments\\runs\\registry.jsonl",
+  "candidate_top_n": 40,
+  "device": "cuda",
+  "latency_gates": {
+    "demo_target_p95_ms": 800,
+    "demo_hard_cap_p95_ms": 1500
+  },
+  "candidate_sources": [
+    {
+      "name": "BAAI/bge-m3",
+      "path": "experiments/runs/embedding/recursive/baai-bge-m3/20260615T131643Z_82656264106b/eval_results.json"
+    },
+    {
+      "name": "BAAI/bge-m3-finetuned",
+      "path": "experiments/runs/embedding/recursive/experiments-runs-finetune-embedding-20260616-010550/20260615T184943Z_e5d8ecbc002d/eval_results.json"
+    },
+    {
+      "name": "intfloat/multilingual-e5-large",
+      "path": "experiments/runs/embedding/recursive/intfloat-multilingual-e5-large/20260615T131923Z_ad0875d64268/eval_results.json"
+    },
+    {
+      "name": "bkai-foundation-models/vietnamese-bi-encoder",
+      "path": "experiments/runs/embedding/recursive/bkai-foundation-models-vietnamese-bi-encoder/20260615T132154Z_a0ebc01421ef/eval_results.json"
+    },
+    {
+      "name": "dangvantuan/vietnamese-embedding",
+      "path": "experiments/runs/embedding/recursive/dangvantuan-vietnamese-embedding/20260615T132254Z_c70eaaff9ff2/eval_results.json"
+    },
+    {
+      "name": "contextboxai/halong_embedding",
+      "path": "experiments/runs/embedding/recursive/contextboxai-halong-embedding/20260615T132354Z_0b32bc3e1b9a/eval_results.json"
+    }
+  ],
+  "retriever": {
+    "embedding_model": "BAAI/bge-m3",
+    "batch_size": 16,
+    "normalize_embeddings": true,
+    "retrieval_backend": "precomputed"
+  },
+  "lanes": {
+    "runtime_top40": {
+      "candidate_pool_sizes": [
+        40
+      ],
+      "max_length": 512
+    }
+  },
+  "metrics": {
+    "recall_at": [
+      40
+    ],
+    "mrr_at": [
+      10
+    ],
+    "ndcg_at": [
+      10
+    ],
+    "precision_at": [],
+    "map_at": [],
+    "hit_at": [
+      1,
+      5,
+      10
+    ]
+  },
+  "models": [
+    {
+      "name": "no_rerank",
+      "type": "baseline",
+      "enabled": true,
+      "lanes": [
+        "runtime_top40"
+      ]
+    },
+    {
+      "name": "cross-encoder/ms-marco-MiniLM-L-6-v2",
+      "type": "sentence_transformers_cross_encoder",
+      "enabled": true,
+      "lanes": [
+        "runtime_top40"
+      ],
+      "batch_size": 32
+    },
+    {
+      "name": "BAAI/bge-reranker-base",
+      "type": "sentence_transformers_cross_encoder",
+      "enabled": true,
+      "lanes": [
+        "runtime_top40"
+      ],
+      "batch_size": 16
+    },
+    {
+      "name": "BAAI/bge-reranker-v2-m3",
+      "type": "sentence_transformers_cross_encoder",
+      "enabled": true,
+      "lanes": [
+        "runtime_top40"
+      ],
+      "batch_size": 32
+    },
+    {
+      "name": "jinaai/jina-reranker-v2-base-multilingual",
+      "type": "sentence_transformers_cross_encoder",
+      "enabled": true,
+      "lanes": [
+        "runtime_top40"
+      ],
+      "batch_size": 32,
+      "trust_remote_code": true
+    },
+    {
+      "name": "experiments/runs/finetune/reranker/20260616-012511",
+      "type": "sentence_transformers_cross_encoder",
+      "enabled": true,
+      "lanes": [
+        "runtime_top40"
+      ],
+      "batch_size": 32,
+      "trust_remote_code": true
+    },
+    {
+      "name": "namdp-ptit/ViRanker",
+      "type": "sentence_transformers_cross_encoder",
+      "enabled": true,
+      "lanes": [
+        "runtime_top40"
+      ],
+      "batch_size": 8
+    }
+  ]
+}

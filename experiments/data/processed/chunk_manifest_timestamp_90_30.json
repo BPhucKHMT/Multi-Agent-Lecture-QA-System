@@ -1,0 +1,9 @@
+{
+  "strategy_id": "timestamp_90_30",
+  "source_dir": "experiments\\data\\chunks\\timestamp_90_30",
+  "generated_at": "2026-06-13T17:12:03.259483+00:00",
+  "chunk_count": 3665,
+  "missing_timestamp_count": 0,
+  "course_count": 4,
+  "video_count": 295
+}

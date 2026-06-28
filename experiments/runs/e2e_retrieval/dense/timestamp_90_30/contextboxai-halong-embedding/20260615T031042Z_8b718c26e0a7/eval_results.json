@@ -1,0 +1,1814 @@
+[
+  {
+    "query_id": "q001",
+    "question": "Trong Python, hàm dùng để gom nhiều câu lệnh thành một khối xử lý có thể gọi lại dùng để làm gì?",
+    "results": [
+      {
+        "rank": 1,
+        "doc_id": "0ozeUUS9DzQ_601_691",
+        "score": 0.416750431060791,
+        "video_id": "0ozeUUS9DzQ",
+        "video_url": "https://www.youtube.com/watch?v=0ozeUUS9DzQ",
+        "start_timestamp": "10:01",
+        "end_timestamp": "11:31"
+      },
+      {
+        "rank": 2,
+        "doc_id": "CkX4yE2fN1w_14_104",
+        "score": 0.40230047702789307,
+        "video_id": "CkX4yE2fN1w",
+        "video_url": "https://www.youtube.com/watch?v=CkX4yE2fN1w",
+        "start_timestamp": "0:14",
+        "end_timestamp": "1:44"
+      },
+      {
+        "rank": 3,
+        "doc_id": "CkX4yE2fN1w_74_164",
+        "score": 0.38268840312957764,
+        "video_id": "CkX4yE2fN1w",
+        "video_url": "https://www.youtube.com/watch?v=CkX4yE2fN1w",
+        "start_timestamp": "1:14",
+        "end_timestamp": "2:44"
+      },
+      {
+        "rank": 4,
+        "doc_id": "xaUMWpT1mUI_433_504",
+        "score": 0.3756648898124695,
+        "video_id": "xaUMWpT1mUI",
+        "video_url": "https://www.youtube.com/watch?v=xaUMWpT1mUI",
+        "start_timestamp": "7:13",
+        "end_timestamp": "8:24"
+      },
+      {
+        "rank": 5,
+        "doc_id": "xSEyCajJWVo_614_704",
+        "score": 0.37015843391418457,
+        "video_id": "xSEyCajJWVo",
+        "video_url": "https://www.youtube.com/watch?v=xSEyCajJWVo",
+        "start_timestamp": "10:14",
+        "end_timestamp": "11:44"
+      },
+      {
+        "rank": 6,
+        "doc_id": "0ozeUUS9DzQ_661_751",
+        "score": 0.3667367100715637,
+        "video_id": "0ozeUUS9DzQ",
+        "video_url": "https://www.youtube.com/watch?v=0ozeUUS9DzQ",
+        "start_timestamp": "11:01",
+        "end_timestamp": "12:31"
+      },
+      {
+        "rank": 7,
+        "doc_id": "CkX4yE2fN1w_194_284",
+        "score": 0.362251877784729,
+        "video_id": "CkX4yE2fN1w",
+        "video_url": "https://www.youtube.com/watch?v=CkX4yE2fN1w",
+        "start_timestamp": "3:14",
+        "end_timestamp": "4:44"
+      },
+      {
+        "rank": 8,
+        "doc_id": "CkX4yE2fN1w_254_344",
+        "score": 0.36035776138305664,
+        "video_id": "CkX4yE2fN1w",
+        "video_url": "https://www.youtube.com/watch?v=CkX4yE2fN1w",
+        "start_timestamp": "4:14",
+        "end_timestamp": "5:44"
+      },
+      {
+        "rank": 9,
+        "doc_id": "1a7AxTRLrlQ_301_391",
+        "score": 0.35933297872543335,
+        "video_id": "1a7AxTRLrlQ",
+        "video_url": "https://www.youtube.com/watch?v=1a7AxTRLrlQ",
+        "start_timestamp": "5:01",
+        "end_timestamp": "6:31"
+      },
+      {
+        "rank": 10,
+        "doc_id": "xSEyCajJWVo_494_584",
+        "score": 0.35357046127319336,
+        "video_id": "xSEyCajJWVo",
+        "video_url": "https://www.youtube.com/watch?v=xSEyCajJWVo",
+        "start_timestamp": "8:14",
+        "end_timestamp": "9:44"
+      },
+      {
+        "rank": 11,
+        "doc_id": "0ozeUUS9DzQ_481_571",
+        "score": 0.3529132604598999,
+        "video_id": "0ozeUUS9DzQ",
+        "video_url": "https://www.youtube.com/watch?v=0ozeUUS9DzQ",
+        "start_timestamp": "8:01",
+        "end_timestamp": "9:31"
+      },
+      {
+        "rank": 12,
+        "doc_id": "0ozeUUS9DzQ_541_631",
+        "score": 0.35165995359420776,
+        "video_id": "0ozeUUS9DzQ",
+        "video_url": "https://www.youtube.com/watch?v=0ozeUUS9DzQ",
+        "start_timestamp": "9:01",
+        "end_timestamp": "10:31"
+      },
+      {
+        "rank": 13,
+        "doc_id": "1a7AxTRLrlQ_181_271",
+        "score": 0.3412390351295471,
+        "video_id": "1a7AxTRLrlQ",
+        "video_url": "https://www.youtube.com/watch?v=1a7AxTRLrlQ",
+        "start_timestamp": "3:01",
+        "end_timestamp": "4:31"
+      },
+      {
+        "rank": 14,
+        "doc_id": "0ozeUUS9DzQ_241_331",
+        "score": 0.33944636583328247,
+        "video_id": "0ozeUUS9DzQ",
+        "video_url": "https://www.youtube.com/watch?v=0ozeUUS9DzQ",
+        "start_timestamp": "4:01",
+        "end_timestamp": "5:31"
+      },
+      {
+        "rank": 15,
+        "doc_id": "CkX4yE2fN1w_314_358",
+        "score": 0.33924996852874756,
+        "video_id": "CkX4yE2fN1w",
+        "video_url": "https://www.youtube.com/watch?v=CkX4yE2fN1w",
+        "start_timestamp": "5:14",
+        "end_timestamp": "5:58"
+      },
+      {
+        "rank": 16,
+        "doc_id": "1a7AxTRLrlQ_241_331",
+        "score": 0.339174747467041,
+        "video_id": "1a7AxTRLrlQ",
+        "video_url": "https://www.youtube.com/watch?v=1a7AxTRLrlQ",
+        "start_timestamp": "4:01",
+        "end_timestamp": "5:31"
+      },
+      {
+        "rank": 17,
+        "doc_id": "xSEyCajJWVo_554_644",
+        "score": 0.33672118186950684,
+        "video_id": "xSEyCajJWVo",
+        "video_url": "https://www.youtube.com/watch?v=xSEyCajJWVo",
+        "start_timestamp": "9:14",
+        "end_timestamp": "10:44"
+      },
+      {
+        "rank": 18,
+        "doc_id": "CqnM7BT7oSU_540_552",
+        "score": 0.33499085903167725,
+        "video_id": "CqnM7BT7oSU",
+        "video_url": "https://www.youtube.com/watch?v=CqnM7BT7oSU",
+        "start_timestamp": "9:00",
+        "end_timestamp": "9:12"
+      },
+      {
+        "rank": 19,
+        "doc_id": "0ozeUUS9DzQ_421_511",
+        "score": 0.3347387909889221,
+        "video_id": "0ozeUUS9DzQ",
+        "video_url": "https://www.youtube.com/watch?v=0ozeUUS9DzQ",
+        "start_timestamp": "7:01",
+        "end_timestamp": "8:31"
+      },
+      {
+        "rank": 20,
+        "doc_id": "0ozeUUS9DzQ_301_391",
+        "score": 0.3333650827407837,
+        "video_id": "0ozeUUS9DzQ",
+        "video_url": "https://www.youtube.com/watch?v=0ozeUUS9DzQ",
+        "start_timestamp": "5:01",
+        "end_timestamp": "6:31"
+      },
+      {
+        "rank": 21,
+        "doc_id": "CkX4yE2fN1w_134_224",
+        "score": 0.33017492294311523,
+        "video_id": "CkX4yE2fN1w",
+        "video_url": "https://www.youtube.com/watch?v=CkX4yE2fN1w",
+        "start_timestamp": "2:14",
+        "end_timestamp": "3:44"
+      },
+      {
+        "rank": 22,
+        "doc_id": "B1LCA6nxyCs_74_164",
+        "score": 0.32890182733535767,
+        "video_id": "B1LCA6nxyCs",
+        "video_url": "https://www.youtube.com/watch?v=B1LCA6nxyCs",
+        "start_timestamp": "1:14",
+        "end_timestamp": "2:44"
+      },
+      {
+        "rank": 23,
+        "doc_id": "xaUMWpT1mUI_493_504",
+        "score": 0.32706308364868164,
+        "video_id": "xaUMWpT1mUI",
+        "video_url": "https://www.youtube.com/watch?v=xaUMWpT1mUI",
+        "start_timestamp": "8:13",
+        "end_timestamp": "8:24"
+      },
+      {
+        "rank": 24,
+        "doc_id": "QUIZn8fpTpI_1_91",
+        "score": 0.32568973302841187,
+        "video_id": "QUIZn8fpTpI",
+        "video_url": "https://www.youtube.com/watch?v=QUIZn8fpTpI",
+        "start_timestamp": "0:01",
+        "end_timestamp": "1:31"
+      },
+      {
+        "rank": 25,
+        "doc_id": "WAiLM7OFU9A_300_390",
+        "score": 0.3250367045402527,
+        "video_id": "WAiLM7OFU9A",
+        "video_url": "https://www.youtube.com/watch?v=WAiLM7OFU9A",
+        "start_timestamp": "5:00",
+        "end_timestamp": "6:30"
+      },
+      {
+        "rank": 26,
+        "doc_id": "dDjSutHDckw_121_211",
+        "score": 0.32181036472320557,
+        "video_id": "dDjSutHDckw",
+        "video_url": "https://www.youtube.com/watch?v=dDjSutHDckw",
+        "start_timestamp": "2:01",
+        "end_timestamp": "3:31"
+      },
+      {
+        "rank": 27,
+        "doc_id": "jl9v7IDMTsk_240_330",
+        "score": 0.31556153297424316,
+        "video_id": "jl9v7IDMTsk",
+        "video_url": "https://www.youtube.com/watch?v=jl9v7IDMTsk",
+        "start_timestamp": "4:00",
+        "end_timestamp": "5:30"
+      },
+      {
+        "rank": 28,
+        "doc_id": "YSi7G6hDhks_0_90",
+        "score": 0.3154257535934448,
+        "video_id": "YSi7G6hDhks",
+        "video_url": "https://www.youtube.com/watch?v=YSi7G6hDhks",
+        "start_timestamp": "0:00",
+        "end_timestamp": "1:30"
+      },
+      {
+        "rank": 29,
+        "doc_id": "xaUMWpT1mUI_313_403",
+        "score": 0.3132683038711548,
+        "video_id": "xaUMWpT1mUI",
+        "video_url": "https://www.youtube.com/watch?v=xaUMWpT1mUI",
+        "start_timestamp": "5:13",
+        "end_timestamp": "6:43"
+      },
+      {
+        "rank": 30,
+        "doc_id": "CtOfKuiy_uc_314_404",
+        "score": 0.31173932552337646,
+        "video_id": "CtOfKuiy_uc",
+        "video_url": "https://www.youtube.com/watch?v=CtOfKuiy_uc",
+        "start_timestamp": "5:14",
+        "end_timestamp": "6:44"
+      },
+      {
+        "rank": 31,
+        "doc_id": "A3iFEk5jllM_120_210",
+        "score": 0.31066691875457764,
+        "video_id": "A3iFEk5jllM",
+        "video_url": "https://www.youtube.com/watch?v=A3iFEk5jllM",
+        "start_timestamp": "2:00",
+        "end_timestamp": "3:30"
+      },
+      {
+        "rank": 32,
+        "doc_id": "UXxELgk5Vws_600_690",
+        "score": 0.31031620502471924,
+        "video_id": "UXxELgk5Vws",
+        "video_url": "https://www.youtube.com/watch?v=UXxELgk5Vws",
+        "start_timestamp": "10:00",
+        "end_timestamp": "11:30"
+      },
+      {
+        "rank": 33,
+        "doc_id": "A3iFEk5jllM_0_90",
+        "score": 0.3087512254714966,
+        "video_id": "A3iFEk5jllM",
+        "video_url": "https://www.youtube.com/watch?v=A3iFEk5jllM",
+        "start_timestamp": "0:00",
+        "end_timestamp": "1:30"
+      },
+      {
+        "rank": 34,
+        "doc_id": "oXy25Wt6rdE_314_404",
+        "score": 0.30862700939178467,
+        "video_id": "oXy25Wt6rdE",
+        "video_url": "https://www.youtube.com/watch?v=oXy25Wt6rdE",
+        "start_timestamp": "5:14",
+        "end_timestamp": "6:44"
+      },
+      {
+        "rank": 35,
+        "doc_id": "xSEyCajJWVo_374_464",
+        "score": 0.3084039092063904,
+        "video_id": "xSEyCajJWVo",
+        "video_url": "https://www.youtube.com/watch?v=xSEyCajJWVo",
+        "start_timestamp": "6:14",
+        "end_timestamp": "7:44"
+      },
+      {
+        "rank": 36,
+        "doc_id": "m19884tczqs_74_164",
+        "score": 0.30822890996932983,
+        "video_id": "m19884tczqs",
+        "video_url": "https://www.youtube.com/watch?v=m19884tczqs",
+        "start_timestamp": "1:14",
+        "end_timestamp": "2:44"
+      },
+      {
+        "rank": 37,
+        "doc_id": "xSEyCajJWVo_734_824",
+        "score": 0.3078853487968445,
+        "video_id": "xSEyCajJWVo",
+        "video_url": "https://www.youtube.com/watch?v=xSEyCajJWVo",
+        "start_timestamp": "12:14",
+        "end_timestamp": "13:44"
+      },
+      {
+        "rank": 38,
+        "doc_id": "4EdX3Ga9YoM_720_783",
+        "score": 0.30655163526535034,
+        "video_id": "4EdX3Ga9YoM",
+        "video_url": "https://www.youtube.com/watch?v=4EdX3Ga9YoM",
+        "start_timestamp": "12:00",
+        "end_timestamp": "13:03"
+      },
+      {
+        "rank": 39,
+        "doc_id": "uhwita1uhlA_121_211",
+        "score": 0.3041948080062866,
+        "video_id": "uhwita1uhlA",
+        "video_url": "https://www.youtube.com/watch?v=uhwita1uhlA",
+        "start_timestamp": "2:01",
+        "end_timestamp": "3:31"
+      },
+      {
+        "rank": 40,
+        "doc_id": "B1LCA6nxyCs_134_224",
+        "score": 0.30414867401123047,
+        "video_id": "B1LCA6nxyCs",
+        "video_url": "https://www.youtube.com/watch?v=B1LCA6nxyCs",
+        "start_timestamp": "2:14",
+        "end_timestamp": "3:44"
+      },
+      {
+        "rank": 41,
+        "doc_id": "oXy25Wt6rdE_374_464",
+        "score": 0.30334579944610596,
+        "video_id": "oXy25Wt6rdE",
+        "video_url": "https://www.youtube.com/watch?v=oXy25Wt6rdE",
+        "start_timestamp": "6:14",
+        "end_timestamp": "7:44"
+      },
+      {
+        "rank": 42,
+        "doc_id": "KeNRQw9j_ps_960_1002",
+        "score": 0.30328643321990967,
+        "video_id": "KeNRQw9j_ps",
+        "video_url": "https://www.youtube.com/watch?v=KeNRQw9j_ps",
+        "start_timestamp": "16:00",
+        "end_timestamp": "16:42"
+      },
+      {
+        "rank": 43,
+        "doc_id": "DGNdZGdwihs_180_270",
+        "score": 0.3015180230140686,
+        "video_id": "DGNdZGdwihs",
+        "video_url": "https://www.youtube.com/watch?v=DGNdZGdwihs",
+        "start_timestamp": "3:00",
+        "end_timestamp": "4:30"
+      },
+      {
+        "rank": 44,
+        "doc_id": "FCZXP4oCiFc_254_344",
+        "score": 0.3010520935058594,
+        "video_id": "FCZXP4oCiFc",
+        "video_url": "https://www.youtube.com/watch?v=FCZXP4oCiFc",
+        "start_timestamp": "4:14",
+        "end_timestamp": "5:44"
+      },
+      {
+        "rank": 45,
+        "doc_id": "jwfLIgOeneE_180_270",
+        "score": 0.29989874362945557,
+        "video_id": "jwfLIgOeneE",
+        "video_url": "https://www.youtube.com/watch?v=jwfLIgOeneE",
+        "start_timestamp": "3:00",
+        "end_timestamp": "4:30"
+      },
+      {
+        "rank": 46,
+        "doc_id": "dDjSutHDckw_241_331",
+        "score": 0.2989543080329895,
+        "video_id": "dDjSutHDckw",
+        "video_url": "https://www.youtube.com/watch?v=dDjSutHDckw",
+        "start_timestamp": "4:01",
+        "end_timestamp": "5:31"
+      },
+      {
+        "rank": 47,
+        "doc_id": "dDjSutHDckw_61_151",
+        "score": 0.2963572144508362,
+        "video_id": "dDjSutHDckw",
+        "video_url": "https://www.youtube.com/watch?v=dDjSutHDckw",
+        "start_timestamp": "1:01",
+        "end_timestamp": "2:31"
+      },
+      {
+        "rank": 48,
+        "doc_id": "DGNdZGdwihs_240_330",
+        "score": 0.29624009132385254,
+        "video_id": "DGNdZGdwihs",
+        "video_url": "https://www.youtube.com/watch?v=DGNdZGdwihs",
+        "start_timestamp": "4:00",
+        "end_timestamp": "5:30"
+      },
+      {
+        "rank": 49,
+        "doc_id": "oXy25Wt6rdE_134_224",
+        "score": 0.2958935499191284,
+        "video_id": "oXy25Wt6rdE",
+        "video_url": "https://www.youtube.com/watch?v=oXy25Wt6rdE",
+        "start_timestamp": "2:14",
+        "end_timestamp": "3:44"
+      },
+      {
+        "rank": 50,
+        "doc_id": "DGNdZGdwihs_300_390",
+        "score": 0.29566752910614014,
+        "video_id": "DGNdZGdwihs",
+        "video_url": "https://www.youtube.com/watch?v=DGNdZGdwihs",
+        "start_timestamp": "5:00",
+        "end_timestamp": "6:30"
+      },
+      {
+        "rank": 51,
+        "doc_id": "uhwita1uhlA_61_151",
+        "score": 0.2950087785720825,
+        "video_id": "uhwita1uhlA",
+        "video_url": "https://www.youtube.com/watch?v=uhwita1uhlA",
+        "start_timestamp": "1:01",
+        "end_timestamp": "2:31"
+      },
+      {
+        "rank": 52,
+        "doc_id": "40kpU65MMoI_540_630",
+        "score": 0.29458415508270264,
+        "video_id": "40kpU65MMoI",
+        "video_url": "https://www.youtube.com/watch?v=40kpU65MMoI",
+        "start_timestamp": "9:00",
+        "end_timestamp": "10:30"
+      },
+      {
+        "rank": 53,
+        "doc_id": "FCZXP4oCiFc_194_284",
+        "score": 0.29452502727508545,
+        "video_id": "FCZXP4oCiFc",
+        "video_url": "https://www.youtube.com/watch?v=FCZXP4oCiFc",
+        "start_timestamp": "3:14",
+        "end_timestamp": "4:44"
+      },
+      {
+        "rank": 54,
+        "doc_id": "JGxo_olUl2U_120_210",
+        "score": 0.29407811164855957,
+        "video_id": "JGxo_olUl2U",
+        "video_url": "https://www.youtube.com/watch?v=JGxo_olUl2U",
+        "start_timestamp": "2:00",
+        "end_timestamp": "3:30"
+      },
+      {
+        "rank": 55,
+        "doc_id": "Khz_kSZ-91M_364_454",
+        "score": 0.29295676946640015,
+        "video_id": "Khz_kSZ-91M",
+        "video_url": "https://www.youtube.com/watch?v=Khz_kSZ-91M",
+        "start_timestamp": "6:04",
+        "end_timestamp": "7:34"
+      },
+      {
+        "rank": 56,
+        "doc_id": "YyTbZa-WmHY_853_943",
+        "score": 0.29254990816116333,
+        "video_id": "YyTbZa-WmHY",
+        "video_url": "https://www.youtube.com/watch?v=YyTbZa-WmHY",
+        "start_timestamp": "14:13",
+        "end_timestamp": "15:43"
+      },
+      {
+        "rank": 57,
+        "doc_id": "SKcHedTJIL0_0_90",
+        "score": 0.2919124364852905,
+        "video_id": "SKcHedTJIL0",
+        "video_url": "https://www.youtube.com/watch?v=SKcHedTJIL0",
+        "start_timestamp": "0:00",
+        "end_timestamp": "1:30"
+      },
+      {
+        "rank": 58,
+        "doc_id": "0ycFt1_Ph58_193_283",
+        "score": 0.2918790578842163,
+        "video_id": "0ycFt1_Ph58",
+        "video_url": "https://www.youtube.com/watch?v=0ycFt1_Ph58",
+        "start_timestamp": "3:13",
+        "end_timestamp": "4:43"
+      },
+      {
+        "rank": 59,
+        "doc_id": "0ycFt1_Ph58_133_223",
+        "score": 0.2918788194656372,
+        "video_id": "0ycFt1_Ph58",
+        "video_url": "https://www.youtube.com/watch?v=0ycFt1_Ph58",
+        "start_timestamp": "2:13",
+        "end_timestamp": "3:43"
+      },
+      {
+        "rank": 60,
+        "doc_id": "m19884tczqs_134_224",
+        "score": 0.29093116521835327,
+        "video_id": "m19884tczqs",
+        "video_url": "https://www.youtube.com/watch?v=m19884tczqs",
+        "start_timestamp": "2:14",
+        "end_timestamp": "3:44"
+      },
+      {
+        "rank": 61,
+        "doc_id": "7w5EiDHtIII_0_90",
+        "score": 0.29074734449386597,
+        "video_id": "7w5EiDHtIII",
+        "video_url": "https://www.youtube.com/watch?v=7w5EiDHtIII",
+        "start_timestamp": "0:00",
+        "end_timestamp": "1:30"
+      },
+      {
+        "rank": 62,
+        "doc_id": "DGNdZGdwihs_120_210",
+        "score": 0.2906189560890198,
+        "video_id": "DGNdZGdwihs",
+        "video_url": "https://www.youtube.com/watch?v=DGNdZGdwihs",
+        "start_timestamp": "2:00",
+        "end_timestamp": "3:30"
+      },
+      {
+        "rank": 63,
+        "doc_id": "2NThga7SQ-I_974_1064",
+        "score": 0.290474534034729,
+        "video_id": "2NThga7SQ-I",
+        "video_url": "https://www.youtube.com/watch?v=2NThga7SQ-I",
+        "start_timestamp": "16:14",
+        "end_timestamp": "17:44"
+      },
+      {
+        "rank": 64,
+        "doc_id": "kJnJszwQlz8_193_259",
+        "score": 0.2904222011566162,
+        "video_id": "kJnJszwQlz8",
+        "video_url": "https://www.youtube.com/watch?v=kJnJszwQlz8",
+        "start_timestamp": "3:13",
+        "end_timestamp": "4:19"
+      },
+      {
+        "rank": 65,
+        "doc_id": "Vm18bFk-RsI_74_164",
+        "score": 0.2897653579711914,
+        "video_id": "Vm18bFk-RsI",
+        "video_url": "https://www.youtube.com/watch?v=Vm18bFk-RsI",
+        "start_timestamp": "1:14",
+        "end_timestamp": "2:44"
+      },
+      {
+        "rank": 66,
+        "doc_id": "xSEyCajJWVo_314_404",
+        "score": 0.28974735736846924,
+        "video_id": "xSEyCajJWVo",
+        "video_url": "https://www.youtube.com/watch?v=xSEyCajJWVo",
+        "start_timestamp": "5:14",
+        "end_timestamp": "6:44"
+      },
+      {
+        "rank": 67,
+        "doc_id": "Khz_kSZ-91M_4_94",
+        "score": 0.28938496112823486,
+        "video_id": "Khz_kSZ-91M",
+        "video_url": "https://www.youtube.com/watch?v=Khz_kSZ-91M",
+        "start_timestamp": "0:04",
+        "end_timestamp": "1:34"
+      },
+      {
+        "rank": 68,
+        "doc_id": "oXy25Wt6rdE_194_284",
+        "score": 0.289314866065979,
+        "video_id": "oXy25Wt6rdE",
+        "video_url": "https://www.youtube.com/watch?v=oXy25Wt6rdE",
+        "start_timestamp": "3:14",
+        "end_timestamp": "4:44"
+      },
+      {
+        "rank": 69,
+        "doc_id": "40kpU65MMoI_780_870",
+        "score": 0.289139986038208,
+        "video_id": "40kpU65MMoI",
+        "video_url": "https://www.youtube.com/watch?v=40kpU65MMoI",
+        "start_timestamp": "13:00",
+        "end_timestamp": "14:30"
+      },
+      {
+        "rank": 70,
+        "doc_id": "FCZXP4oCiFc_134_224",
+        "score": 0.28848695755004883,
+        "video_id": "FCZXP4oCiFc",
+        "video_url": "https://www.youtube.com/watch?v=FCZXP4oCiFc",
+        "start_timestamp": "2:14",
+        "end_timestamp": "3:44"
+      },
+      {
+        "rank": 71,
+        "doc_id": "xaUMWpT1mUI_253_343",
+        "score": 0.2883617877960205,
+        "video_id": "xaUMWpT1mUI",
+        "video_url": "https://www.youtube.com/watch?v=xaUMWpT1mUI",
+        "start_timestamp": "4:13",
+        "end_timestamp": "5:43"
+      },
+      {
+        "rank": 72,
+        "doc_id": "Vm18bFk-RsI_14_104",
+        "score": 0.2871420383453369,
+        "video_id": "Vm18bFk-RsI",
+        "video_url": "https://www.youtube.com/watch?v=Vm18bFk-RsI",
+        "start_timestamp": "0:14",
+        "end_timestamp": "1:44"
+      },
+      {
+        "rank": 73,
+        "doc_id": "sPoJ8VS7nLc_720_810",
+        "score": 0.28713685274124146,
+        "video_id": "sPoJ8VS7nLc",
+        "video_url": "https://www.youtube.com/watch?v=sPoJ8VS7nLc",
+        "start_timestamp": "12:00",
+        "end_timestamp": "13:30"
+      },
+      {
+        "rank": 74,
+        "doc_id": "-2bJ_8EO9ZE_314_404",
+        "score": 0.28688710927963257,
+        "video_id": "-2bJ_8EO9ZE",
+        "video_url": "https://www.youtube.com/watch?v=-2bJ_8EO9ZE",
+        "start_timestamp": "5:14",
+        "end_timestamp": "6:44"
+      },
+      {
+        "rank": 75,
+        "doc_id": "vqDSl2cle2o_433_523",
+        "score": 0.28653138875961304,
+        "video_id": "vqDSl2cle2o",
+        "video_url": "https://www.youtube.com/watch?v=vqDSl2cle2o",
+        "start_timestamp": "7:13",
+        "end_timestamp": "8:43"
+      },
+      {
+        "rank": 76,
+        "doc_id": "jwfLIgOeneE_240_330",
+        "score": 0.28591758012771606,
+        "video_id": "jwfLIgOeneE",
+        "video_url": "https://www.youtube.com/watch?v=jwfLIgOeneE",
+        "start_timestamp": "4:00",
+        "end_timestamp": "5:30"
+      },
+      {
+        "rank": 77,
+        "doc_id": "UPHRxByLZnU_600_690",
+        "score": 0.2850800156593323,
+        "video_id": "UPHRxByLZnU",
+        "video_url": "https://www.youtube.com/watch?v=UPHRxByLZnU",
+        "start_timestamp": "10:00",
+        "end_timestamp": "11:30"
+      },
+      {
+        "rank": 78,
+        "doc_id": "8b8OKHIktqI_540_630",
+        "score": 0.28506505489349365,
+        "video_id": "8b8OKHIktqI",
+        "video_url": "https://www.youtube.com/watch?v=8b8OKHIktqI",
+        "start_timestamp": "9:00",
+        "end_timestamp": "10:30"
+      },
+      {
+        "rank": 79,
+        "doc_id": "G71D3dacAds_240_330",
+        "score": 0.284640908241272,
+        "video_id": "G71D3dacAds",
+        "video_url": "https://www.youtube.com/watch?v=G71D3dacAds",
+        "start_timestamp": "4:00",
+        "end_timestamp": "5:30"
+      },
+      {
+        "rank": 80,
+        "doc_id": "B1LCA6nxyCs_674_764",
+        "score": 0.2843707799911499,
+        "video_id": "B1LCA6nxyCs",
+        "video_url": "https://www.youtube.com/watch?v=B1LCA6nxyCs",
+        "start_timestamp": "11:14",
+        "end_timestamp": "12:44"
+      },
+      {
+        "rank": 81,
+        "doc_id": "rzKMT_sUg7Q_600_690",
+        "score": 0.2840235233306885,
+        "video_id": "rzKMT_sUg7Q",
+        "video_url": "https://www.youtube.com/watch?v=rzKMT_sUg7Q",
+        "start_timestamp": "10:00",
+        "end_timestamp": "11:30"
+      },
+      {
+        "rank": 82,
+        "doc_id": "BTw0GqL0YK0_734_796",
+        "score": 0.2834884524345398,
+        "video_id": "BTw0GqL0YK0",
+        "video_url": "https://www.youtube.com/watch?v=BTw0GqL0YK0",
+        "start_timestamp": "12:14",
+        "end_timestamp": "13:16"
+      },
+      {
+        "rank": 83,
+        "doc_id": "FCZXP4oCiFc_74_164",
+        "score": 0.28340089321136475,
+        "video_id": "FCZXP4oCiFc",
+        "video_url": "https://www.youtube.com/watch?v=FCZXP4oCiFc",
+        "start_timestamp": "1:14",
+        "end_timestamp": "2:44"
+      },
+      {
+        "rank": 84,
+        "doc_id": "40kpU65MMoI_480_570",
+        "score": 0.2828308343887329,
+        "video_id": "40kpU65MMoI",
+        "video_url": "https://www.youtube.com/watch?v=40kpU65MMoI",
+        "start_timestamp": "8:00",
+        "end_timestamp": "9:30"
+      },
+      {
+        "rank": 85,
+        "doc_id": "t5t5G61ZtAg_374_464",
+        "score": 0.28251922130584717,
+        "video_id": "t5t5G61ZtAg",
+        "video_url": "https://www.youtube.com/watch?v=t5t5G61ZtAg",
+        "start_timestamp": "6:14",
+        "end_timestamp": "7:44"
+      },
+      {
+        "rank": 86,
+        "doc_id": "KeNRQw9j_ps_360_450",
+        "score": 0.28245633840560913,
+        "video_id": "KeNRQw9j_ps",
+        "video_url": "https://www.youtube.com/watch?v=KeNRQw9j_ps",
+        "start_timestamp": "6:00",
+        "end_timestamp": "7:30"
+      },
+      {
+        "rank": 87,
+        "doc_id": "-2bJ_8EO9ZE_254_344",
+        "score": 0.2823200821876526,
+        "video_id": "-2bJ_8EO9ZE",
+        "video_url": "https://www.youtube.com/watch?v=-2bJ_8EO9ZE",
+        "start_timestamp": "4:14",
+        "end_timestamp": "5:44"
+      },
+      {
+        "rank": 88,
+        "doc_id": "FCZXP4oCiFc_314_404",
+        "score": 0.28211450576782227,
+        "video_id": "FCZXP4oCiFc",
+        "video_url": "https://www.youtube.com/watch?v=FCZXP4oCiFc",
+        "start_timestamp": "5:14",
+        "end_timestamp": "6:44"
+      },
+      {
+        "rank": 89,
+        "doc_id": "TqORZBSitQU_61_151",
+        "score": 0.2812749743461609,
+        "video_id": "TqORZBSitQU",
+        "video_url": "https://www.youtube.com/watch?v=TqORZBSitQU",
+        "start_timestamp": "1:01",
+        "end_timestamp": "2:31"
+      },
+      {
+        "rank": 90,
+        "doc_id": "40kpU65MMoI_420_510",
+        "score": 0.2812507152557373,
+        "video_id": "40kpU65MMoI",
+        "video_url": "https://www.youtube.com/watch?v=40kpU65MMoI",
+        "start_timestamp": "7:00",
+        "end_timestamp": "8:30"
+      },
+      {
+        "rank": 91,
+        "doc_id": "0ozeUUS9DzQ_181_271",
+        "score": 0.2810457944869995,
+        "video_id": "0ozeUUS9DzQ",
+        "video_url": "https://www.youtube.com/watch?v=0ozeUUS9DzQ",
+        "start_timestamp": "3:01",
+        "end_timestamp": "4:31"
+      },
+      {
+        "rank": 92,
+        "doc_id": "sPoJ8VS7nLc_780_870",
+        "score": 0.28076255321502686,
+        "video_id": "sPoJ8VS7nLc",
+        "video_url": "https://www.youtube.com/watch?v=sPoJ8VS7nLc",
+        "start_timestamp": "13:00",
+        "end_timestamp": "14:30"
+      },
+      {
+        "rank": 93,
+        "doc_id": "jl9v7IDMTsk_0_90",
+        "score": 0.27949202060699463,
+        "video_id": "jl9v7IDMTsk",
+        "video_url": "https://www.youtube.com/watch?v=jl9v7IDMTsk",
+        "start_timestamp": "0:00",
+        "end_timestamp": "1:30"
+      },
+      {
+        "rank": 94,
+        "doc_id": "G71D3dacAds_360_450",
+        "score": 0.27934134006500244,
+        "video_id": "G71D3dacAds",
+        "video_url": "https://www.youtube.com/watch?v=G71D3dacAds",
+        "start_timestamp": "6:00",
+        "end_timestamp": "7:30"
+      },
+      {
+        "rank": 95,
+        "doc_id": "jEWheFdYryo_194_284",
+        "score": 0.2792931795120239,
+        "video_id": "jEWheFdYryo",
+        "video_url": "https://www.youtube.com/watch?v=jEWheFdYryo",
+        "start_timestamp": "3:14",
+        "end_timestamp": "4:44"
+      },
+      {
+        "rank": 96,
+        "doc_id": "d208XcqDgDI_253_343",
+        "score": 0.27893519401550293,
+        "video_id": "d208XcqDgDI",
+        "video_url": "https://www.youtube.com/watch?v=d208XcqDgDI",
+        "start_timestamp": "4:13",
+        "end_timestamp": "5:43"
+      },
+      {
+        "rank": 97,
+        "doc_id": "MtJDVr5xHB4_120_210",
+        "score": 0.27843594551086426,
+        "video_id": "MtJDVr5xHB4",
+        "video_url": "https://www.youtube.com/watch?v=MtJDVr5xHB4",
+        "start_timestamp": "2:00",
+        "end_timestamp": "3:30"
+      },
+      {
+        "rank": 98,
+        "doc_id": "oXy25Wt6rdE_434_524",
+        "score": 0.2780352830886841,
+        "video_id": "oXy25Wt6rdE",
+        "video_url": "https://www.youtube.com/watch?v=oXy25Wt6rdE",
+        "start_timestamp": "7:14",
+        "end_timestamp": "8:44"
+      },
+      {
+        "rank": 99,
+        "doc_id": "A3iFEk5jllM_420_510",
+        "score": 0.27683329582214355,
+        "video_id": "A3iFEk5jllM",
+        "video_url": "https://www.youtube.com/watch?v=A3iFEk5jllM",
+        "start_timestamp": "7:00",
+        "end_timestamp": "8:30"
+      },
+      {
+        "rank": 100,
+        "doc_id": "40kpU65MMoI_600_690",
+        "score": 0.2764422297477722,
+        "video_id": "40kpU65MMoI",
+        "video_url": "https://www.youtube.com/watch?v=40kpU65MMoI",
+        "start_timestamp": "10:00",
+        "end_timestamp": "11:30"
+      }
+    ]
+  },
+  {
+    "query_id": "q002",
+    "question": "Tham số của hàm trong Python giúp gì khi viết chương trình?",
+    "results": [
+      {
+        "rank": 1,
+        "doc_id": "CkX4yE2fN1w_74_164",
+        "score": 0.5015442371368408,
+        "video_id": "CkX4yE2fN1w",
+        "video_url": "https://www.youtube.com/watch?v=CkX4yE2fN1w",
+        "start_timestamp": "1:14",
+        "end_timestamp": "2:44"
+      },
+      {
+        "rank": 2,
+        "doc_id": "CkX4yE2fN1w_14_104",
+        "score": 0.4728121757507324,
+        "video_id": "CkX4yE2fN1w",
+        "video_url": "https://www.youtube.com/watch?v=CkX4yE2fN1w",
+        "start_timestamp": "0:14",
+        "end_timestamp": "1:44"
+      },
+      {
+        "rank": 3,
+        "doc_id": "CkX4yE2fN1w_194_284",
+        "score": 0.4617763161659241,
+        "video_id": "CkX4yE2fN1w",
+        "video_url": "https://www.youtube.com/watch?v=CkX4yE2fN1w",
+        "start_timestamp": "3:14",
+        "end_timestamp": "4:44"
+      },
+      {
+        "rank": 4,
+        "doc_id": "0ozeUUS9DzQ_241_331",
+        "score": 0.4441941976547241,
+        "video_id": "0ozeUUS9DzQ",
+        "video_url": "https://www.youtube.com/watch?v=0ozeUUS9DzQ",
+        "start_timestamp": "4:01",
+        "end_timestamp": "5:31"
+      },
+      {
+        "rank": 5,
+        "doc_id": "CkX4yE2fN1w_254_344",
+        "score": 0.43597471714019775,
+        "video_id": "CkX4yE2fN1w",
+        "video_url": "https://www.youtube.com/watch?v=CkX4yE2fN1w",
+        "start_timestamp": "4:14",
+        "end_timestamp": "5:44"
+      },
+      {
+        "rank": 6,
+        "doc_id": "oXy25Wt6rdE_494_530",
+        "score": 0.42951500415802,
+        "video_id": "oXy25Wt6rdE",
+        "video_url": "https://www.youtube.com/watch?v=oXy25Wt6rdE",
+        "start_timestamp": "8:14",
+        "end_timestamp": "8:50"
+      },
+      {
+        "rank": 7,
+        "doc_id": "CkX4yE2fN1w_314_358",
+        "score": 0.4257950186729431,
+        "video_id": "CkX4yE2fN1w",
+        "video_url": "https://www.youtube.com/watch?v=CkX4yE2fN1w",
+        "start_timestamp": "5:14",
+        "end_timestamp": "5:58"
+      },
+      {
+        "rank": 8,
+        "doc_id": "Vm18bFk-RsI_254_344",
+        "score": 0.41952264308929443,
+        "video_id": "Vm18bFk-RsI",
+        "video_url": "https://www.youtube.com/watch?v=Vm18bFk-RsI",
+        "start_timestamp": "4:14",
+        "end_timestamp": "5:44"
+      },
+      {
+        "rank": 9,
+        "doc_id": "CkX4yE2fN1w_134_224",
+        "score": 0.41716694831848145,
+        "video_id": "CkX4yE2fN1w",
+        "video_url": "https://www.youtube.com/watch?v=CkX4yE2fN1w",
+        "start_timestamp": "2:14",
+        "end_timestamp": "3:44"
+      },
+      {
+        "rank": 10,
+        "doc_id": "B1LCA6nxyCs_14_104",
+        "score": 0.4134126901626587,
+        "video_id": "B1LCA6nxyCs",
+        "video_url": "https://www.youtube.com/watch?v=B1LCA6nxyCs",
+        "start_timestamp": "0:14",
+        "end_timestamp": "1:44"
+      },
+      {
+        "rank": 11,
+        "doc_id": "FCZXP4oCiFc_134_224",
+        "score": 0.4127150774002075,
+        "video_id": "FCZXP4oCiFc",
+        "video_url": "https://www.youtube.com/watch?v=FCZXP4oCiFc",
+        "start_timestamp": "2:14",
+        "end_timestamp": "3:44"
+      },
+      {
+        "rank": 12,
+        "doc_id": "FCZXP4oCiFc_74_164",
+        "score": 0.40948808193206787,
+        "video_id": "FCZXP4oCiFc",
+        "video_url": "https://www.youtube.com/watch?v=FCZXP4oCiFc",
+        "start_timestamp": "1:14",
+        "end_timestamp": "2:44"
+      },
+      {
+        "rank": 13,
+        "doc_id": "jwfLIgOeneE_180_270",
+        "score": 0.40061599016189575,
+        "video_id": "jwfLIgOeneE",
+        "video_url": "https://www.youtube.com/watch?v=jwfLIgOeneE",
+        "start_timestamp": "3:00",
+        "end_timestamp": "4:30"
+      },
+      {
+        "rank": 14,
+        "doc_id": "1a7AxTRLrlQ_241_331",
+        "score": 0.39825254678726196,
+        "video_id": "1a7AxTRLrlQ",
+        "video_url": "https://www.youtube.com/watch?v=1a7AxTRLrlQ",
+        "start_timestamp": "4:01",
+        "end_timestamp": "5:31"
+      },
+      {
+        "rank": 15,
+        "doc_id": "g8uw5jp2pi0_60_150",
+        "score": 0.3977348804473877,
+        "video_id": "g8uw5jp2pi0",
+        "video_url": "https://www.youtube.com/watch?v=g8uw5jp2pi0",
+        "start_timestamp": "1:00",
+        "end_timestamp": "2:30"
+      },
+      {
+        "rank": 16,
+        "doc_id": "oXy25Wt6rdE_74_164",
+        "score": 0.39653265476226807,
+        "video_id": "oXy25Wt6rdE",
+        "video_url": "https://www.youtube.com/watch?v=oXy25Wt6rdE",
+        "start_timestamp": "1:14",
+        "end_timestamp": "2:44"
+      },
+      {
+        "rank": 17,
+        "doc_id": "Vm18bFk-RsI_134_224",
+        "score": 0.39575064182281494,
+        "video_id": "Vm18bFk-RsI",
+        "video_url": "https://www.youtube.com/watch?v=Vm18bFk-RsI",
+        "start_timestamp": "2:14",
+        "end_timestamp": "3:44"
+      },
+      {
+        "rank": 18,
+        "doc_id": "0ozeUUS9DzQ_181_271",
+        "score": 0.3948725461959839,
+        "video_id": "0ozeUUS9DzQ",
+        "video_url": "https://www.youtube.com/watch?v=0ozeUUS9DzQ",
+        "start_timestamp": "3:01",
+        "end_timestamp": "4:31"
+      },
+      {
+        "rank": 19,
+        "doc_id": "oXy25Wt6rdE_134_224",
+        "score": 0.39289021492004395,
+        "video_id": "oXy25Wt6rdE",
+        "video_url": "https://www.youtube.com/watch?v=oXy25Wt6rdE",
+        "start_timestamp": "2:14",
+        "end_timestamp": "3:44"
+      },
+      {
+        "rank": 20,
+        "doc_id": "0ozeUUS9DzQ_661_751",
+        "score": 0.3911869525909424,
+        "video_id": "0ozeUUS9DzQ",
+        "video_url": "https://www.youtube.com/watch?v=0ozeUUS9DzQ",
+        "start_timestamp": "11:01",
+        "end_timestamp": "12:31"
+      },
+      {
+        "rank": 21,
+        "doc_id": "B1LCA6nxyCs_74_164",
+        "score": 0.38802850246429443,
+        "video_id": "B1LCA6nxyCs",
+        "video_url": "https://www.youtube.com/watch?v=B1LCA6nxyCs",
+        "start_timestamp": "1:14",
+        "end_timestamp": "2:44"
+      },
+      {
+        "rank": 22,
+        "doc_id": "jwfLIgOeneE_120_210",
+        "score": 0.38737815618515015,
+        "video_id": "jwfLIgOeneE",
+        "video_url": "https://www.youtube.com/watch?v=jwfLIgOeneE",
+        "start_timestamp": "2:00",
+        "end_timestamp": "3:30"
+      },
+      {
+        "rank": 23,
+        "doc_id": "Vm18bFk-RsI_74_164",
+        "score": 0.38600265979766846,
+        "video_id": "Vm18bFk-RsI",
+        "video_url": "https://www.youtube.com/watch?v=Vm18bFk-RsI",
+        "start_timestamp": "1:14",
+        "end_timestamp": "2:44"
+      },
+      {
+        "rank": 24,
+        "doc_id": "iQqNUKgIZpc_434_524",
+        "score": 0.38544678688049316,
+        "video_id": "iQqNUKgIZpc",
+        "video_url": "https://www.youtube.com/watch?v=iQqNUKgIZpc",
+        "start_timestamp": "7:14",
+        "end_timestamp": "8:44"
+      },
+      {
+        "rank": 25,
+        "doc_id": "oXy25Wt6rdE_14_104",
+        "score": 0.3851454257965088,
+        "video_id": "oXy25Wt6rdE",
+        "video_url": "https://www.youtube.com/watch?v=oXy25Wt6rdE",
+        "start_timestamp": "0:14",
+        "end_timestamp": "1:44"
+      },
+      {
+        "rank": 26,
+        "doc_id": "tMKUb4k5nZw_780_870",
+        "score": 0.38489991426467896,
+        "video_id": "tMKUb4k5nZw",
+        "video_url": "https://www.youtube.com/watch?v=tMKUb4k5nZw",
+        "start_timestamp": "13:00",
+        "end_timestamp": "14:30"
+      },
+      {
+        "rank": 27,
+        "doc_id": "YSi7G6hDhks_240_330",
+        "score": 0.3839806914329529,
+        "video_id": "YSi7G6hDhks",
+        "video_url": "https://www.youtube.com/watch?v=YSi7G6hDhks",
+        "start_timestamp": "4:00",
+        "end_timestamp": "5:30"
+      },
+      {
+        "rank": 28,
+        "doc_id": "1a7AxTRLrlQ_181_271",
+        "score": 0.38313978910446167,
+        "video_id": "1a7AxTRLrlQ",
+        "video_url": "https://www.youtube.com/watch?v=1a7AxTRLrlQ",
+        "start_timestamp": "3:01",
+        "end_timestamp": "4:31"
+      },
+      {
+        "rank": 29,
+        "doc_id": "0PqzYo2Z-20_254_344",
+        "score": 0.38273364305496216,
+        "video_id": "0PqzYo2Z-20",
+        "video_url": "https://www.youtube.com/watch?v=0PqzYo2Z-20",
+        "start_timestamp": "4:14",
+        "end_timestamp": "5:44"
+      },
+      {
+        "rank": 30,
+        "doc_id": "FCZXP4oCiFc_314_404",
+        "score": 0.38226425647735596,
+        "video_id": "FCZXP4oCiFc",
+        "video_url": "https://www.youtube.com/watch?v=FCZXP4oCiFc",
+        "start_timestamp": "5:14",
+        "end_timestamp": "6:44"
+      },
+      {
+        "rank": 31,
+        "doc_id": "qFLltTMPxvU_433_472",
+        "score": 0.3811686038970947,
+        "video_id": "qFLltTMPxvU",
+        "video_url": "https://www.youtube.com/watch?v=qFLltTMPxvU",
+        "start_timestamp": "7:13",
+        "end_timestamp": "7:52"
+      },
+      {
+        "rank": 32,
+        "doc_id": "7w5EiDHtIII_120_210",
+        "score": 0.3799007534980774,
+        "video_id": "7w5EiDHtIII",
+        "video_url": "https://www.youtube.com/watch?v=7w5EiDHtIII",
+        "start_timestamp": "2:00",
+        "end_timestamp": "3:30"
+      },
+      {
+        "rank": 33,
+        "doc_id": "JqHpAp-xdu0_493_583",
+        "score": 0.3769751191139221,
+        "video_id": "JqHpAp-xdu0",
+        "video_url": "https://www.youtube.com/watch?v=JqHpAp-xdu0",
+        "start_timestamp": "8:13",
+        "end_timestamp": "9:43"
+      },
+      {
+        "rank": 34,
+        "doc_id": "FCZXP4oCiFc_194_284",
+        "score": 0.37482601404190063,
+        "video_id": "FCZXP4oCiFc",
+        "video_url": "https://www.youtube.com/watch?v=FCZXP4oCiFc",
+        "start_timestamp": "3:14",
+        "end_timestamp": "4:44"
+      },
+      {
+        "rank": 35,
+        "doc_id": "1a7AxTRLrlQ_481_571",
+        "score": 0.3732011318206787,
+        "video_id": "1a7AxTRLrlQ",
+        "video_url": "https://www.youtube.com/watch?v=1a7AxTRLrlQ",
+        "start_timestamp": "8:01",
+        "end_timestamp": "9:31"
+      },
+      {
+        "rank": 36,
+        "doc_id": "g8uw5jp2pi0_120_210",
+        "score": 0.3724651336669922,
+        "video_id": "g8uw5jp2pi0",
+        "video_url": "https://www.youtube.com/watch?v=g8uw5jp2pi0",
+        "start_timestamp": "2:00",
+        "end_timestamp": "3:30"
+      },
+      {
+        "rank": 37,
+        "doc_id": "1a7AxTRLrlQ_301_391",
+        "score": 0.3710232377052307,
+        "video_id": "1a7AxTRLrlQ",
+        "video_url": "https://www.youtube.com/watch?v=1a7AxTRLrlQ",
+        "start_timestamp": "5:01",
+        "end_timestamp": "6:31"
+      },
+      {
+        "rank": 38,
+        "doc_id": "BTw0GqL0YK0_614_704",
+        "score": 0.37094712257385254,
+        "video_id": "BTw0GqL0YK0",
+        "video_url": "https://www.youtube.com/watch?v=BTw0GqL0YK0",
+        "start_timestamp": "10:14",
+        "end_timestamp": "11:44"
+      },
+      {
+        "rank": 39,
+        "doc_id": "fazKT_4josc_441_531",
+        "score": 0.369823157787323,
+        "video_id": "fazKT_4josc",
+        "video_url": "https://www.youtube.com/watch?v=fazKT_4josc",
+        "start_timestamp": "7:21",
+        "end_timestamp": "8:51"
+      },
+      {
+        "rank": 40,
+        "doc_id": "Vm18bFk-RsI_194_284",
+        "score": 0.3695846199989319,
+        "video_id": "Vm18bFk-RsI",
+        "video_url": "https://www.youtube.com/watch?v=Vm18bFk-RsI",
+        "start_timestamp": "3:14",
+        "end_timestamp": "4:44"
+      },
+      {
+        "rank": 41,
+        "doc_id": "FCZXP4oCiFc_254_344",
+        "score": 0.369479775428772,
+        "video_id": "FCZXP4oCiFc",
+        "video_url": "https://www.youtube.com/watch?v=FCZXP4oCiFc",
+        "start_timestamp": "4:14",
+        "end_timestamp": "5:44"
+      },
+      {
+        "rank": 42,
+        "doc_id": "6VIywjiErJs_74_164",
+        "score": 0.36760616302490234,
+        "video_id": "6VIywjiErJs",
+        "video_url": "https://www.youtube.com/watch?v=6VIywjiErJs",
+        "start_timestamp": "1:14",
+        "end_timestamp": "2:44"
+      },
+      {
+        "rank": 43,
+        "doc_id": "7w5EiDHtIII_60_150",
+        "score": 0.3663734197616577,
+        "video_id": "7w5EiDHtIII",
+        "video_url": "https://www.youtube.com/watch?v=7w5EiDHtIII",
+        "start_timestamp": "1:00",
+        "end_timestamp": "2:30"
+      },
+      {
+        "rank": 44,
+        "doc_id": "pBrGDARCTE8_421_458",
+        "score": 0.366361141204834,
+        "video_id": "pBrGDARCTE8",
+        "video_url": "https://www.youtube.com/watch?v=pBrGDARCTE8",
+        "start_timestamp": "7:01",
+        "end_timestamp": "7:38"
+      },
+      {
+        "rank": 45,
+        "doc_id": "Vm18bFk-RsI_434_524",
+        "score": 0.3660701513290405,
+        "video_id": "Vm18bFk-RsI",
+        "video_url": "https://www.youtube.com/watch?v=Vm18bFk-RsI",
+        "start_timestamp": "7:14",
+        "end_timestamp": "8:44"
+      },
+      {
+        "rank": 46,
+        "doc_id": "xSEyCajJWVo_434_524",
+        "score": 0.3659968972206116,
+        "video_id": "xSEyCajJWVo",
+        "video_url": "https://www.youtube.com/watch?v=xSEyCajJWVo",
+        "start_timestamp": "7:14",
+        "end_timestamp": "8:44"
+      },
+      {
+        "rank": 47,
+        "doc_id": "xSEyCajJWVo_374_464",
+        "score": 0.3652588129043579,
+        "video_id": "xSEyCajJWVo",
+        "video_url": "https://www.youtube.com/watch?v=xSEyCajJWVo",
+        "start_timestamp": "6:14",
+        "end_timestamp": "7:44"
+      },
+      {
+        "rank": 48,
+        "doc_id": "jl9v7IDMTsk_660_750",
+        "score": 0.3649519681930542,
+        "video_id": "jl9v7IDMTsk",
+        "video_url": "https://www.youtube.com/watch?v=jl9v7IDMTsk",
+        "start_timestamp": "11:00",
+        "end_timestamp": "12:30"
+      },
+      {
+        "rank": 49,
+        "doc_id": "6VIywjiErJs_14_104",
+        "score": 0.3645893335342407,
+        "video_id": "6VIywjiErJs",
+        "video_url": "https://www.youtube.com/watch?v=6VIywjiErJs",
+        "start_timestamp": "0:14",
+        "end_timestamp": "1:44"
+      },
+      {
+        "rank": 50,
+        "doc_id": "jwfLIgOeneE_300_390",
+        "score": 0.364346444606781,
+        "video_id": "jwfLIgOeneE",
+        "video_url": "https://www.youtube.com/watch?v=jwfLIgOeneE",
+        "start_timestamp": "5:00",
+        "end_timestamp": "6:30"
+      },
+      {
+        "rank": 51,
+        "doc_id": "Vm18bFk-RsI_14_104",
+        "score": 0.3631860017776489,
+        "video_id": "Vm18bFk-RsI",
+        "video_url": "https://www.youtube.com/watch?v=Vm18bFk-RsI",
+        "start_timestamp": "0:14",
+        "end_timestamp": "1:44"
+      },
+      {
+        "rank": 52,
+        "doc_id": "jwfLIgOeneE_240_330",
+        "score": 0.36303210258483887,
+        "video_id": "jwfLIgOeneE",
+        "video_url": "https://www.youtube.com/watch?v=jwfLIgOeneE",
+        "start_timestamp": "4:00",
+        "end_timestamp": "5:30"
+      },
+      {
+        "rank": 53,
+        "doc_id": "CtOfKuiy_uc_314_404",
+        "score": 0.3627026081085205,
+        "video_id": "CtOfKuiy_uc",
+        "video_url": "https://www.youtube.com/watch?v=CtOfKuiy_uc",
+        "start_timestamp": "5:14",
+        "end_timestamp": "6:44"
+      },
+      {
+        "rank": 54,
+        "doc_id": "CYWH9ZBN5Gc_360_450",
+        "score": 0.3625359535217285,
+        "video_id": "CYWH9ZBN5Gc",
+        "video_url": "https://www.youtube.com/watch?v=CYWH9ZBN5Gc",
+        "start_timestamp": "6:00",
+        "end_timestamp": "7:30"
+      },
+      {
+        "rank": 55,
+        "doc_id": "0ozeUUS9DzQ_421_511",
+        "score": 0.3623594045639038,
+        "video_id": "0ozeUUS9DzQ",
+        "video_url": "https://www.youtube.com/watch?v=0ozeUUS9DzQ",
+        "start_timestamp": "7:01",
+        "end_timestamp": "8:31"
+      },
+      {
+        "rank": 56,
+        "doc_id": "B1LCA6nxyCs_134_224",
+        "score": 0.35956430435180664,
+        "video_id": "B1LCA6nxyCs",
+        "video_url": "https://www.youtube.com/watch?v=B1LCA6nxyCs",
+        "start_timestamp": "2:14",
+        "end_timestamp": "3:44"
+      },
+      {
+        "rank": 57,
+        "doc_id": "jEWheFdYryo_314_404",
+        "score": 0.35908806324005127,
+        "video_id": "jEWheFdYryo",
+        "video_url": "https://www.youtube.com/watch?v=jEWheFdYryo",
+        "start_timestamp": "5:14",
+        "end_timestamp": "6:44"
+      },
+      {
+        "rank": 58,
+        "doc_id": "XRseUdxehgo_433_523",
+        "score": 0.35900062322616577,
+        "video_id": "XRseUdxehgo",
+        "video_url": "https://www.youtube.com/watch?v=XRseUdxehgo",
+        "start_timestamp": "7:13",
+        "end_timestamp": "8:43"
+      },
+      {
+        "rank": 59,
+        "doc_id": "oXy25Wt6rdE_194_284",
+        "score": 0.3588321805000305,
+        "video_id": "oXy25Wt6rdE",
+        "video_url": "https://www.youtube.com/watch?v=oXy25Wt6rdE",
+        "start_timestamp": "3:14",
+        "end_timestamp": "4:44"
+      },
+      {
+        "rank": 60,
+        "doc_id": "DSmR6JSwx5I_254_344",
+        "score": 0.3588002920150757,
+        "video_id": "DSmR6JSwx5I",
+        "video_url": "https://www.youtube.com/watch?v=DSmR6JSwx5I",
+        "start_timestamp": "4:14",
+        "end_timestamp": "5:44"
+      },
+      {
+        "rank": 61,
+        "doc_id": "GdKIVY6CsTw_960_1050",
+        "score": 0.3587285280227661,
+        "video_id": "GdKIVY6CsTw",
+        "video_url": "https://www.youtube.com/watch?v=GdKIVY6CsTw",
+        "start_timestamp": "16:00",
+        "end_timestamp": "17:30"
+      },
+      {
+        "rank": 62,
+        "doc_id": "MtJDVr5xHB4_480_560",
+        "score": 0.358481228351593,
+        "video_id": "MtJDVr5xHB4",
+        "video_url": "https://www.youtube.com/watch?v=MtJDVr5xHB4",
+        "start_timestamp": "8:00",
+        "end_timestamp": "9:20"
+      },
+      {
+        "rank": 63,
+        "doc_id": "Vm18bFk-RsI_674_742",
+        "score": 0.35817766189575195,
+        "video_id": "Vm18bFk-RsI",
+        "video_url": "https://www.youtube.com/watch?v=Vm18bFk-RsI",
+        "start_timestamp": "11:14",
+        "end_timestamp": "12:22"
+      },
+      {
+        "rank": 64,
+        "doc_id": "Vm18bFk-RsI_314_404",
+        "score": 0.35793256759643555,
+        "video_id": "Vm18bFk-RsI",
+        "video_url": "https://www.youtube.com/watch?v=Vm18bFk-RsI",
+        "start_timestamp": "5:14",
+        "end_timestamp": "6:44"
+      },
+      {
+        "rank": 65,
+        "doc_id": "-7JWQptLoMQ_494_584",
+        "score": 0.3579069972038269,
+        "video_id": "-7JWQptLoMQ",
+        "video_url": "https://www.youtube.com/watch?v=-7JWQptLoMQ",
+        "start_timestamp": "8:14",
+        "end_timestamp": "9:44"
+      },
+      {
+        "rank": 66,
+        "doc_id": "YSi7G6hDhks_180_270",
+        "score": 0.3578030467033386,
+        "video_id": "YSi7G6hDhks",
+        "video_url": "https://www.youtube.com/watch?v=YSi7G6hDhks",
+        "start_timestamp": "3:00",
+        "end_timestamp": "4:30"
+      },
+      {
+        "rank": 67,
+        "doc_id": "jl9v7IDMTsk_720_810",
+        "score": 0.3576369285583496,
+        "video_id": "jl9v7IDMTsk",
+        "video_url": "https://www.youtube.com/watch?v=jl9v7IDMTsk",
+        "start_timestamp": "12:00",
+        "end_timestamp": "13:30"
+      },
+      {
+        "rank": 68,
+        "doc_id": "FMhXMbROI-o_554_644",
+        "score": 0.3571230173110962,
+        "video_id": "FMhXMbROI-o",
+        "video_url": "https://www.youtube.com/watch?v=FMhXMbROI-o",
+        "start_timestamp": "9:14",
+        "end_timestamp": "10:44"
+      },
+      {
+        "rank": 69,
+        "doc_id": "0PqzYo2Z-20_314_404",
+        "score": 0.35626107454299927,
+        "video_id": "0PqzYo2Z-20",
+        "video_url": "https://www.youtube.com/watch?v=0PqzYo2Z-20",
+        "start_timestamp": "5:14",
+        "end_timestamp": "6:44"
+      },
+      {
+        "rank": 70,
+        "doc_id": "iQqNUKgIZpc_494_584",
+        "score": 0.35613298416137695,
+        "video_id": "iQqNUKgIZpc",
+        "video_url": "https://www.youtube.com/watch?v=iQqNUKgIZpc",
+        "start_timestamp": "8:14",
+        "end_timestamp": "9:44"
+      },
+      {
+        "rank": 71,
+        "doc_id": "QZrUqMbEY8Q_374_464",
+        "score": 0.3558916449546814,
+        "video_id": "QZrUqMbEY8Q",
+        "video_url": "https://www.youtube.com/watch?v=QZrUqMbEY8Q",
+        "start_timestamp": "6:14",
+        "end_timestamp": "7:44"
+      },
+      {
+        "rank": 72,
+        "doc_id": "qFLltTMPxvU_133_223",
+        "score": 0.3554455637931824,
+        "video_id": "qFLltTMPxvU",
+        "video_url": "https://www.youtube.com/watch?v=qFLltTMPxvU",
+        "start_timestamp": "2:13",
+        "end_timestamp": "3:43"
+      },
+      {
+        "rank": 73,
+        "doc_id": "CYWH9ZBN5Gc_540_630",
+        "score": 0.3553551435470581,
+        "video_id": "CYWH9ZBN5Gc",
+        "video_url": "https://www.youtube.com/watch?v=CYWH9ZBN5Gc",
+        "start_timestamp": "9:00",
+        "end_timestamp": "10:30"
+      },
+      {
+        "rank": 74,
+        "doc_id": "0ozeUUS9DzQ_601_691",
+        "score": 0.35507017374038696,
+        "video_id": "0ozeUUS9DzQ",
+        "video_url": "https://www.youtube.com/watch?v=0ozeUUS9DzQ",
+        "start_timestamp": "10:01",
+        "end_timestamp": "11:31"
+      },
+      {
+        "rank": 75,
+        "doc_id": "FMhXMbROI-o_254_344",
+        "score": 0.35429948568344116,
+        "video_id": "FMhXMbROI-o",
+        "video_url": "https://www.youtube.com/watch?v=FMhXMbROI-o",
+        "start_timestamp": "4:14",
+        "end_timestamp": "5:44"
+      },
+      {
+        "rank": 76,
+        "doc_id": "XRseUdxehgo_493_583",
+        "score": 0.35409581661224365,
+        "video_id": "XRseUdxehgo",
+        "video_url": "https://www.youtube.com/watch?v=XRseUdxehgo",
+        "start_timestamp": "8:13",
+        "end_timestamp": "9:43"
+      },
+      {
+        "rank": 77,
+        "doc_id": "JqHpAp-xdu0_433_523",
+        "score": 0.3537842631340027,
+        "video_id": "JqHpAp-xdu0",
+        "video_url": "https://www.youtube.com/watch?v=JqHpAp-xdu0",
+        "start_timestamp": "7:13",
+        "end_timestamp": "8:43"
+      },
+      {
+        "rank": 78,
+        "doc_id": "JqHpAp-xdu0_553_643",
+        "score": 0.3534395694732666,
+        "video_id": "JqHpAp-xdu0",
+        "video_url": "https://www.youtube.com/watch?v=JqHpAp-xdu0",
+        "start_timestamp": "9:13",
+        "end_timestamp": "10:43"
+      },
+      {
+        "rank": 79,
+        "doc_id": "CN9KChN5skw_60_150",
+        "score": 0.3530582785606384,
+        "video_id": "CN9KChN5skw",
+        "video_url": "https://www.youtube.com/watch?v=CN9KChN5skw",
+        "start_timestamp": "1:00",
+        "end_timestamp": "2:30"
+      },
+      {
+        "rank": 80,
+        "doc_id": "rVJXIPI3laA_133_223",
+        "score": 0.35284703969955444,
+        "video_id": "rVJXIPI3laA",
+        "video_url": "https://www.youtube.com/watch?v=rVJXIPI3laA",
+        "start_timestamp": "2:13",
+        "end_timestamp": "3:43"
+      },
+      {
+        "rank": 81,
+        "doc_id": "GdKIVY6CsTw_900_990",
+        "score": 0.352669358253479,
+        "video_id": "GdKIVY6CsTw",
+        "video_url": "https://www.youtube.com/watch?v=GdKIVY6CsTw",
+        "start_timestamp": "15:00",
+        "end_timestamp": "16:30"
+      },
+      {
+        "rank": 82,
+        "doc_id": "CYWH9ZBN5Gc_300_390",
+        "score": 0.3524000644683838,
+        "video_id": "CYWH9ZBN5Gc",
+        "video_url": "https://www.youtube.com/watch?v=CYWH9ZBN5Gc",
+        "start_timestamp": "5:00",
+        "end_timestamp": "6:30"
+      },
+      {
+        "rank": 83,
+        "doc_id": "rVJXIPI3laA_313_403",
+        "score": 0.3515132665634155,
+        "video_id": "rVJXIPI3laA",
+        "video_url": "https://www.youtube.com/watch?v=rVJXIPI3laA",
+        "start_timestamp": "5:13",
+        "end_timestamp": "6:43"
+      },
+      {
+        "rank": 84,
+        "doc_id": "SINj0Z-2acc_73_163",
+        "score": 0.3509203791618347,
+        "video_id": "SINj0Z-2acc",
+        "video_url": "https://www.youtube.com/watch?v=SINj0Z-2acc",
+        "start_timestamp": "1:13",
+        "end_timestamp": "2:43"
+      },
+      {
+        "rank": 85,
+        "doc_id": "pCeNKsO8prM_554_644",
+        "score": 0.35056614875793457,
+        "video_id": "pCeNKsO8prM",
+        "video_url": "https://www.youtube.com/watch?v=pCeNKsO8prM",
+        "start_timestamp": "9:14",
+        "end_timestamp": "10:44"
+      },
+      {
+        "rank": 86,
+        "doc_id": "TXPLlYL6Dms_193_283",
+        "score": 0.35044634342193604,
+        "video_id": "TXPLlYL6Dms",
+        "video_url": "https://www.youtube.com/watch?v=TXPLlYL6Dms",
+        "start_timestamp": "3:13",
+        "end_timestamp": "4:43"
+      },
+      {
+        "rank": 87,
+        "doc_id": "oXy25Wt6rdE_434_524",
+        "score": 0.34987688064575195,
+        "video_id": "oXy25Wt6rdE",
+        "video_url": "https://www.youtube.com/watch?v=oXy25Wt6rdE",
+        "start_timestamp": "7:14",
+        "end_timestamp": "8:44"
+      },
+      {
+        "rank": 88,
+        "doc_id": "TqKBlC-zyKY_600_690",
+        "score": 0.34945809841156006,
+        "video_id": "TqKBlC-zyKY",
+        "video_url": "https://www.youtube.com/watch?v=TqKBlC-zyKY",
+        "start_timestamp": "10:00",
+        "end_timestamp": "11:30"
+      },
+      {
+        "rank": 89,
+        "doc_id": "Vm18bFk-RsI_374_464",
+        "score": 0.34943443536758423,
+        "video_id": "Vm18bFk-RsI",
+        "video_url": "https://www.youtube.com/watch?v=Vm18bFk-RsI",
+        "start_timestamp": "6:14",
+        "end_timestamp": "7:44"
+      },
+      {
+        "rank": 90,
+        "doc_id": "TqKBlC-zyKY_540_630",
+        "score": 0.34906643629074097,
+        "video_id": "TqKBlC-zyKY",
+        "video_url": "https://www.youtube.com/watch?v=TqKBlC-zyKY",
+        "start_timestamp": "9:00",
+        "end_timestamp": "10:30"
+      },
+      {
+        "rank": 91,
+        "doc_id": "xaUMWpT1mUI_13_103",
+        "score": 0.3488563299179077,
+        "video_id": "xaUMWpT1mUI",
+        "video_url": "https://www.youtube.com/watch?v=xaUMWpT1mUI",
+        "start_timestamp": "0:13",
+        "end_timestamp": "1:43"
+      },
+      {
+        "rank": 92,
+        "doc_id": "wus3iZ0TTFk_194_284",
+        "score": 0.34811270236968994,
+        "video_id": "wus3iZ0TTFk",
+        "video_url": "https://www.youtube.com/watch?v=wus3iZ0TTFk",
+        "start_timestamp": "3:14",
+        "end_timestamp": "4:44"
+      },
+      {
+        "rank": 93,
+        "doc_id": "BTw0GqL0YK0_554_644",
+        "score": 0.34762656688690186,
+        "video_id": "BTw0GqL0YK0",
+        "video_url": "https://www.youtube.com/watch?v=BTw0GqL0YK0",
+        "start_timestamp": "9:14",
+        "end_timestamp": "10:44"
+      },
+      {
+        "rank": 94,
+        "doc_id": "xSEyCajJWVo_494_584",
+        "score": 0.34727662801742554,
+        "video_id": "xSEyCajJWVo",
+        "video_url": "https://www.youtube.com/watch?v=xSEyCajJWVo",
+        "start_timestamp": "8:14",
+        "end_timestamp": "9:44"
+      },
+      {
+        "rank": 95,
+        "doc_id": "YSi7G6hDhks_120_210",
+        "score": 0.3463035821914673,
+        "video_id": "YSi7G6hDhks",
+        "video_url": "https://www.youtube.com/watch?v=YSi7G6hDhks",
+        "start_timestamp": "2:00",
+        "end_timestamp": "3:30"
+      },
+      {
+        "rank": 96,
+        "doc_id": "xaUMWpT1mUI_253_343",
+        "score": 0.3461131453514099,
+        "video_id": "xaUMWpT1mUI",
+        "video_url": "https://www.youtube.com/watch?v=xaUMWpT1mUI",
+        "start_timestamp": "4:13",
+        "end_timestamp": "5:43"
+      },
+      {
+        "rank": 97,
+        "doc_id": "0ozeUUS9DzQ_481_571",
+        "score": 0.34606796503067017,
+        "video_id": "0ozeUUS9DzQ",
+        "video_url": "https://www.youtube.com/watch?v=0ozeUUS9DzQ",
+        "start_timestamp": "8:01",
+        "end_timestamp": "9:31"
+      },
+      {
+        "rank": 98,
+        "doc_id": "rVJXIPI3laA_73_163",
+        "score": 0.34588783979415894,
+        "video_id": "rVJXIPI3laA",
+        "video_url": "https://www.youtube.com/watch?v=rVJXIPI3laA",
+        "start_timestamp": "1:13",
+        "end_timestamp": "2:43"
+      },
+      {
+        "rank": 99,
+        "doc_id": "1a7AxTRLrlQ_421_511",
+        "score": 0.3451913595199585,
+        "video_id": "1a7AxTRLrlQ",
+        "video_url": "https://www.youtube.com/watch?v=1a7AxTRLrlQ",
+        "start_timestamp": "7:01",
+        "end_timestamp": "8:31"
+      },
+      {
+        "rank": 100,
+        "doc_id": "8-3xv_NElG0_420_510",
+        "score": 0.3418961763381958,
+        "video_id": "8-3xv_NElG0",
+        "video_url": "https://www.youtube.com/watch?v=8-3xv_NElG0",
+        "start_timestamp": "7:00",
+        "end_timestamp": "8:30"
+      }
+    ]
+  }
+]

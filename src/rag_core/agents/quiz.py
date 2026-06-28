@@ -132,14 +132,19 @@ async def node_quiz(state: State):
     parser = JsonOutputParser(pydantic_object=QuizOutput)
 
     prompt = ChatPromptTemplate.from_template("""
-Bạn là chuyên gia khảo thí bài giảng. Hãy dùng thông tin từ VIDEO TRANSCRIPT dưới đây để tạo một bộ câu hỏi trắc nghiệm. 
+Bạn là chuyên gia khảo thí bài giảng. Hãy dùng thông tin từ VIDEO TRANSCRIPT dưới đây để tạo một bộ câu hỏi trắc nghiệm kiểm tra **hiểu biết và tư duy**, KHÔNG phải ghi nhớ máy móc.
 
-Yêu cầu:
-1. SỐ LƯỢNG: Trả về ĐÚNG số câu hỏi mà người dùng yêu cầu (ví dụ: yêu cầu 1 câu thì chỉ ra 1 câu). Nếu không yêu cầu số lượng, mặc định tạo 3 câu.
-2. CÂU HỎI TỰ NHIÊN: Đặt câu hỏi trực tiếp vào kiến thức. KHÔNG bắt đầu bằng các cụm từ thừa thãi như "Theo transcript", "Theo bài giảng", "Dựa vào nội dung...".
-3. TRÍCH DẪN: Với mỗi câu hỏi, phải đính kèm ĐÚNG 'video_url', 'video_title' và 'timestamp' từ đoạn transcript tương ứng đã dùng làm căn cứ.
-4. GIẢI THÍCH: Ngắn gọn, bám sát nội dung lời giảng nhưng vẫn đảm bảo tính sư phạm.
-5. Ngôn ngữ: Tiếng Việt.
+YÊU CẦU BẮT BUỘC:
+1. SỐ LƯỢNG: Trả về ĐÚNG số câu hỏi mà người dùng yêu cầu. Nếu không yêu cầu số lượng, mặc định tạo 3 câu.
+2. CHẤT LƯỢNG CÂU HỎI (QUAN TRỌNG NHẤT):
+   - Câu hỏi phải kiểm tra KHÁI NIỆM, NGUYÊN LÝ, hoặc TƯ DUY — không phải ghi nhớ số liệu cụ thể trong bài.
+   - TUYỆT ĐỐI CẤM tạo câu hỏi kiểu: "Sai số là bao nhiêu?", "Số X trong bài là bao nhiêu?", "Kết quả tính toán cụ thể là gì?" — những câu này vô nghĩa với người không có video trước mắt.
+   - Câu hỏi hợp lệ ví dụ: "Mục tiêu của thuật toán X là gì?", "Khi nào nên dùng phương pháp Y?", "Đặc điểm nào phân biệt A với B?".
+3. PHƯƠNG ÁN NHIỄU: 3 đáp án sai phải là các khái niệm/thuật toán/phương pháp hợp lý trong cùng lĩnh vực — KHÔNG dùng các con số bịa đặt hoặc tên vô nghĩa.
+4. CÂU HỎI TỰ NHIÊN: KHÔNG bắt đầu bằng "Theo transcript", "Theo bài giảng", "Dựa vào nội dung...".
+5. TRÍCH DẪN: Với mỗi câu hỏi, đính kèm đúng 'video_url', 'video_title' và 'timestamp' từ đoạn transcript tương ứng.
+6. GIẢI THÍCH: Ngắn gọn, giải thích tại sao đáp án đúng đúng — không chỉ nhắc lại câu hỏi.
+7. Ngôn ngữ: Tiếng Việt.
 
 DỮ LIỆU TRANSCRIPT:
 {context}
