@@ -525,6 +525,7 @@ Toàn bộ pipeline benchmark nằm trong `experiments/`. Xem [experiments/READM
 - [So sánh embedding models (7 models)](experiments/docs/evaluation/embedding.md) — BGE-M3 variants, multilingual-e5-large, halong_embedding
 - [So sánh reranker models (6 models)](experiments/docs/evaluation/reranker.md) — Jina v2 thắng, phân tích latency
 - [QA quality metrics (BERTScore + RAGAS)](experiments/docs/evaluation/qa_metrics.md) — faithfulness, context precision/recall, answer relevancy
+- [**Báo cáo Ablation Study**](docs/ablation_report.md) — 4 giai đoạn bóc tách: embedding → reranker → chunking (E2E) → chất lượng sinh. Giải thích lý do chọn C21 làm cấu hình production.
 
 
 ### Reproduce benchmarks
@@ -556,3 +557,4 @@ Output lưu trong `experiments/runs/`.
 - [Redis architecture](docs/upgrade_system/redis_architecture.md)
 - [Deployment notes](DEPLOYMENT.md)
 - [Agent rules](AGENTS.md)
+- [Fine-tuned Embedding Model Card](models/bge-m3-finetuned/MODEL_CARD.md) — chi tiết huấn luyện, bộ dữ liệu, hyperparameters, kết quả đánh giá cho `bge-m3-finetuned-v3`
