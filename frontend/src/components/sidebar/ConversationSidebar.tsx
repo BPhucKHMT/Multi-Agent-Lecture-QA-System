@@ -1,3 +1,5 @@
+import { motion } from "framer-motion";
+
 type AppSection = "chatspace" | "summaryhub";
 
 type HistoryItem = {
@@ -36,16 +38,21 @@ function NavigationButton({
     <button
       type="button"
       onClick={onClick}
-      className={`relative flex w-full items-center overflow-hidden rounded-xl px-4 py-3 text-left text-[15px] font-semibold transition-all duration-200 ease-out active:scale-[0.98] ${
-        active 
-          ? "bg-slate-100 text-slate-900 shadow-[inset_0_1px_rgba(255,255,255,0.8)]" 
-          : "text-slate-500 hover:bg-slate-50 hover:text-slate-800 hover:shadow-sm"
+      className={`relative flex w-full items-center rounded-xl px-4 py-3 text-left text-[15px] font-semibold transition-all duration-300 active:scale-[0.97] focus:outline-none ${
+        active ? "text-slate-900 font-bold" : "text-slate-500 hover:text-slate-800"
       }`}
     >
       {active && (
-        <span className="absolute inset-y-2.5 left-2 w-1 rounded-full bg-teal-600 shadow-[0_0_8px_rgba(13,148,136,0.3)]" />
+        <motion.div
+          layoutId="activeTabPill"
+          className="absolute inset-0 rounded-xl bg-slate-100 shadow-[inset_0_1px_rgba(255,255,255,0.8)] border border-slate-200/40"
+          transition={{ type: "spring", stiffness: 380, damping: 30 }}
+        />
       )}
-      <span className={active ? "pl-2 transition-all" : "transition-all"}>{label}</span>
+      {active && (
+        <span className="relative z-10 mr-2 h-1.5 w-1.5 rounded-full bg-teal-600 shadow-[0_0_8px_rgba(13,148,136,0.5)]" />
+      )}
+      <span className="relative z-10">{label}</span>
     </button>
   );
 }
@@ -94,16 +101,16 @@ export default function ConversationSidebar({
                 key={item.id}
                 type="button"
                 onClick={() => onSelectConversation(item.id)}
-                className={`w-full rounded-xl border px-4 py-3 text-left transition-all duration-200 ease-out active:scale-[0.98] ${
+                className={`group w-full rounded-xl border px-4 py-3 text-left transition-all duration-300 ease-out active:scale-[0.97] hover:translate-x-1 ${
                   conversationId === item.id
                     ? "border-slate-200 bg-white shadow-sm"
                     : "border-transparent bg-white/40 hover:border-slate-200 hover:bg-white hover:shadow-sm"
                 }`}
               >
-                <p className={`truncate text-sm font-semibold ${conversationId === item.id ? "text-slate-900" : "text-slate-600"}`}>
+                <p className={`truncate text-sm font-bold transition-colors duration-300 ${conversationId === item.id ? "text-teal-700" : "text-slate-600 group-hover:text-slate-800"}`}>
                   {item.title}
                 </p>
-                <p className="truncate text-xs text-slate-500">{item.subtitle}</p>
+                <p className="truncate text-xs text-slate-400 mt-0.5">{item.subtitle}</p>
               </button>
             ))
           )}
@@ -113,9 +120,9 @@ export default function ConversationSidebar({
       <button
         type="button"
         onClick={onNewConversation}
-        className="mt-5 flex items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-3 text-[15px] font-semibold text-white shadow-md shadow-slate-900/10 transition-all duration-200 ease-out hover:bg-slate-800 active:scale-[0.98]"
+        className="group mt-5 flex items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-3 text-[15px] font-semibold text-white shadow-md shadow-slate-900/10 transition-all duration-300 ease-out hover:bg-slate-800 active:scale-[0.97]"
       >
-        <span className="text-lg leading-none">+</span> Hội thoại mới
+        <span className="text-lg leading-none transition-transform duration-300 group-hover:rotate-90 group-hover:scale-125">+</span> Hội thoại mới
       </button>
     </aside>
   );
