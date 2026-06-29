@@ -262,7 +262,8 @@ export function ConversationStoreProvider({ children }: { children: ReactNode })
             if (serverConvId) setConversationId(serverConvId);
             setIsLoading(false);
             setStreamingStatus(null);
-            const shouldPlayFallback = Boolean(metadata.text) && !hasReceivedVisibleToken;
+            const hasBase64 = metadata.text?.includes("data:image/png;base64,");
+            const shouldPlayFallback = Boolean(metadata.text) && !hasReceivedVisibleToken && !hasBase64;
             if (shouldPlayFallback) {
               const chunks = splitTypewriterText(metadata.text);
               const [firstChunk = "", ...remainingChunks] = chunks;
