@@ -187,10 +187,25 @@ def format_heavy_response(state: CodingState):
 
 def format_response(state: CodingState):
     text = f"Dưới đây là đoạn code thực thi yêu cầu của bạn:\n```python\n{state['code']}\n```\n\n"
-    if state['success']:
-        text += f"✅ **Console Output:**\n```output\n{state['output']}\n```"
+
+    output_text = state.get("output", "")
+    # Trích xuất các biểu đồ base64 từ stdout
+    plots = re.findall(r"\[PLOT_BASE64\](.*?)\[/PLOT_BASE64\]", output_text, re.DOTALL)
+    # Xóa thẻ base64 khỏi console output
+    clean_output = re.sub(r"\[PLOT_BASE64\].*?\[/PLOT_BASE64\]", "", output_text, flags=re.DOTALL).strip()
+
+    if state["success"]:
+        if clean_output:
+            text += f"✅ **Console Output:**\n```output\n{clean_output}\n```\n\n"
+        else:
+            text += "✅ **Thực thi thành công.**\n\n"
     else:
-        text += f"❌ **Execution Error:**\n```error\n{state['error']}\n```"
+        text += f"❌ **Execution Error:**\n```error\n{state.get('error', '')}\n```\n\n"
+
+    # Chèn ảnh biểu đồ dạng markdown image
+    for i, plot_b64 in enumerate(plots):
+        plot_b64 = plot_b64.strip().replace("\n", "").replace("\r", "")
+        text += f"📊 **Biểu đồ {i + 1}:**\n![Biểu đồ {i + 1}](data:image/png;base64,{plot_b64})\n\n"
 
     refs = state.get("references", [])
     return {"response": {

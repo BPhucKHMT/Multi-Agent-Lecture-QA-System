@@ -56,3 +56,5 @@ tqdm==4.67.1
 numpy
 regex==2025.11.3
 pyyaml
+matplotlib==3.9.4
+scikit-learn

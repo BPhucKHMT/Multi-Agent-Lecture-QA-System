@@ -179,3 +179,23 @@ def test_heavy_response_contains_explanation(monkeypatch):
     text = result["response"]["text"]
     assert "Dòng model.compile thiết lập hàm mất mát MSE và bộ tối ưu Adam." in text
     assert "chạy ở local" in text
+
+
+def test_coding_agent_format_response_with_plots():
+    """format_response phải bóc tách [PLOT_BASE64] và sinh markdown image."""
+    fake_b64 = "iVBORw0KGgoAAAANS"
+    fake_state = {
+        "code": "import matplotlib.pyplot as plt\nplt.plot([1,2],[3,4])\nplt.show()",
+        "output": f"Some output\n[PLOT_BASE64]{fake_b64}[/PLOT_BASE64]\n",
+        "error": "",
+        "success": True,
+        "references": [],
+    }
+    result = coding_agent.format_response(fake_state)
+    text = result["response"]["text"]
+    assert f"![Biểu đồ 1](data:image/png;base64,{fake_b64})" in text
+    assert "[PLOT_BASE64]" not in text
+    assert "Some output" in text
+    assert result["response"]["type"] == "coding"
+
+
