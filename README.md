@@ -453,6 +453,21 @@ Full retrieval benchmark pipeline lives in `experiments/`. See [experiments/READ
 - [Ground truth dataset guide](experiments/docs/data/groundtruth.md) — how the 350-question evaluation set was created
 - [**Ablation Study Report**](docs/ablation_report.md) — full 4-stage ablation: embedding → reranker → chunking (E2E) → generation quality. Explains why C21 was selected as production config.
 
+### Verification & Run Logs (Audit Trail)
+
+To verify the authenticity of all metrics presented in the evaluation reports, you can examine the raw benchmark results (`metrics.json` and `eval_results.json`) generated under `experiments/runs/`:
+
+* **Embedding Benchmarks (`embedding.md`)**:
+  * Fine-tuned V3 (Raw): `experiments/runs/embedding/recursive/experiments-runs-finetune-embedding-20260616-120132/20260628T153959Z_be65f4988205/`
+  * Other models: Check subfolders inside `experiments/runs/embedding/` or `experiments/runs/hybrid/`.
+* **Reranker Benchmarks (`reranker.md`)**:
+  * Raw runs are stored in `experiments/runs/reranker/recursive/20260615T185033Z/` (under individual model folders).
+* **End-to-End Retrieval (`end_to_end_retrieval.md`)**:
+  * Results for each of the 22 configurations (C01 to C22) are archived under `experiments/runs/e2e_reranked/C01/` through `experiments/runs/e2e_reranked/C22/`.
+  * E.g., Winner config C21 logs: `experiments/runs/e2e_reranked/C21/metrics.json`.
+* **QA Quality Benchmarks (`qa_metrics.md`)**:
+  * Generation logs and RAGAS score inputs: `experiments/runs/qa_metrics/`.
+
 ### Reproduce benchmarks
 
 ```powershell

@@ -237,18 +237,62 @@ python experiments/scripts/generate_qrels.py --config <config>.yaml
 
 ## Fine-tuning
 
-### Fine-tune embedding model
+### Fine-tune embedding model (BGE-M3)
+
+Pipeline: synthetic query generation → hard negative mining → train/val split → contrastive fine-tuning.
+
+**Bước 1 — Tạo synthetic queries**:
 
 ```powershell
-python experiments/scripts/finetune_embedding.py --config experiments/configs/embedding/<config>.yaml
+python experiments/scripts/generate_synthetic_queries.py --workers 8
+```
+
+Output: `experiments/data/finetune/synthetic_queries.jsonl`
+
+**Bước 2 — Augment queries** (paraphrase):
+
+```powershell
+python experiments/scripts/augment_queries.py --workers 4
+```
+
+**Bước 3 — Train/val split**:
+
+```powershell
+python experiments/scripts/train_splits.py
+```
+
+Output: `train_queries.jsonl` (25,194 mẫu) + `val_queries.jsonl` (1,338 mẫu)
+
+**Bước 4 — Mine hard negatives** (Agent 3: cosine similarity top-5):
+
+```powershell
+python experiments/scripts/mine_hard_negatives.py --batch-size 128
+```
+
+Output: `train_hard_negatives.jsonl` + `val_hard_negatives.jsonl`
+
+**Bước 5 — Fine-tune** (CLI args, không dùng config YAML):
+
+```powershell
+python experiments/scripts/finetune_embedding.py `
+  --model-name BAAI/bge-m3 `
+  --epochs 3 `
+  --batch-size 64 `
+  --lr 5e-5 `
+  --use-cmnrl `
+  --mini-batch-size 8 `
+  --freeze-layers 16 `
+  --num-negatives 5
 ```
 
 Output: `experiments/runs/finetune/embedding/<timestamp>/`
 
+Chi tiết đầy đủ: [docs/data_finetune/finetune_embedding.md](docs/data_finetune/finetune_embedding.md)
+
 ### Fine-tune reranker
 
 ```powershell
-python experiments/scripts/finetune_reranker.py --config <config>.yaml
+python experiments/scripts/finetune_reranker.py
 ```
 
 Output: `experiments/runs/finetune/reranker/<timestamp>/`
