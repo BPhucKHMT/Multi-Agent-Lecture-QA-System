@@ -527,6 +527,20 @@ Toàn bộ pipeline benchmark nằm trong `experiments/`. Xem [experiments/READM
 - [QA quality metrics (BERTScore + RAGAS)](experiments/docs/evaluation/qa_metrics.md) — faithfulness, context precision/recall, answer relevancy
 - [**Báo cáo Ablation Study**](docs/ablation_report.md) — 4 giai đoạn bóc tách: embedding → reranker → chunking (E2E) → chất lượng sinh. Giải thích lý do chọn C21 làm cấu hình production.
 
+### Đối chiếu & Xác minh Kết quả (Audit Trail)
+
+Để xác minh tính trung thực và chính xác của toàn bộ số liệu được công bố trong các báo cáo thử nghiệm, bạn có thể đối chiếu trực tiếp với các tệp kết quả thô (`metrics.json` và `eval_results.json`) được lưu vết đầy đủ trong thư mục `experiments/runs/`:
+
+* **Thử nghiệm Embedding (`embedding.md`)**:
+  * Mô hình Fine-tuned V3 (Raw): `experiments/runs/embedding/recursive/experiments-runs-finetune-embedding-20260616-120132/20260628T153959Z_be65f4988205/`
+  * Các mô hình khác: Xem trong các thư mục con tương ứng tại `experiments/runs/embedding/` hoặc `experiments/runs/hybrid/`.
+* **Thử nghiệm Reranker (`reranker.md`)**:
+  * Các lượt chạy thô được lưu trữ trong `experiments/runs/reranker/recursive/20260615T185033Z/` (dưới các thư mục riêng của từng mô hình).
+* **Truy hồi End-to-End (`end_to_end_retrieval.md`)**:
+  * Kết quả thô của từng cấu hình trong số 22 cấu hình thử nghiệm (C01 đến C22) được lưu trữ tương ứng trong các thư mục từ `experiments/runs/e2e_reranked/C01/` đến `experiments/runs/e2e_reranked/C22/`.
+  * Ví dụ: Kết quả của cấu hình C21 (Production) nằm tại: `experiments/runs/e2e_reranked/C21/metrics.json`.
+* **Thử nghiệm Chất lượng QA (`qa_metrics.md`)**:
+  * Log câu trả lời được sinh ra và dữ liệu đầu vào tính toán RAGAS: `experiments/runs/qa_metrics/`.
 
 ### Reproduce benchmarks
 
