@@ -152,6 +152,26 @@ def execute_python_code(code: str, timeout: int = 20) -> dict:
             "stderr": "Lỗi: Code chứa mã nguy hiểm bị cấm."
         }
     
+    # Matplotlib headless patch
+    if "matplotlib" in code or "plt." in code:
+        patch = (
+            "import matplotlib\n"
+            "matplotlib.use('Agg')\n"
+            "import matplotlib.pyplot as _plt_patch\n"
+            "def _custom_show(*args, **kwargs):\n"
+            "    import io, base64\n"
+            "    fig = _plt_patch.gcf()\n"
+            "    if fig and fig.get_axes():\n"
+            "        buf = io.BytesIO()\n"
+            "        _plt_patch.savefig(buf, format='png', bbox_inches='tight')\n"
+            "        buf.seek(0)\n"
+            "        img_str = base64.b64encode(buf.read()).decode('utf-8')\n"
+            "        print(f'\\n[PLOT_BASE64]{img_str}[/PLOT_BASE64]\\n')\n"
+            "        _plt_patch.close(fig)\n"
+            "_plt_patch.show = _custom_show\n"
+        )
+        code = patch + code
+
     with tempfile.NamedTemporaryFile('w', suffix='.py', delete=False, encoding='utf-8') as f:
         f.write(code)
         temp_path = f.name
