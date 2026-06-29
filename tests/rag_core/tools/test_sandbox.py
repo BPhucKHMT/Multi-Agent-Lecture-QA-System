@@ -81,3 +81,16 @@ def test_execute_python_code_supports_utf8_stdout_text():
     result = execute_python_code('print("Kết luận ngắn: đạo hàm bậc hai đổi dấu.")')
     assert result["success"] is True
     assert "Kết luận ngắn" in result["stdout"]
+
+
+def test_execute_python_code_with_matplotlib():
+    code = (
+        "import matplotlib.pyplot as plt\n"
+        "plt.plot([1, 2], [3, 4])\n"
+        "plt.show()"
+    )
+    result = execute_python_code(code)
+    assert result["success"] is True
+    assert "[PLOT_BASE64]" in result["stdout"]
+    assert "[/PLOT_BASE64]" in result["stdout"]
+

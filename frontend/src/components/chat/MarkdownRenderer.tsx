@@ -244,7 +244,19 @@ export default function MarkdownRenderer({
                 {children}
               </a>
             );
-          }
+          },
+          img: ({ src, alt }) => (
+            <span className="not-prose my-4 block">
+              <img
+                src={src}
+                alt={alt || 'Biểu đồ'}
+                className="mx-auto max-w-full rounded-xl border border-slate-200 shadow-md"
+              />
+              {alt && (
+                <span className="mt-2 block text-center text-xs text-slate-500">{alt}</span>
+              )}
+            </span>
+          ),
         }}
       >
         {displayContent}
