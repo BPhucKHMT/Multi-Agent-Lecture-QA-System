@@ -8,7 +8,7 @@ import uuid
 from backend.app.api.v1.endpoints.schemas import ChatRequest # Sẽ cập nhật schemas sau
 from backend.app.db.session import get_db
 from backend.app.db.redis import get_redis_binary
-from backend.app.deps import get_current_user
+from backend.app.deps import get_current_user, limit_chat_rate
 from backend.app.models.user import User
 from backend.app.services import chat as chat_service
 
@@ -21,6 +21,7 @@ async def chat_stream(
     current_user: User = Depends(get_current_user), # Bạn cần login để lấy token
     db: Session = Depends(get_db),
     redis_client: redis.Redis = Depends(get_redis_binary),
+    _rate_limit: None = Depends(limit_chat_rate), # Giới hạn 10 request / 10 phút theo IP
 ):
     """
     Endpoint streaming hội thoại AI (SSE).
