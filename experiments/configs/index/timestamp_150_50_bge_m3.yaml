@@ -1,0 +1,10 @@
+dataset_version: phase2_pilot_v1
+strategy_id: timestamp_150_50
+chunks_dir: experiments/data/chunks/timestamp_150_50
+index_dir: experiments/indexes/chroma/timestamp_150_50/bge-m3
+retrieval_backend: chroma
+collection_name: idx-timestamp-150-50-bge-m3
+model:
+  name: BAAI/bge-m3
+  batch_size: 16
+  normalize_embeddings: true
