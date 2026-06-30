@@ -30,7 +30,7 @@ logger = logging.getLogger(__name__)
 
 class MathStepModel(BaseModel):
     title: str = Field(description="Tiêu đề của bước giải (ví dụ: 'Phân tích đa thức', 'Giải phương trình bậc 2')")
-    content: str = Field(description="Nội dung chi tiết của bước giải, sử dụng LaTeX chuẩn bọc trong $...$ hoặc $$...$$")
+    content: str = Field(description="Nội dung chi tiết của bước giải. BẮT BUỘC mọi công thức toán, biểu thức hoặc ký hiệu (như \\pi, \\times, ^, _, \\frac, v.v.) phải được bọc trong $...$ hoặc $$...$$ để hiển thị đúng dạng LaTeX.")
 
 class MathDataModel(BaseModel):
     text: str = Field(description="Toàn bộ nội dung bài giải dưới dạng Markdown hoàn chỉnh (Mục tiêu, Các bước giải, Kết luận). Đây là phần được stream cho người dùng nên cần viết chi tiết và hay.")
@@ -120,6 +120,19 @@ def verify_sympy(state: MathState):
     else:
         return {"is_success": False, "math_result": res["stderr"]}
 
+def _clean_step_content(content: str) -> str:
+    """Đảm bảo các công thức toán học/LaTeX được bọc trong delimiters $ hoặc $$."""
+    if not content:
+        return content
+    content_str = str(content).strip()
+    if "$" not in content_str:
+        # Nếu có lệnh LaTeX (\command) hoặc mũ (^), chỉ số dưới (_)
+        if "\\" in content_str or "^" in content_str or "_" in content_str:
+            has_vietnamese = any(ord(c) > 127 for c in content_str)
+            if not has_vietnamese:
+                return f"$${content_str}$$"
+    return content_str
+
 async def generate_derivation(state: MathState):
     """Sinh lời giải Markdown/LaTeX dựa trên yêu cầu và kết quả kiểm chứng."""
     query = state.get("query", "")
@@ -134,13 +147,17 @@ Bạn là giảng viên toán cao cấp tại UIT. Hãy tạo bài giải chi ti
 Học sinh yêu cầu: {query}
 Kết quả máy tính: {math_result}
 
-HƯỚNG DẪN:
+HƯỚNG DẪN QUAN TRỌNG VỀ ĐỊNH DẠNG:
 1. 'text': PHẢI ĐẶT LÊN ĐẦU JSON. Đây là nội dung quan trọng nhất để stream cho người dùng.
    - Hãy viết như một bài viết blog/bài giải chuyên nghiệp.
    - Trình bày đẹp bằng Markdown và LaTeX ($...$ hoặc $$...$$).
    - Biến đổi các kết quả khô khan từ máy tính ({math_result}) thành các công thức toán học dễ hiểu (Vd: Eq(x, 1) -> $x = 1$).
    - Cấu trúc: ## 🎯 Mục tiêu -> ## 📝 Các bước giải chi tiết -> ## ✅ Kiểm chứng kết quả.
-2. 'goal' & 'steps': Dùng để lưu trữ cấu trúc.
+
+2. 'steps': Chứa danh sách các bước giải chi tiết.
+   - Mỗi bước giải có 'title' và 'content'.
+   - BẮT BUỘC: Tất cả các công thức toán học, phương trình, biến số, và ký hiệu (ví dụ: S, r, \\pi, \\times, x^2, \\theta, \\frac, v.v.) trong trường 'content' của mỗi bước PHẢI ĐƯỢC BỌC TRONG ký hiệu $...$ hoặc $$...$$. 
+   - Tuyệt đối không để công thức trần không có ký hiệu $ hoặc $$. Ví dụ: viết "$S = \\pi r^2$" thay vì "S = \\pi r^2".
 
 ĐỊNH DẠNG JSON:
 {format_instructions}
@@ -162,10 +179,20 @@ HƯỚNG DẪN:
         if not math_data_parsed:
             math_data = _fallback_math_data(query)
         else:
+            raw_steps = math_data_parsed.get("steps") or math_data_parsed.get("Steps") or []
+            cleaned_steps = []
+            for s in raw_steps:
+                title = s.get("title") or s.get("Title") or ""
+                step_content = s.get("content") or s.get("Content") or ""
+                cleaned_steps.append({
+                    "title": title,
+                    "content": _clean_step_content(step_content)
+                })
+            
             math_data = {
                 "text": math_data_parsed.get("text") or math_data_parsed.get("Text"),
                 "goal": math_data_parsed.get("goal") or math_data_parsed.get("Goal") or f"Giải bài toán: {query}",
-                "steps": math_data_parsed.get("steps") or math_data_parsed.get("Steps") or []
+                "steps": cleaned_steps
             }
             if not math_data["text"]:
                 math_data["text"] = f"## 🎯 Mục tiêu: {query}\n\n" + "\n".join([f"### {s.get('title')}\n{s.get('content')}" for s in math_data["steps"]])

@@ -215,24 +215,7 @@ Password: 123456789
 
 ## Architecture Overview
 
-```mermaid
-flowchart TD
-User[Browser] --> FE[React + Vite Frontend]
-FE --> API[FastAPI Backend]
-API --> Auth[Auth + PostgreSQL]
-API --> Chat[Chat Service]
-Chat --> Redis[Redis Stack Semantic Cache]
-Chat --> Graph[LangGraph Supervisor]
-Graph --> Tutor[Tutor RAG Agent]
-Graph --> Code[Coding Agent]
-Graph --> Math[Math Agent]
-Graph --> Quiz[Quiz Agent]
-Graph --> Direct[Direct Agent]
-Tutor --> Retrieval[Hybrid Search + Reranker]
-Retrieval --> Chroma[ChromaDB]
-Retrieval --> Artifacts[artifacts/data, videos, chunks]
-Graph --> LLM[OpenAI Chat Model]
-```
+![Architecture Overview](public/architecture.png)
 
 ---
 

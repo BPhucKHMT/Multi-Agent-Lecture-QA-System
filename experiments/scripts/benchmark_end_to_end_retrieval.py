@@ -42,6 +42,10 @@ CONFIGS = [
     ("C20", "hybrid", "experiments/configs/embedding/semantic_openai_text_embedding_3_large_hybrid.yaml"),
     ("C21", "hybrid", "experiments/configs/embedding/timestamp_150_50_bge_m3_finetuned_v3_hybrid.yaml"),
     ("C22", "hybrid", "experiments/configs/embedding/parent_child_180s_45s_bge_m3_finetuned_v3_child_hybrid.yaml"),
+    ("C23", "dense", "experiments/configs/embedding/timestamp_150_50_bge_m3_finetuned_v3.yaml"),
+    ("C24", "hybrid", "experiments/configs/embedding/timestamp_150_50_bge_m3_hybrid.yaml"),
+    ("C25", "dense", "experiments/configs/embedding/timestamp_150_50_bge_m3.yaml"),
+    ("C21_norerank", "hybrid", "experiments/configs/embedding/timestamp_150_50_bge_m3_finetuned_v3_hybrid.yaml"),
 ]
 
 JINA_CONFIG = {
@@ -63,7 +67,9 @@ def main() -> None:
 
     target_configs = [c.strip() for c in args.configs.split(",")] if args.configs else None
 
-    reranker = load_reranker(JINA_CONFIG, LANE_CONFIG, "cuda")
+    import torch
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    reranker = load_reranker(JINA_CONFIG, LANE_CONFIG, device)
     if reranker.model is None:
         raise RuntimeError(reranker.reason or "Jina reranker load failed")
 
@@ -86,7 +92,10 @@ def main() -> None:
             config["query_path"] = str((ROOT / args.query_path).resolve())
         print(f"[{config_id}] retrieval={retrieval_type} strategy={config['strategy_id']} model={config['model']['name']}")
         retrieval_dir = run_retrieval(config, retrieval_type, args.limit)
-        row = run_jina_rerank(config_id, retrieval_type, config, retrieval_dir, reranker.model)
+        if config_id.endswith("_norerank"):
+            row = run_jina_rerank(config_id, retrieval_type, config, retrieval_dir, None)
+        else:
+            row = run_jina_rerank(config_id, retrieval_type, config, retrieval_dir, reranker.model)
         summary_dict[config_id] = row
         print(format_row(row))
 
@@ -127,14 +136,25 @@ def run_jina_rerank(config_id: str, retrieval_type: str, config: dict[str, Any],
     for record in eval_results:
         candidates = build_candidates(record, config, chunk_by_id, parent_by_id)
         selected = candidates[:40]
-        scores = reranker.score_pairs(record["question"], [candidate["text"] for candidate in selected])
-        reranked = [{**candidate, "reranker_score": float(score)} for candidate, score in zip(selected, scores, strict=True)]
-        reranked.sort(key=lambda item: (-item["reranker_score"], item["rank"]))
+        if reranker is not None:
+            scores = reranker.score_pairs(record["question"], [candidate["text"] for candidate in selected])
+            reranked = [{**candidate, "reranker_score": float(score)} for candidate, score in zip(selected, scores, strict=True)]
+            reranked.sort(key=lambda item: (-item["reranker_score"], item["rank"]))
+        else:
+            reranked = [{**candidate, "reranker_score": 0.0} for candidate in selected]
         results = [to_result(rank, item) for rank, item in enumerate(reranked, start=1)]
         reranked_records.append({"query_id": record["query_id"], "question": record["question"], "results": results})
         rankings[record["query_id"]] = [item["doc_id"] for item in results]
 
-    metrics = mean_metrics(rankings, qrels, recall_at=[5, 10, 40], mrr_at=[10], ndcg_at=[10], hit_at=[1, 5, 10, 40])
+    metrics = mean_metrics(
+        rankings,
+        qrels,
+        recall_at=[5, 10, 40],
+        mrr_at=[10],
+        ndcg_at=[10],
+        hit_at=[1, 5, 10, 40],
+        recall_new_at=[10, 40],
+    )
     out_dir = Path(config["run_root"]).parent / "e2e_reranked" / config_id
     out_dir.mkdir(parents=True, exist_ok=True)
     write_json(out_dir / "metrics.json", metrics)

@@ -104,3 +104,6 @@ def test_node_quiz_returns_structured_error_when_parser_and_fallback_fail(monkey
 
     assert result["response"]["type"] == "error"
     assert "Lỗi tạo quiz" in result["response"]["text"]
+
+    assert result["response"]["type"] == "error"
+    assert "Lỗi tạo quiz" in result["response"]["text"]

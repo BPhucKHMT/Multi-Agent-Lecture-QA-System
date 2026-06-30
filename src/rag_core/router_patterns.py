@@ -18,7 +18,6 @@ FORCE_MATH_PATTERNS = (
     "hàm lồi",
     "ham loi",
     "delta",
-    "tính",
     "biểu thức",
 )
 
@@ -120,7 +119,6 @@ CODING_PATTERNS = (
     "viết giúp",
     "script",
     "hướng dẫn code",
-    "class",
     "vòng lặp",
 )
 
