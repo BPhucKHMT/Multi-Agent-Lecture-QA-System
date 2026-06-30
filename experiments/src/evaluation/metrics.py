@@ -87,8 +87,27 @@ def mean_metrics(
         "no_qrels_query_count": len(rankings) - len(answerable_queries),
     }
 
+    evidence_queries = _load_evidence_queries()
+
     for k in recall_at:
-        metrics[f"recall@{k}"] = _mean([_recall_at(rankings[q], qrels[q], k) for q in answerable_queries])
+        recall_vals = []
+        for q in answerable_queries:
+            if evidence_queries and q in evidence_queries:
+                recall_vals.append(_recall_new_at(rankings[q], evidence_queries[q], k))
+            else:
+                recall_vals.append(_recall_at(rankings[q], qrels[q], k))
+        metrics[f"recall@{k}"] = _mean(recall_vals)
+
+        if evidence_queries:
+            valid_queries = [q for q in answerable_queries if q in evidence_queries]
+            if valid_queries:
+                metrics[f"recall_new@{k}"] = _mean([
+                    _recall_new_at(rankings[q], evidence_queries[q], k)
+                    for q in valid_queries
+                ])
+            else:
+                metrics[f"recall_new@{k}"] = 0.0
+
     for k in mrr_at:
         metrics[f"mrr@{k}"] = _mean([_mrr_at(rankings[q], qrels[q], k) for q in answerable_queries])
     for k in ndcg_at:
@@ -100,17 +119,19 @@ def mean_metrics(
     for k in hit_at or []:
         metrics[f"hit@{k}"] = _mean([_hit_at(rankings[q], qrels[q], k) for q in answerable_queries])
 
-    # Compute recall_new@k
+    # Compute recall_new@k for any other requested values
     recall_new_vals = recall_new_at if recall_new_at is not None else [40]
-    evidence_queries = _load_evidence_queries()
-    if evidence_queries:
-        for k in recall_new_vals:
-            valid_queries = [q for q in answerable_queries if q in evidence_queries]
-            if valid_queries:
-                metrics[f"recall_new@{k}"] = _mean([
-                    _recall_new_at(rankings[q], evidence_queries[q], k)
-                    for q in valid_queries
-                ])
+    for k in recall_new_vals:
+        if f"recall_new@{k}" not in metrics:
+            if evidence_queries:
+                valid_queries = [q for q in answerable_queries if q in evidence_queries]
+                if valid_queries:
+                    metrics[f"recall_new@{k}"] = _mean([
+                        _recall_new_at(rankings[q], evidence_queries[q], k)
+                        for q in valid_queries
+                    ])
+                else:
+                    metrics[f"recall_new@{k}"] = 0.0
             else:
                 metrics[f"recall_new@{k}"] = 0.0
 
