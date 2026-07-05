@@ -10,7 +10,13 @@ from passlib.context import CryptContext
 
 from backend.app.core.config import settings
 
-pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
+pwd_context = CryptContext(
+    schemes=["argon2"],
+    argon2__time_cost=1,
+    argon2__memory_cost=16384,
+    argon2__parallelism=1,
+    deprecated="auto"
+)
 
 
 # --- Password ---
