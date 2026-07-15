@@ -194,7 +194,9 @@ LUÔN LUÔN đặt key "text" ở vị trí ĐẦU TIÊN trong JSON object để
         )
 
         rerank_start = time.perf_counter()
-        reranked = self.reranker.rerank(unique_docs, query)[:10]
+        # Chạy reranker trong threadpool riêng để không block event loop FastAPI
+        reranked = await asyncio.to_thread(self.reranker.rerank, unique_docs, query)
+        reranked = reranked[:10]
         rerank_elapsed = time.perf_counter() - rerank_start
         logger.info(
             "[TUTOR_TIMING] rerank=%.2fs input_docs=%d output_docs=%d",
