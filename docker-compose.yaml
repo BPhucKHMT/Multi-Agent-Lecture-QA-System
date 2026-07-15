@@ -23,6 +23,7 @@ services:
       - "8000:8000"
     volumes:
       - ./artifacts:/app/artifacts
+      - ./models:/app/models
       - hf_cache:/app/.cache/huggingface
     networks:
       default:
@@ -63,6 +64,7 @@ services:
       TOKENIZERS_PARALLELISM: "false"
     volumes:
       - ./artifacts:/app/artifacts
+      - ./models:/app/models
       - hf_cache:/app/.cache/huggingface
     restart: "no"
 
@@ -91,6 +93,7 @@ services:
       - ./backend:/app/backend
       - ./src:/app/src
       - ./artifacts:/app/artifacts
+      - ./models:/app/models
       - hf_cache:/app/.cache/huggingface
     networks:
       default:
@@ -124,6 +127,7 @@ services:
       - ./backend:/app/backend
       - ./src:/app/src
       - ./artifacts:/app/artifacts
+      - ./models:/app/models
       - hf_cache:/app/.cache/huggingface
     deploy:
       resources:
