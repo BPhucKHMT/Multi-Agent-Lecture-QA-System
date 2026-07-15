@@ -53,20 +53,6 @@ class CrossEncoderReranker:
 
     @torch.no_grad()
     def batch_scores(self, query: str, texts: List[str], batch_size: int = 128, max_len: int = 512) -> List[float]:
-        # Jina v2 có phương thức compute_score tối ưu hơn (xử lý sliding window, không bị treo CPU)
-        if hasattr(self.model, "compute_score"):
-            scores = []
-            for i in range(0, len(texts), batch_size):
-                batch = [[query, txt] for txt in texts[i: i + batch_size]]
-                batch_scores = self.model.compute_score(batch, max_length=max_len)
-                # compute_score có thể trả về float hoặc list tùy batch size
-                if isinstance(batch_scores, (int, float)):
-                    scores.append(float(batch_scores))
-                else:
-                    scores.extend([float(s) for s in batch_scores])
-            return scores
-
-        # Cách cũ cho các model standard (bge-reranker-base, v.v.)
         scores = []
         for i in range(0, len(texts), batch_size):
             batch = texts[i: i + batch_size]
