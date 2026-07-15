@@ -30,6 +30,15 @@ class CrossEncoderReranker:
             model_name = default_model
         self.model_name = model_name
 
+        # Hỗ trợ bypass reranker nếu cấu hình là 'none' hoặc null/rỗng
+        if not self.model_name or self.model_name.lower() in ["none", "null"]:
+            self.model_name = "none"
+            self.model = None
+            self.tokenizer = None
+            print("CrossEncoderReranker is DISABLED (bypass mode).")
+            self.BAD_HINTS = ("Cảm ơn các bạn đã xem", "đăng ký kênh", "subscribe", "like và share")
+            return
+
         requested_device = device or os.getenv("RAG_DEVICE", "auto")
         if requested_device == "auto":
             requested_device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -78,6 +87,16 @@ class CrossEncoderReranker:
         return scores
 
     def rerank(self, docs, query: str, top_k: int = 10) -> List:
+        # Nếu model disable (bypass mode), chỉ lọc BAD_HINTS và trả về top_k đầu tiên
+        if self.model is None:
+            final_docs = []
+            for d in docs:
+                if all(h.lower() not in d.page_content.lower() for h in self.BAD_HINTS):
+                    final_docs.append(d)
+                if len(final_docs) >= top_k:
+                    break
+            return final_docs
+
         texts = [d.page_content for d in docs]
         scores = self.batch_scores(query, texts)
         ranked = sorted(zip(docs, scores), key=lambda x: x[1], reverse=True)
