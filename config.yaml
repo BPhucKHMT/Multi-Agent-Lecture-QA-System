@@ -33,7 +33,7 @@ pipeline:
 
   # BGE finetuned model path (chỉ dùng khi semantic_embedding_provider=bge)
   # Nếu null hoặc không tồn tại, tự fallback sang OpenAI
-  bge_model_path: models/production/bge-m3-v3
+  bge_model_path: BAAI/bge-m3
 
   # Reranker model configuration
   # HuggingFace model ID hoặc local path:
@@ -42,4 +42,4 @@ pipeline:
   # - Jina v1 tiny: jinaai/jina-reranker-v1-tiny
   # - BGE base: BAAI/bge-reranker-base
   # Default: models/bge-reranker-finetuned
-  reranker_model: jinaai/jina-reranker-v2-base-multilingual
+  reranker_model: BAAI/bge-reranker-base
