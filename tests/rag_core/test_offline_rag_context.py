@@ -38,15 +38,12 @@ class _FakeReranker:
         return docs[:top_k]
 
 
-import pytest
-
-@pytest.mark.anyio
-async def test_get_context_passes_top_k_and_truncates_content():
+def test_get_context_passes_top_k_and_truncates_content():
     docs = [_FakeDoc("A" * 5000), _FakeDoc("B" * 5000)]
     reranker = _FakeReranker()
     rag = Offline_RAG(llm=object(), retriever=_FakeRetriever(docs), reranker=reranker)
 
-    context = await rag.get_context("cnn la gi")
+    context = rag.get_context("cnn la gi")
     payload = json.loads(context)
 
     assert reranker.received_top_k == 10
@@ -60,13 +57,11 @@ def test_offline_rag_prompt_is_compact_to_avoid_token_bloat():
     assert len(template) <= 2000
 
 
-@pytest.mark.anyio
-async def test_get_context_total_serialized_size_is_capped():
+def test_get_context_total_serialized_size_is_capped():
     docs = [_FakeDoc("X" * 20000) for _ in range(20)]
     reranker = _FakeReranker()
     rag = Offline_RAG(llm=object(), retriever=_FakeRetriever(docs), reranker=reranker)
 
-    context = await rag.get_context("linear regression là gì")
+    context = rag.get_context("linear regression là gì")
 
     assert len(context) <= 6000
-
