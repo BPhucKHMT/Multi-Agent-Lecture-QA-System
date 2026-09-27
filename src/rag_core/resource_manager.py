@@ -10,11 +10,10 @@ _vector_retriever = None
 _documents = None
 _bm25_retriever = None
 _hybrid_retriever = None
+# Jina khởi tạo tokenizer lần đầu trong compute_score; không chia sẻ model giữa các nhánh rerank đồng thời.
 _tutor_reranker = None
 _quiz_reranker = None
-_quiz_resources = None
 _rag_core = None
-_tutor_chain = None
 
 logger = logging.getLogger(__name__)
 
@@ -59,13 +58,7 @@ def _build_hybrid_retriever():
     return HybridSearch(get_vector_retriever(), get_bm25_retriever()).get_retriever()
 
 
-def _build_tutor_reranker():
-    from src.retrieval.reranking import CrossEncoderReranker
-
-    return CrossEncoderReranker(device=_get_device())
-
-
-def _build_quiz_reranker():
+def _build_reranker():
     from src.retrieval.reranking import CrossEncoderReranker
 
     return CrossEncoderReranker(device=_get_device())
@@ -84,10 +77,6 @@ def _build_rag_core():
         get_tutor_reranker(),
         llm_internal=internal_llm,
     )
-
-
-def _build_quiz_resources():
-    return get_vector_retriever(), get_quiz_reranker()
 
 
 def get_vector_db():
@@ -140,7 +129,7 @@ def get_tutor_reranker():
     if _tutor_reranker is None:
         with _LOCK:
             if _tutor_reranker is None:
-                _tutor_reranker = _build_tutor_reranker()
+                _tutor_reranker = _build_reranker()
     return _tutor_reranker
 
 
@@ -149,17 +138,8 @@ def get_quiz_reranker():
     if _quiz_reranker is None:
         with _LOCK:
             if _quiz_reranker is None:
-                _quiz_reranker = _build_quiz_reranker()
+                _quiz_reranker = _build_reranker()
     return _quiz_reranker
-
-
-def get_quiz_resources():
-    global _quiz_resources
-    if _quiz_resources is None:
-        with _LOCK:
-            if _quiz_resources is None:
-                _quiz_resources = _build_quiz_resources()
-    return _quiz_resources
 
 
 def get_rag_core():
@@ -171,14 +151,10 @@ def get_rag_core():
     return _rag_core
 
 
-def get_tutor_chain():
-    # Trả về answer chain để tương thích với các phần cũ nếu có
-    return get_rag_core().get_answer_chain()
-
-
 def prewarm_all_resources():
     logger.info("[prewarm] Step 1/2: build RAG core")
     get_rag_core()
-    logger.info("[prewarm] Step 2/2: build quiz resources")
-    get_quiz_resources()
+    logger.info("[prewarm] Step 2/2: build quiz reranker")
+    get_vector_retriever()
+    get_quiz_reranker()
     logger.info("[prewarm] All resources initialized")

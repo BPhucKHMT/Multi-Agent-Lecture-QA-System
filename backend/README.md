@@ -112,8 +112,8 @@ Backend gửi SSE events về frontend:
 ## Chạy backend
 
 ```powershell
-# Cài dependencies
-pip install -r backend/requirements.txt
+# Backend import trực tiếp AI engine; cài đủ dependencies CPU từ thư mục gốc.
+pip install -r requirements.cpu.txt
 
 # Chạy dev server
 python -m uvicorn backend.app.main:app --host 0.0.0.0 --port 8000 --reload

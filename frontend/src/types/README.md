@@ -27,6 +27,6 @@ Types giúp đồng bộ contract giữa frontend và backend:
 
 ## Quy ước
 
-- Type đặt tên rõ nghiệp vụ: `ChatMessage`, `ConversationSession`, `VideoMetadata`.
+- Type đặt tên rõ nghiệp vụ: `ChatRequest`, `RagResponse`, `VideoItem`.
 - Không dùng `any` nếu có thể mô tả shape.
 - Nếu field optional do backend không luôn trả, đánh dấu `?` rõ ràng.

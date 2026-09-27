@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 import redis
 import uuid
 
-from backend.app.api.v1.endpoints.schemas import ChatRequest # Sẽ cập nhật schemas sau
+from backend.app.schemas.api import ChatRequest
 from backend.app.db.session import get_db
 from backend.app.db.redis import get_redis_binary
 from backend.app.deps import get_current_user, limit_chat_rate

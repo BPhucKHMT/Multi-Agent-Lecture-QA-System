@@ -1,12 +1,9 @@
 # Web & API runtime
 fastapi==0.115.0
 uvicorn[standard]==0.32.1
-motor==3.6.0
-pymongo==4.9
 requests==2.32.3
 pydantic==2.10.3
 python-dotenv==1.2.1
-dotenv
 
 # Backend service runtime
 sqlalchemy==2.0.36
@@ -20,6 +17,10 @@ python-multipart==0.0.12
 pydantic-settings==2.6.1
 email-validator==2.2.0
 argon2_cffi
+
+# Observability
+langfuse==4.15.6
+prometheus-client==0.26.0
 
 # LangChain ecosystem
 langchain==0.3.27

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildCitationItems } from "./citation";
+import { buildCitationItems, buildCitationItemsFromContext } from "./citation";
 
 describe("buildCitationItems", () => {
   it("parses [n] citations and replaces existing t query param", () => {
@@ -108,5 +108,39 @@ describe("buildCitationItems", () => {
         warning: "unsafe_url",
       },
     ]);
+  });
+});
+
+it("retains the indexed source when a video URL is unavailable", () => {
+  expect(buildCitationItems("Đọc thêm [0]", {
+    video_url: [""],
+    title: ["Bài giảng CNN"],
+    filename: ["cnn.txt"],
+    start_timestamp: ["00:01:05"],
+    end_timestamp: ["00:02:00"],
+    confidence: ["high"],
+  })).toEqual([{
+    index: 0,
+    marker: "[0]",
+    title: "Bài giảng CNN",
+    filename: "cnn.txt",
+    start_timestamp: "00:01:05",
+    end_timestamp: "00:02:00",
+    confidence: "high",
+    video_url: "",
+    warning: "missing_url",
+  }]);
+
+  expect(buildCitationItemsFromContext("Đọc thêm [0]", [{
+    title: "Bài giảng CNN",
+    filename: "cnn.txt",
+    start_timestamp: "00:01:05",
+    end_timestamp: "00:02:00",
+    video_url: "",
+  }])[0]).toMatchObject({
+    title: "Bài giảng CNN",
+    start_timestamp: "00:01:05",
+    video_url: "",
+    warning: "missing_url",
   });
 });

@@ -12,16 +12,21 @@ services:
       RAG_DEVICE: cpu
       RAG_RETRIEVER_K: ${RAG_RETRIEVER_K:-40}
       RAG_RETRIEVER_FETCH_K: ${RAG_RETRIEVER_FETCH_K:-80}
-      REDIS_URL: redis://redis-stack:6379/0
+      REDIS_URL: ${REDIS_URL:-redis://redis-stack:6379/0}
       TRANSNET_V2_PATH: /app/artifacts/data_extraction/TransNetV2
       SEMANTIC_CACHE_ENABLED: ${SEMANTIC_CACHE_ENABLED:-true}
       SEMANTIC_CACHE_PREWARM_ENABLED: ${SEMANTIC_CACHE_PREWARM_ENABLED:-false}
       HF_HOME: /app/.cache/huggingface
       TRANSFORMERS_CACHE: /app/.cache/huggingface
       TOKENIZERS_PARALLELISM: "false"
+    depends_on:
+      redis-stack:
+        condition: service_healthy
     ports:
       - "8000:8000"
     volumes:
+      - ./backend:/app/backend
+      - ./src:/app/src
       - ./artifacts:/app/artifacts
       - ./models:/app/models
       - hf_cache:/app/.cache/huggingface
@@ -81,12 +86,16 @@ services:
       RAG_DEVICE: cuda
       RAG_RETRIEVER_K: ${RAG_RETRIEVER_K:-40}
       RAG_RETRIEVER_FETCH_K: ${RAG_RETRIEVER_FETCH_K:-80}
+      REDIS_URL: ${REDIS_URL:-redis://redis-stack:6379/0}
       TRANSNET_V2_PATH: /app/artifacts/data_extraction/TransNetV2
       SEMANTIC_CACHE_ENABLED: ${SEMANTIC_CACHE_ENABLED:-true}
       SEMANTIC_CACHE_PREWARM_ENABLED: ${SEMANTIC_CACHE_PREWARM_ENABLED:-false}
       HF_HOME: /app/.cache/huggingface
       TRANSFORMERS_CACHE: /app/.cache/huggingface
       TOKENIZERS_PARALLELISM: "false"
+    depends_on:
+      redis-stack:
+        condition: service_healthy
     ports:
       - "8000:8000"
     volumes:
@@ -139,15 +148,21 @@ services:
     restart: "no"
 
   redis-stack:
-    profiles: ["redis"]
+    profiles: ["cpu", "gpu", "redis"]
     image: redis/redis-stack:latest
     container_name: rag-qabot-redis
     ports:
-      - "6379:6379"
-      - "8001:8001"
+      - "127.0.0.1:6379:6379"
+      - "127.0.0.1:8001:8001"
     volumes:
       - redis_data:/data
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
 
 volumes:
   hf_cache:

@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, Request, status
 from sqlalchemy.orm import Session
 import redis
 
-from backend.app.api.v1.endpoints.schemas import (
+from backend.app.schemas.api import (
     RegisterRequest,
     LoginRequest,
     TokenResponse,

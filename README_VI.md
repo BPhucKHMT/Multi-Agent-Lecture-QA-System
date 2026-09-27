@@ -41,8 +41,15 @@ Sau đó điền các biến cần thiết như `myAPIKey`, `DATABASE_URL`, `JWT
 ### 2. Chạy local CPU: frontend + backend + Redis
 
 ```powershell
-docker compose --profile cpu --profile frontend --profile redis up --build
+docker compose --profile cpu --profile frontend up --build
 ```
+Profile `cpu`/`gpu` khởi động `redis-stack` local và chờ healthcheck. Nếu `REDIS_URL` trỏ tới Redis ngoài mà container truy cập được, bỏ qua Redis local bằng lệnh:
+
+```powershell
+docker compose --profile cpu --profile frontend up -d --build --no-deps api-cpu frontend
+```
+
+Đổi `cpu`/`api-cpu` thành `gpu`/`api-gpu` khi dùng GPU. Redis bên ngoài phải sẵn sàng trước khi gửi chat; `--no-deps` không dừng Redis local đã chạy sẵn.
 
 Truy cập:
 
@@ -57,7 +64,7 @@ RedisInsight: http://localhost:8001
 Dùng khi máy local có NVIDIA GPU, Docker Desktop đã bật GPU support/NVIDIA Container Toolkit.
 
 ```powershell
-docker compose --profile gpu --profile redis up --build
+docker compose --profile gpu up --build
 ```
 
 Lệnh trên chạy **2 service**: `api-gpu` + `redis-stack`.
@@ -65,7 +72,7 @@ Lệnh trên chạy **2 service**: `api-gpu` + `redis-stack`.
 Nếu muốn chạy cùng lúc **3 service** (frontend + backend GPU + Redis):
 
 ```powershell
-docker compose --profile gpu --profile redis --profile frontend up --build
+docker compose --profile gpu --profile frontend up --build
 ```
 
 Image GPU đã test build local:
@@ -124,7 +131,7 @@ Nếu bạn muốn chạy hệ thống trực tiếp trên máy host không qua 
 1. **Python 3.12+**
 2. **Node.js** (v18 trở lên) & **npm**
 3. **PostgreSQL** (chạy local hoặc trên cloud)
-4. **Redis** (chạy local, yêu cầu cho tính năng semantic cache)
+4. **Redis** (chạy local, bắt buộc cho revoke auth và semantic cache)
 
 ### Bước 1: Cài đặt Python Dependencies
 
@@ -188,12 +195,9 @@ Bây giờ bạn có thể truy cập giao diện ứng dụng tại: `http://lo
 
 ---
 
-## Tài khoản demo
+## Tài khoản thử nghiệm
 
-```txt
-Email: nguyenlam.baophuc@gmail.com
-Password: 123456789
-```
+Đăng ký tài khoản tại `/register`. Không lưu thông tin đăng nhập trong repository.
 
 ---
 
@@ -249,7 +253,7 @@ final_project/
 │   │   │   ├── api/    # client, chat (SSE), videos
 │   │   │   └── utils/  # citation, timestamp formatting
 │   │   ├── pages/      # Gateway, Login, Register, Workspace
-│   │   ├── store/      # Zustand state management
+│   │   ├── store/      # React Context state management
 │   │   ├── styles/     # Global CSS/Tailwind
 │   │   └── types/      # TypeScript types (api, app, rag)
 │   ├── ui2figma/       # Tool xuất UI sang Figma (separate module)
@@ -261,8 +265,7 @@ final_project/
 │   │   ├── lang_graph_rag.py   # Graph chính + supervisor + routing
 │   │   ├── state.py            # State schema
 │   │   ├── resource_manager.py # Prewarm resources
-│   │   ├── router_patterns.py  # Deterministic steering
-│   │   ├── offline_rag.py      # Legacy RAG flow
+│   │   ├── offline_rag.py      # Truy hồi và sinh câu trả lời của Tutor
 │   │   ├── agents/
 │   │   │   ├── tutor.py        # RAG agent + citation
 │   │   │   ├── coding.py       # Lập trình + sandbox
@@ -466,7 +469,7 @@ RedisInsight: http://localhost:8001
 ### Chạy data pipeline
 
 ```powershell
-python -m src.data_pipeline.pipeline
+python -m src.data_pipeline.data_loader.pipeline
 ```
 
 ### Compile nhanh Python files đã sửa

@@ -1,0 +1,101 @@
+# Overlay giám sát: ghép với docker-compose.yaml.
+# Mặc định chỉ bật API metrics + Prometheus/Grafana:
+#   GRAFANA_ADMIN_PASSWORD='...' docker compose -f docker-compose.yaml -f docker-compose.observability.yaml --profile cpu --profile monitoring up
+#   PowerShell: $env:GRAFANA_ADMIN_PASSWORD='...'; docker compose -f docker-compose.yaml -f docker-compose.observability.yaml --profile cpu --profile monitoring up
+# Linux host: thêm --profile linux-monitoring và đặt PUQ_PROMETHEUS_CONFIG=prometheus-linux.yml.
+# Linux NVIDIA: thêm --profile nvidia-monitoring và chọn prometheus-linux-gpu.yml.
+# Windows: cài windows_exporter v0.31.8 native (GPU collector nếu driver hỗ trợ),
+# đặt PUQ_PROMETHEUS_CONFIG=prometheus-windows.yml; Docker Desktop không cài exporter host.
+services:
+  api-cpu:
+    environment:
+      PUQ_METRICS_ENABLED: "true"
+      PUQ_METRICS_BIND_HOST: "0.0.0.0"
+      PUQ_METRICS_PORT: "9102"
+
+  api-gpu:
+    build:
+      target: prod-gpu
+    environment:
+      PUQ_METRICS_ENABLED: "true"
+      PUQ_METRICS_BIND_HOST: "0.0.0.0"
+      PUQ_METRICS_PORT: "9102"
+
+  prometheus:
+    image: prom/prometheus:v3.14.0
+    profiles: ["monitoring"]
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=15d
+    ports:
+      - "127.0.0.1:9091:9090"
+    volumes:
+      - ./deploy/observability/${PUQ_PROMETHEUS_CONFIG:-prometheus.yml}:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:13.2.2
+    profiles: ["monitoring"]
+    environment:
+      GF_SECURITY_ADMIN_USER: "${GRAFANA_ADMIN_USER:-admin}"
+      GF_SECURITY_ADMIN_PASSWORD: "${GRAFANA_ADMIN_PASSWORD:?set GRAFANA_ADMIN_PASSWORD in the environment}"
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    ports:
+      - "127.0.0.1:3001:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./deploy/observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./deploy/observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    restart: unless-stopped
+
+  node-exporter:
+    image: prom/node-exporter:v1.12.1
+    profiles: ["linux-monitoring"]
+    command:
+      - --path.rootfs=/host
+      - --path.procfs=/host/proc
+      - --path.sysfs=/host/sys
+      - --collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)(/|$)
+    volumes:
+      - /:/host:ro,rslave
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+    restart: unless-stopped
+
+  cadvisor:
+    image: ghcr.io/google/cadvisor:v0.60.6
+    profiles: ["linux-monitoring"]
+    command:
+      - --docker_only=true
+      - --store_container_labels=false
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker:/var/lib/docker:ro
+      - /dev/disk:/dev/disk:ro
+    restart: unless-stopped
+
+  dcgm-exporter:
+    # Chỉ chạy trên Linux có NVIDIA driver + NVIDIA Container Toolkit tương thích.
+    image: nvcr.io/nvidia/k8s/dcgm-exporter:4.6.1-4.8.4
+    profiles: ["nvidia-monitoring"]
+    runtime: nvidia
+    environment:
+      NVIDIA_VISIBLE_DEVICES: all
+      NVIDIA_DRIVER_CAPABILITIES: utility
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    restart: unless-stopped
+
+volumes:
+  prometheus_data:
+  grafana_data:

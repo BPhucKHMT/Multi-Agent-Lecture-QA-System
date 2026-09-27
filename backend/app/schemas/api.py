@@ -8,7 +8,7 @@ from pydantic import BaseModel, EmailStr, AnyHttpUrl
 from pydantic import field_validator, model_validator
 import uuid
 from datetime import datetime
-from typing import List, Optional, Any
+from typing import List, Optional
 
 
 # --- Auth Schemas ---
@@ -111,15 +111,8 @@ class VideoSummaryResponse(BaseModel):
 
 
 class ChatRequest(BaseModel):
-    """
-    - user_message
-    - conversation_id
-    - stream
-    """
-
     user_message: str
     conversation_id: Optional[str] = None
-    stream: bool = False
 
     @field_validator("user_message")
     @classmethod
@@ -132,8 +125,3 @@ class ChatRequest(BaseModel):
         return v
 
 
-class ChatResponse(BaseModel):
-    text: str
-    session_id: str
-    agent_type: str
-    metadata: Optional[dict[str, Any]] = None

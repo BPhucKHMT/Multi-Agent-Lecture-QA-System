@@ -32,13 +32,16 @@ generation/
 | Biến | Mục đích |
 |---|---|
 | `myAPIKey` | OpenAI API key |
-| `OPENAI_MODEL` | Model chat mặc định |
-| `OPENAI_MAX_TOKENS` | Giới hạn token nếu module đọc biến này |
+| `OPENAI_MODEL` | Model chat mặc định (`gpt-6-luna`) |
+| `OPENAI_SUPERVISOR_MODEL` | Model dự phòng khi Experiential Jev lỗi (`gpt-6-luna`) |
+| `EXPERIENTIAL_API_KEY` | API key server-side Experiential Labs (`xpl_...`) |
 
 ---
 
 ## Lưu ý
 
+- Supervisor gửi route và các trường quiz dạng typed tới `POST https://api.experientiallabs.ai/v1/systemone` với model `jev-latest`.
+- Request giữ nguyên nội dung hội thoại; số câu, độ khó, ngôn ngữ, dạng câu, số lựa chọn, ẩn đáp án/giải thích được đánh giá trong cùng lượt. Các trường ẩn dùng kiểu `noul`.
+- Quiz hỗ trợ trắc nghiệm (mặc định 4 lựa chọn A–D), đúng/sai và trả lời ngắn. Số lựa chọn người dùng chỉ định được giữ; đầu ra được kiểm tra đúng số lựa chọn.
+- Nếu thiếu credential, API/route lỗi hoặc output không hợp lệ, Supervisor fallback sang GPT-6 Luna qua `ChatOpenAI`.
 - Không log API key.
-- Nếu đổi model, kiểm tra prompt/tool-calling compatibility.
-- Nếu thêm model riêng cho supervisor, giữ tên biến rõ ràng.

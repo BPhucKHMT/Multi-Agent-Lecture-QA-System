@@ -1,3 +1,4 @@
+import asyncio
 import os
 import sys
 from pathlib import Path
@@ -17,7 +18,7 @@ class _FakeLLM:
     def __init__(self, content: str):
         self._content = content
 
-    def invoke(self, _prompt):
+    async def ainvoke(self, _prompt):
         return _FakeResponse(self._content)
 
 
@@ -25,7 +26,7 @@ class _SequenceLLM:
     def __init__(self, contents):
         self._contents = list(contents)
 
-    def invoke(self, _prompt):
+    async def ainvoke(self, _prompt):
         if not self._contents:
             raise AssertionError("LLM bị gọi nhiều hơn số response đã cấu hình")
         return _FakeResponse(self._contents.pop(0))
@@ -75,8 +76,7 @@ def test_coding_agent_heavy_tensorflow_skips_sandbox(monkeypatch):
     monkeypatch.setattr(coding_agent, "execute_python_code", _fake_execute)
 
     graph = coding_agent.build_coding_subgraph()
-    result = graph.invoke({"query": "Viết code train linear model bằng TensorFlow"})
-
+    result = asyncio.run(graph.ainvoke({"query": "Viết code train linear model bằng TensorFlow"}))
     assert sandbox_called["called"] is False, "Sandbox không được gọi với heavy code"
     text = result["response"]["text"]
     assert "chạy ở local" in text
@@ -96,7 +96,7 @@ def test_coding_agent_simple_code_executes_normally(monkeypatch):
     monkeypatch.setattr(coding_agent, "execute_python_code", _fake_execute)
 
     graph = coding_agent.build_coding_subgraph()
-    result = graph.invoke({"query": "In ra Hello World"})
+    result = asyncio.run(graph.ainvoke({"query": "In ra Hello World"}))
 
     assert sandbox_called["called"] is True, "Sandbox phải được gọi với code đơn giản"
     text = result["response"]["text"]
@@ -130,7 +130,7 @@ def test_coding_agent_retry_reclassifies_heavy_code_before_execute(monkeypatch):
     monkeypatch.setattr(coding_agent, "execute_python_code", _fake_execute)
 
     graph = coding_agent.build_coding_subgraph()
-    result = graph.invoke({"query": "Viết code train model TensorFlow"})
+    result = asyncio.run(graph.ainvoke({"query": "Viết code train model TensorFlow"}))
 
     text = result["response"]["text"]
     assert "chạy ở local" in text
@@ -152,7 +152,7 @@ def test_coding_agent_heavy_response_has_code_block(monkeypatch):
     monkeypatch.setattr(coding_agent, "get_llm", lambda: _FakeLLM(torch_code))
 
     graph = coding_agent.build_coding_subgraph()
-    result = graph.invoke({"query": "Viết training loop PyTorch"})
+    result = asyncio.run(graph.ainvoke({"query": "Viết training loop PyTorch"}))
 
     text = result["response"]["text"]
     assert "```python" in text
@@ -174,7 +174,7 @@ def test_heavy_response_contains_explanation(monkeypatch):
     monkeypatch.setattr(coding_agent, "get_llm", lambda: llm)
 
     graph = coding_agent.build_coding_subgraph()
-    result = graph.invoke({"query": "Viết code train linear model bằng TensorFlow"})
+    result = asyncio.run(graph.ainvoke({"query": "Viết code train linear model bằng TensorFlow"}))
 
     text = result["response"]["text"]
     assert "Dòng model.compile thiết lập hàm mất mát MSE và bộ tối ưu Adam." in text
@@ -189,7 +189,13 @@ def test_coding_agent_format_response_with_plots():
         "output": f"Some output\n[PLOT_BASE64]{fake_b64}[/PLOT_BASE64]\n",
         "error": "",
         "success": True,
-        "references": [],
+        "references": [{
+            "video_url": "https://video.example/lecture",
+            "title": "Linear regression",
+            "filename": "lecture.mp4",
+            "start_timestamp": "00:01",
+            "end_timestamp": "00:03",
+        }],
     }
     result = coding_agent.format_response(fake_state)
     text = result["response"]["text"]
@@ -197,5 +203,12 @@ def test_coding_agent_format_response_with_plots():
     assert "[PLOT_BASE64]" not in text
     assert "Some output" in text
     assert result["response"]["type"] == "coding"
+    response = result["response"]
+    assert response["video_url"] == ["https://video.example/lecture"]
+    assert response["title"] == ["Linear regression"]
+    assert response["filename"] == ["lecture.mp4"]
+    assert response["start_timestamp"] == ["00:01"]
+    assert response["end_timestamp"] == ["00:03"]
+    assert response["confidence"] == ["high"]
 
 

@@ -12,6 +12,79 @@ from src.generation.llm_model import get_llm
 from src.rag_core.state import State
 from src.rag_core.utils import _extract_tool_args_from_state
 
+# Từ khóa liên quan đến Giao tiếp (Greeting)
+CHITCHAT_PATTERNS = (
+    # ===== GREETING =====
+    "xin chào", "chào", "hello", "hi", "hey", "alo", "ê",
+    "chào bạn", "chào bot", "hey bot", "hi bot",
+    "good morning", "good afternoon", "good evening",
+    "morning", "yo", "sup", "what's up", "wassup",
+    "chào buổi sáng", "chào buổi chiều", "chào buổi tối",
+
+    # ===== FAREWELL =====
+    "tạm biệt", "bye", "goodbye", "see you", "see ya",
+    "hẹn gặp lại", "bai", "bb", "good night",
+    "tôi đi đây", "mình đi nhé", "out đây",
+
+    # ===== THANKS =====
+    "cảm ơn", "thanks", "thank you", "thank u",
+    "tks", "ty", "thx",
+    "cảm ơn bạn", "cảm ơn nhiều", "thank you so much",
+    "ok cảm ơn", "thanks bro", "thank you bot",
+
+    # ===== IDENTITY =====
+    "bạn là ai", "mày là ai", "who are you",
+    "giới thiệu bản thân", "bạn tên gì",
+    "what are you", "are you human",
+    "bạn là bot à", "ai tạo ra bạn",
+
+    # ===== CAPABILITY =====
+    "bạn làm được gì", "you can do what",
+    "help", "giúp tôi", "có thể làm gì",
+    "how can you help", "hướng dẫn",
+    "tôi có thể hỏi gì", "use bạn sao",
+
+    # ===== STATUS =====
+    "bạn khỏe không", "how are you", "how are you doing",
+    "ổn không", "today thế nào",
+    "bạn đang làm gì", "what are you doing",
+    "có rảnh không",
+
+    # ===== FUN / JOKE =====
+    "kể chuyện cười", "tell me a joke",
+    "joke", "funny", "make me laugh",
+    "giải trí", "chán quá", "bored",
+    "có gì vui không",
+
+    # ===== CASUAL / FILLER =====
+    "ừ", "ok", "ừm", "hmm", "huh",
+    "à", "ờ", "uh", "um",
+    "được", "ok luôn", "fine",
+    "k", "ko", "không", "no",
+    "yes", "yeah", "yep",
+
+    # ===== COMPLIMENT =====
+    "bạn giỏi", "you are smart",
+    "hay quá", "good answer",
+    "nice one", "đỉnh", "xịn",
+    "ok đấy", "tốt", "well done",
+
+    # ===== TOXIC / NEGATIVE =====
+    "ngu", "dốt", "stupid", "idiot",
+    "bot ngu", "mày ngu",
+    "vô dụng", "useless",
+    "trash", "rác",
+
+    # ===== META =====
+    "bạn dùng model gì",
+    "are you gpt",
+    "bạn có dùng openai không",
+    "backend là gì",
+    "how you work",
+    "cách bạn hoạt động",
+)
+
+
 async def node_direct_answer(state: State):
     """Sinh response trực tiếp và chuẩn hóa schema không citation."""
     messages = state.get("messages", [])
@@ -22,7 +95,6 @@ async def node_direct_answer(state: State):
         last_message = messages[-1]
         if isinstance(last_message, HumanMessage):
             val = str(last_message.content or "").strip().lower()
-            from src.rag_core.router_patterns import CHITCHAT_PATTERNS
             is_greeting = False
             if any(val == p for p in CHITCHAT_PATTERNS):
                 is_greeting = True

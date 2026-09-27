@@ -18,11 +18,10 @@ def call_llm_api(text: str, system_prompt: str, history: Optional[List[Dict[str,
 
     from langchain_openai import ChatOpenAI
 
-    model_name = os.getenv("OPENAI_MODEL", "gpt-5-mini")
+    model_name = os.getenv("OPENAI_MODEL", "gpt-6-luna")
     llm = ChatOpenAI(
         api_key=auth_token,
         model=model_name,
-        temperature=0.1,
     )
 
     messages = [{"role": "system", "content": system_prompt}]

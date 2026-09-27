@@ -47,7 +47,7 @@ class Settings(BaseSettings):
 
     # --- OpenAI ---
     OPENAI_API_KEY: str = os.getenv("myAPIKey", "")
-    OPENAI_MODEL: str = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+    OPENAI_MODEL: str = os.getenv("OPENAI_MODEL", "gpt-6-luna")
 
     # --- JWT ---
     JWT_SECRET: str = os.getenv("JWT_SECRET", "changeme")

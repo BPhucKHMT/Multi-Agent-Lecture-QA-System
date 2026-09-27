@@ -1,10 +1,8 @@
 import { createContext, createElement, useCallback, useContext, useMemo, useRef, useState, useEffect, type ReactNode } from "react";
 import { flushSync } from "react-dom";
-import { postChat, streamChat, fetchChatHistory, fetchChatSessions } from "../lib/api/chat";
-import type { ChatMessage } from "../types/api";
+import { streamChat, fetchChatHistory, fetchChatSessions } from "../lib/api/chat";
 import type { ChatRequest } from "../types/api";
 import type { RagResponse } from "../types/rag";
-import { normalizeRagResponse } from "../lib/api/chat";
 
 type ConversationMessage = {
   id: string;
@@ -45,17 +43,6 @@ type FailedPromptState = {
 };
 
 const ConversationStoreContext = createContext<ConversationStoreValue | null>(null);
-
-export function rollbackOptimisticMessage(
-  messages: ConversationMessage[],
-  optimisticMessageId: string,
-): ConversationMessage[] {
-  return messages.filter((message) => message.id !== optimisticMessageId);
-}
-
-export function buildFailedPromptState(prompt: string, payload: ChatRequest): FailedPromptState {
-  return { prompt, payload };
-}
 
 export function hasVisibleStreamToken(token: string): boolean {
   return /\S/.test(token);
@@ -105,10 +92,6 @@ async function playTypewriterFallback(
     appendContent(chunk);
     await wait(/[.!?]\s*$/.test(chunk) ? 90 : 34);
   }
-}
-
-function toApiMessages(messages: ConversationMessage[]): ChatMessage[] {
-  return messages.map(({ role, content }) => ({ role, content }));
 }
 
 function createMessageId(role: "user" | "assistant"): string {
@@ -215,7 +198,6 @@ export function ConversationStoreProvider({ children }: { children: ReactNode })
       const payload: ChatRequest = retryPayload ?? {
         conversation_id: conversationId,
         user_message: userPrompt,
-        messages: toApiMessages(nextMessages),
       };
 
       const assistantMessageId = createMessageId("assistant");
@@ -321,7 +303,7 @@ export function ConversationStoreProvider({ children }: { children: ReactNode })
       } catch (requestError) {
         if (requestToken !== requestTokenRef.current) return;
         setMessages((prev) => prev.filter(m => m.id !== optimisticUserMessage.id && m.id !== assistantMessageId));
-        setFailedPromptState(buildFailedPromptState(userPrompt, payload));
+        setFailedPromptState({ prompt: userPrompt, payload });
         setError(requestError instanceof Error ? requestError.message : "Không thể gửi câu hỏi.");
       } finally {
         if (requestToken === requestTokenRef.current) {

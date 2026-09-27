@@ -9,6 +9,7 @@ import time
 import numpy as np
 from pathlib import Path
 import pytest
+from prometheus_client import REGISTRY
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, os.fspath(PROJECT_ROOT))
@@ -68,7 +69,7 @@ async def _collect_stream(gen):
 
 class _BrokenWorkflow:
     async def astream_events(self, *_args, **_kwargs):
-        raise RuntimeError("stream exploded")
+        raise RuntimeError("secret-token-canary")
         yield  # pragma: no cover
 
     async def ainvoke(self, *_args, **_kwargs):
@@ -210,7 +211,7 @@ def test_generate_stream_returns_error_metadata_when_streaming_fails(monkeypatch
     assert payloads, "Expected at least one SSE payload"
     body = json.loads(payloads[-1][6:])
     assert body["type"] == "error"
-    assert "stream exploded" in body["content"]
+    assert body["content"] == "Lỗi xử lý câu hỏi. Vui lòng thử lại."
     assert chunks[-1] == "data: [DONE]\n\n"
 
 
@@ -483,3 +484,107 @@ def test_chat_stream_low_quality_response_not_cached(monkeypatch):
         "type": "rag"
     })
     assert redis_hset_called is True
+
+
+def test_cancelled_stream_closes_request_without_done(monkeypatch):
+    class CancelledWorkflow:
+        async def astream_events(self, *_args, **_kwargs):
+            yield {
+                "event": "on_chain_start",
+                "metadata": {"langgraph_node": "supervisor"},
+            }
+            raise asyncio.CancelledError()
+
+    monkeypatch.setattr(chat_service, "workflow", CancelledWorkflow())
+    monkeypatch.setattr(chat_service, "SEMANTIC_CACHE_ENABLED", False)
+    labels = {"route": "unknown", "outcome": "cancelled", "cache": "disabled"}
+    before = REGISTRY.get_sample_value("puq_chat_requests_total", labels) or 0
+    active_before = REGISTRY.get_sample_value("puq_chat_active") or 0
+    chunks = []
+
+    async def consume():
+        async for chunk in chat_service.generate_chat_stream(
+            _MockDBSession(), "user-1", "conv-1", "Hãy giải thích CNN"
+        ):
+            chunks.append(chunk)
+
+    with pytest.raises(asyncio.CancelledError):
+        asyncio.run(consume())
+
+    assert any('"type": "status"' in chunk for chunk in chunks)
+    assert "data: [DONE]\n\n" not in chunks
+    assert (REGISTRY.get_sample_value("puq_chat_requests_total", labels) or 0) == before + 1
+    assert (REGISTRY.get_sample_value("puq_chat_active") or 0) == active_before
+
+
+def test_status_only_stream_does_not_record_first_answer_token(monkeypatch):
+    class StatusOnlyWorkflow:
+        async def astream_events(self, *_args, **_kwargs):
+            yield {
+                "event": "on_chain_start",
+                "metadata": {"langgraph_node": "supervisor"},
+            }
+            yield {
+                "event": "on_chain_end",
+                "metadata": {"langgraph_node": "direct"},
+                "data": {"output": {"response": {
+                    "text": "Xin chào", "type": "direct", "video_url": [],
+                    "title": [], "filename": [], "start_timestamp": [],
+                    "end_timestamp": [], "confidence": [],
+                }}},
+            }
+
+    monkeypatch.setattr(chat_service, "workflow", StatusOnlyWorkflow())
+    monkeypatch.setattr(chat_service, "SEMANTIC_CACHE_ENABLED", False)
+    labels = {"route": "direct", "cache": "disabled"}
+    before = REGISTRY.get_sample_value("puq_chat_ttft_seconds_count", labels) or 0
+
+    chunks = asyncio.run(_collect_stream(chat_service.generate_chat_stream(
+        _MockDBSession(), "user-1", "conv-1", "Xin chào"
+    )))
+
+    assert chunks[-1] == "data: [DONE]\n\n"
+    assert not any('"type": "token"' in chunk for chunk in chunks)
+    assert (REGISTRY.get_sample_value("puq_chat_ttft_seconds_count", labels) or 0) == before
+
+
+def test_metadata_only_trace_uses_stable_opaque_session_id(monkeypatch):
+    from langfuse import Langfuse
+    from langfuse.langchain import CallbackHandler
+    from opentelemetry.sdk.trace import TracerProvider
+    from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
+    from src.shared.observability import mask_otel_spans
+
+    monkeypatch.setenv("PUQ_TRACE_CONTENT", "false")
+    monkeypatch.setenv("LANGFUSE_TRACING_ENABLED", "true")
+    monkeypatch.setattr(chat_service, "SEMANTIC_CACHE_ENABLED", False)
+    monkeypatch.setattr(chat_service, "workflow", _SingleRunWorkflow())
+    public_key = f"pk-{uuid.uuid4().hex}"
+    exporter = InMemorySpanExporter()
+    client = Langfuse(
+        public_key=public_key,
+        secret_key="sk-test",
+        base_url="http://langfuse.test",
+        tracer_provider=TracerProvider(),
+        span_exporter=exporter,
+        mask_otel_spans=mask_otel_spans,
+        flush_at=1,
+    )
+    monkeypatch.setattr(chat_service, "get_langfuse_client", lambda: client)
+    monkeypatch.setattr(chat_service, "CallbackHandler", lambda: CallbackHandler(public_key=public_key))
+
+    try:
+        for user in ("user-one", "user-one", "user-two"):
+            asyncio.run(_collect_stream(chat_service.generate_chat_stream(
+                _MockDBSession(), user, "secretAccount123", "Xin chào"
+            )))
+        client.flush()
+        roots = [span for span in exporter.get_finished_spans() if span.name == "chat_stream"]
+        assert len(roots) == 3
+        session_ids = [span.attributes["session.id"] for span in roots]
+        assert session_ids[0] == session_ids[1]
+        assert session_ids[0] != session_ids[2]
+        assert all(len(session_id) == 64 for session_id in session_ids)
+        assert "secretAccount123" not in repr([dict(span.attributes) for span in roots])
+    finally:
+        client.shutdown()

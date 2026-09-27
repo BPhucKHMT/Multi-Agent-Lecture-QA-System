@@ -2,6 +2,8 @@
 
 `backend/app/schemas/` chứa Pydantic schemas dùng để validate request/response ở backend.
 
+`api.py` là nguồn contract duy nhất cho request/response của auth, chat, video và summary.
+
 ---
 
 ## Vai trò

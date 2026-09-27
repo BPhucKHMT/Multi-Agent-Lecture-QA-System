@@ -29,8 +29,7 @@ rag_core/
 ├── lang_graph_rag.py      # Graph chính + supervisor node + routing
 ├── state.py               # State schema dùng trong graph
 ├── resource_manager.py    # Prewarm/cache resource nặng
-├── router_patterns.py     # Deterministic steering patterns
-├── offline_rag.py         # Flow RAG offline/legacy nếu cần
+├── offline_rag.py         # Truy hồi và sinh câu trả lời Tutor
 ├── agents/
 │   ├── tutor.py           # Agent RAG kiến thức bài giảng
 │   ├── coding.py          # Agent lập trình + self-correction
@@ -55,7 +54,7 @@ Supervisor quyết định agent theo intent:
 | `Quiz` | Yêu cầu tạo câu hỏi/trắc nghiệm |
 | `Direct` | Chào hỏi, câu hỏi tổng quát không cần retrieval |
 
-Ngoài LLM tool-calling, `router_patterns.py` có deterministic steering để route nhanh các pattern rõ ràng.
+Supervisor chọn route bằng Jev, fallback sang Luna khi Jev lỗi; Direct chỉ nhận diện lời chào khi tool không truyền query.
 
 ---
 

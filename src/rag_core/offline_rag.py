@@ -16,10 +16,8 @@ chữ ra frontend mà không có độ trễ nào nữa.
 """
 
 
-from pydantic import BaseModel, Field
-from langchain_core.output_parsers import JsonOutputParser
+from pydantic import BaseModel
 from langchain_core.prompts import ChatPromptTemplate
-from langchain_core.runnables import RunnablePassthrough
 from langchain_core.runnables import RunnableLambda
 from typing import List
 import json as json_lib
@@ -29,26 +27,9 @@ import logging
 import time
 
 
-logger = logging.getLogger(__name__)
+from src.shared.metrics import measure_rag_stage
 
-class VideoAnswer(BaseModel):
-    text: str = Field(
-        description="Câu trả lời đúng trọng tâm dựa trên transcript. SỬ DỤNG LaTeX ($...$ hoặc $$...$$) cho tất cả công thức/ký hiệu toán học và Markdown cho định dạng văn bản."
-    )
-    filename: List[str] = Field(description="Tên file transcript gốc")
-    video_url: List[str] = Field(
-        description="URL của video gốc, số video phải khớp với số timestamp"
-    )
-    title: List[str] = Field(
-        description="Tiêu đề của video gốc, số lượng phải khớp với số lượng timestamp"
-    )
-    start_timestamp: List[str] = Field(
-        description="Thời điểm bắt đầu (format: HH:MM:SS)"
-    )
-    end_timestamp: List[str] = Field(
-        description="Thời điểm kết thúc (format: HH:MM:SS)"
-    )
-    confidence: List[str] = Field(description="Độ tin cậy: zero/low/medium/high")
+logger = logging.getLogger(__name__)
 
 
 class TutorOutput(BaseModel):
@@ -65,7 +46,7 @@ class Offline_RAG:
     def __init__(self, llm, retriever, reranker, llm_internal=None) -> None:
         self.llm = llm
         self.llm_internal = llm_internal or llm
-        self.prompt = ChatPromptTemplate.from_template("""
+        self.prompt = ChatPromptTemplate.from_template(r"""
 Bạn là trợ lý RAG chuyên nghiệp. Hãy trả lời câu hỏi dựa trên transcript video và lịch sử hội thoại.
 
 QUY TẮC ĐỊNH DẠNG TOÁN HỌC (CỰC KỲ QUAN TRỌNG):
@@ -124,7 +105,7 @@ LUÔN LUÔN đặt key "text" ở vị trí ĐẦU TIÊN trong JSON object để
             "Chỉ trả về danh sách JSON gồm 3 chuỗi."
         )
         llm_expanded = self.llm_internal.with_config(
-            tags=["internal_query"], run_name="query_expansion", callbacks=[]
+            tags=["internal_query"], run_name="query_expansion"
         )
         chain = prompt | llm_expanded
         try:
@@ -144,7 +125,8 @@ LUÔN LUÔN đặt key "text" ở vị trí ĐẦU TIÊN trong JSON object để
         total_start = time.perf_counter()
 
         expand_start = time.perf_counter()
-        queries = await self.generate_queries(query, chat_history)
+        with measure_rag_stage("query_expansion"):
+            queries = await self.generate_queries(query, chat_history)
         expand_elapsed = time.perf_counter() - expand_start
         logger.info(
             "[TUTOR_TIMING] query_expansion=%.2fs query_count=%d",
@@ -152,19 +134,20 @@ LUÔN LUÔN đặt key "text" ở vị trí ĐẦU TIÊN trong JSON object để
             len(queries),
         )
 
-        search_tasks = []
         search_start = time.perf_counter()
-        for q in queries:
-            if hasattr(self.retriever, "ainvoke"):
-                search_tasks.append(self.retriever.ainvoke(q))
-            else:
-                search_tasks.append(
-                    asyncio.to_thread(self.retriever.get_relevant_documents, q)
-                )
+        with measure_rag_stage("retrieval"):
+            search_tasks = []
+            for q in queries:
+                if hasattr(self.retriever, "ainvoke"):
+                    search_tasks.append(self.retriever.ainvoke(q))
+                else:
+                    search_tasks.append(
+                        asyncio.to_thread(self.retriever.get_relevant_documents, q)
+                    )
 
-        results = await asyncio.gather(*search_tasks)
+            results = await asyncio.gather(*search_tasks)
+            result_counts = [len(docs) for docs in results]
         search_elapsed = time.perf_counter() - search_start
-        result_counts = [len(docs) for docs in results]
         logger.info(
             "[TUTOR_TIMING] retrieve=%.2fs query_count=%d docs_per_query=%s total_raw_docs=%d",
             search_elapsed,
@@ -174,17 +157,18 @@ LUÔN LUÔN đặt key "text" ở vị trí ĐẦU TIÊN trong JSON object để
         )
 
         dedupe_start = time.perf_counter()
-        all_docs = []
-        for docs in results:
-            all_docs.extend(docs[:15])
+        with measure_rag_stage("dedupe"):
+            all_docs = []
+            for docs in results:
+                all_docs.extend(docs[:15])
 
-        unique_docs = []
-        seen_content = set()
-        for doc in all_docs:
-            content_hash = hash(doc.page_content)
-            if content_hash not in seen_content:
-                unique_docs.append(doc)
-                seen_content.add(content_hash)
+            unique_docs = []
+            seen_content = set()
+            for doc in all_docs:
+                content_hash = hash(doc.page_content)
+                if content_hash not in seen_content:
+                    unique_docs.append(doc)
+                    seen_content.add(content_hash)
         dedupe_elapsed = time.perf_counter() - dedupe_start
         logger.info(
             "[TUTOR_TIMING] dedupe=%.2fs capped_docs=%d unique_docs=%d",
@@ -194,9 +178,14 @@ LUÔN LUÔN đặt key "text" ở vị trí ĐẦU TIÊN trong JSON object để
         )
 
         rerank_start = time.perf_counter()
-        # Chạy reranker trong threadpool riêng để không block event loop FastAPI
-        reranked = await asyncio.to_thread(self.reranker.rerank, unique_docs, query)
-        reranked = reranked[:10]
+
+        async def _run_rerank(docs):
+            return await asyncio.to_thread(self.reranker.rerank, docs, query)
+
+        rerank_chain = RunnableLambda(_run_rerank).with_config(run_name="rag_rerank")
+        with measure_rag_stage("rerank"):
+            reranked = await rerank_chain.ainvoke(unique_docs)
+            reranked = reranked[:10]
         rerank_elapsed = time.perf_counter() - rerank_start
         logger.info(
             "[TUTOR_TIMING] rerank=%.2fs input_docs=%d output_docs=%d",
@@ -206,7 +195,8 @@ LUÔN LUÔN đặt key "text" ở vị trí ĐẦU TIÊN trong JSON object để
         )
 
         format_start = time.perf_counter()
-        context = self.format_doc(reranked)
+        with measure_rag_stage("format"):
+            context = self.format_doc(reranked)
         format_elapsed = time.perf_counter() - format_start
         total_elapsed = time.perf_counter() - total_start
         logger.info(
