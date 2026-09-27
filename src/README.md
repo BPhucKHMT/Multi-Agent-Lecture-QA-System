@@ -14,8 +14,7 @@ src/
 │   ├── lang_graph_rag.py            # Graph chính + supervisor node + routing
 │   ├── state.py                     # State schema dùng trong graph
 │   ├── resource_manager.py          # Prewarm/cache resource nặng (embedding, reranker)
-│   ├── router_patterns.py           # Deterministic steering patterns cho supervisor
-│   ├── offline_rag.py               # Flow RAG offline/legacy
+│   ├── offline_rag.py               # Pipeline truy hồi và sinh câu trả lời Tutor
 │   ├── utils.py                     # Utilities
 │   ├── agents/
 │   │   ├── __init__.py
@@ -120,7 +119,6 @@ Retrieval + LLM + tools
 | `rag_core/agents/direct.py` | Agent trả lời trực tiếp |
 | `rag_core/tools/sandbox.py` | Sandbox chạy code an toàn |
 | `rag_core/resource_manager.py` | Prewarm embedding/vector DB/reranker |
-| `rag_core/router_patterns.py` | Pattern steering cho supervisor |
 | `retrieval/hybrid_search.py` | Kết hợp vector search và keyword search |
 | `retrieval/reranking.py` | CrossEncoder reranking |
 | `retrieval/text_splitters/chunker.py` | Text chunking strategies |

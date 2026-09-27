@@ -1,5 +1,5 @@
 """
-Service tóm tắt video bằng LLM (GPT-4o-mini).
+Service tóm tắt video bằng GPT-6 Luna qua factory `get_llm()`.
 Refactored cho backend structure mới, sẵn sàng cho Redis cache.
 """
 import logging

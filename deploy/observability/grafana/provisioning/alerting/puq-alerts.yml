@@ -1,0 +1,696 @@
+apiVersion: 1
+
+groups:
+  - orgId: 1
+    name: puq-observability
+    folder: PUQ
+    interval: 1m
+    rules:
+      - uid: puq-api-down
+        title: API PUQ không hoạt động
+        condition: B
+        for: 2m
+        noDataState: Alerting
+        execErrState: Alerting
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: puq-prometheus
+            model:
+              editorMode: code
+              expr: up{job="puq-api"}
+              format: time_series
+              instant: true
+              intervalMs: 1000
+              maxDataPoints: 43200
+              range: false
+              refId: A
+          - refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: "-100"
+            model:
+              conditions:
+                - evaluator:
+                    params: [0]
+                    type: eq
+                  operator:
+                    type: and
+                  query:
+                    params: ["A", "5m", "now"]
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: "-100"
+              expression: A
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: B
+              type: classic_conditions
+        annotations:
+          summary: API không trả metrics
+          description: Target puq-api không còn ở trạng thái UP.
+        labels:
+          severity: critical
+
+      - uid: puq-api-error-rate
+        title: Tỷ lệ lỗi API PUQ cao
+        condition: B
+        for: 5m
+        noDataState: OK
+        execErrState: Alerting
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 900
+              to: 0
+            datasourceUid: puq-prometheus
+            model:
+              editorMode: code
+              expr: sum(rate(puq_chat_requests_total{outcome="error"}[10m])) / clamp_min(sum(rate(puq_chat_requests_total[10m])), 0.000001)
+              format: time_series
+              instant: true
+              intervalMs: 1000
+              maxDataPoints: 43200
+              range: false
+              refId: A
+          - refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: "-100"
+            model:
+              conditions:
+                - evaluator:
+                    params: [0.1]
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params: ["A", "5m", "now"]
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: "-100"
+              expression: A
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: B
+              type: classic_conditions
+        annotations:
+          summary: Tỷ lệ chat lỗi vượt 10%
+          description: Tỷ lệ outcome=error của chat vượt ngưỡng trong 5 phút.
+        labels:
+          severity: warning
+
+      - uid: puq-jev-429-rate
+        title: Tỷ lệ Jev HTTP 429 cao
+        condition: B
+        for: 5m
+        noDataState: OK
+        execErrState: Alerting
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 900
+              to: 0
+            datasourceUid: puq-prometheus
+            model:
+              editorMode: code
+              expr: sum(rate(puq_jev_requests_total{outcome="http_429"}[15m])) / clamp_min(sum(rate(puq_jev_requests_total[15m])), 0.000001)
+              format: time_series
+              instant: true
+              intervalMs: 1000
+              maxDataPoints: 43200
+              range: false
+              refId: A
+          - refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: "-100"
+            model:
+              conditions:
+                - evaluator:
+                    params: [0.2]
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params: ["A", "5m", "now"]
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: "-100"
+              expression: A
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: B
+              type: classic_conditions
+        annotations:
+          summary: Jev bị HTTP 429 nhiều
+          description: Tỷ lệ POST Jev kết thúc với outcome=http_429 vượt 20%.
+        labels:
+          severity: warning
+
+      - uid: puq-supervisor-fallback-rate
+        title: Tỷ lệ supervisor fallback cao
+        condition: B
+        for: 5m
+        noDataState: OK
+        execErrState: Alerting
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 900
+              to: 0
+            datasourceUid: puq-prometheus
+            model:
+              editorMode: code
+              expr: sum(rate(puq_supervisor_fallbacks_total[15m])) / clamp_min(sum(rate(puq_jev_requests_total[15m])), 0.000001)
+              format: time_series
+              instant: true
+              intervalMs: 1000
+              maxDataPoints: 43200
+              range: false
+              refId: A
+          - refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: "-100"
+            model:
+              conditions:
+                - evaluator:
+                    params: [0.2]
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params: ["A", "5m", "now"]
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: "-100"
+              expression: A
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: B
+              type: classic_conditions
+        annotations:
+          summary: Supervisor chuyển Luna nhiều
+          description: Tỷ lệ fallback Jev sang Luna vượt 20% trong 15 phút.
+        labels:
+          severity: warning
+
+      - uid: puq-chat-ttft-p95-high
+        title: TTFT p95 của chat PUQ cao
+        condition: B
+        for: 10m
+        noDataState: OK
+        execErrState: Alerting
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 900
+              to: 0
+            datasourceUid: puq-prometheus
+            model:
+              editorMode: code
+              expr: histogram_quantile(0.95, sum by (le) (rate(puq_chat_ttft_seconds_bucket[5m])))
+              format: time_series
+              instant: true
+              intervalMs: 1000
+              maxDataPoints: 43200
+              range: false
+              refId: A
+          - refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: "-100"
+            model:
+              conditions:
+                - evaluator:
+                    params: [10]
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params: ["A", "5m", "now"]
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: "-100"
+              expression: A
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: B
+              type: classic_conditions
+        annotations:
+          summary: TTFT p95 vượt 10 giây
+          description: Thời gian server tới token answer đầu tiên đang cao.
+        labels:
+          severity: warning
+
+      - uid: puq-linux-node-down
+        title: Target node exporter Linux không hoạt động
+        condition: B
+        for: 5m
+        noDataState: OK
+        execErrState: Alerting
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: puq-prometheus
+            model:
+              editorMode: code
+              expr: up{job="node"}
+              format: time_series
+              instant: true
+              intervalMs: 1000
+              maxDataPoints: 43200
+              range: false
+              refId: A
+          - refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: "-100"
+            model:
+              conditions:
+                - evaluator:
+                    params: [0]
+                    type: eq
+                  operator:
+                    type: and
+                  query:
+                    params: ["A", "5m", "now"]
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: "-100"
+              expression: A
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: B
+              type: classic_conditions
+        annotations:
+          summary: node_exporter không trả metrics
+          description: Rule chỉ có dữ liệu khi job node-exporter được cấu hình.
+        labels:
+          severity: warning
+
+      - uid: puq-linux-cadvisor-down
+        title: Target cAdvisor Linux không hoạt động
+        condition: B
+        for: 5m
+        noDataState: OK
+        execErrState: Alerting
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: puq-prometheus
+            model:
+              editorMode: code
+              expr: up{job="cadvisor"}
+              format: time_series
+              instant: true
+              intervalMs: 1000
+              maxDataPoints: 43200
+              range: false
+              refId: A
+          - refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: "-100"
+            model:
+              conditions:
+                - evaluator:
+                    params: [0]
+                    type: eq
+                  operator:
+                    type: and
+                  query:
+                    params: ["A", "5m", "now"]
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: "-100"
+              expression: A
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: B
+              type: classic_conditions
+        annotations:
+          summary: cAdvisor không trả metrics
+          description: Rule chỉ có dữ liệu khi job cadvisor được cấu hình.
+        labels:
+          severity: warning
+
+      - uid: puq-dcgm-down
+        title: Target DCGM exporter Linux không hoạt động
+        condition: B
+        for: 5m
+        noDataState: OK
+        execErrState: Alerting
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: puq-prometheus
+            model:
+              editorMode: code
+              expr: up{job="dcgm"}
+              format: time_series
+              instant: true
+              intervalMs: 1000
+              maxDataPoints: 43200
+              range: false
+              refId: A
+          - refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: "-100"
+            model:
+              conditions:
+                - evaluator:
+                    params: [0]
+                    type: eq
+                  operator:
+                    type: and
+                  query:
+                    params: ["A", "5m", "now"]
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: "-100"
+              expression: A
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: B
+              type: classic_conditions
+        annotations:
+          summary: DCGM exporter không trả metrics
+          description: Chỉ áp dụng khi profile nvidia-monitoring đang chạy.
+        labels:
+          severity: warning
+
+      - uid: puq-windows-exporter-down
+        title: Target Windows exporter không hoạt động
+        condition: B
+        for: 5m
+        noDataState: OK
+        execErrState: Alerting
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: puq-prometheus
+            model:
+              editorMode: code
+              expr: up{job="windows"}
+              format: time_series
+              instant: true
+              intervalMs: 1000
+              maxDataPoints: 43200
+              range: false
+              refId: A
+          - refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: "-100"
+            model:
+              conditions:
+                - evaluator:
+                    params: [0]
+                    type: eq
+                  operator:
+                    type: and
+                  query:
+                    params: ["A", "5m", "now"]
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: "-100"
+              expression: A
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: B
+              type: classic_conditions
+        annotations:
+          summary: windows_exporter không trả metrics
+          description: Cài collector native trên Windows và cho phép truy cập :9182.
+        labels:
+          severity: warning
+
+      - uid: puq-linux-host-memory-high
+        title: RAM host Linux cao
+        condition: B
+        for: 10m
+        noDataState: OK
+        execErrState: Alerting
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 900
+              to: 0
+            datasourceUid: puq-prometheus
+            model:
+              editorMode: code
+              expr: max(100 * (1 - node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes))
+              format: time_series
+              instant: true
+              intervalMs: 1000
+              maxDataPoints: 43200
+              range: false
+              refId: A
+          - refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: "-100"
+            model:
+              conditions:
+                - evaluator:
+                    params: [90]
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params: ["A", "5m", "now"]
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: "-100"
+              expression: A
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: B
+              type: classic_conditions
+        annotations:
+          summary: RAM Linux host vượt 90%
+          description: Số liệu chỉ có khi node_exporter Linux được bật.
+        labels:
+          severity: warning
+
+      - uid: puq-windows-host-memory-high
+        title: RAM host Windows cao
+        condition: B
+        for: 10m
+        noDataState: OK
+        execErrState: Alerting
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 900
+              to: 0
+            datasourceUid: puq-prometheus
+            model:
+              editorMode: code
+              expr: max(100 * windows_memory_committed_bytes / windows_memory_commit_limit)
+              format: time_series
+              instant: true
+              intervalMs: 1000
+              maxDataPoints: 43200
+              range: false
+              refId: A
+          - refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: "-100"
+            model:
+              conditions:
+                - evaluator:
+                    params: [90]
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params: ["A", "5m", "now"]
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: "-100"
+              expression: A
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: B
+              type: classic_conditions
+        annotations:
+          summary: RAM Windows host vượt 90%
+          description: Dùng commit/limit từ windows_exporter native; không phải container Windows.
+        labels:
+          severity: warning
+
+      - uid: puq-linux-container-memory-high
+        title: RAM container Linux cao
+        condition: B
+        for: 10m
+        noDataState: OK
+        execErrState: Alerting
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 900
+              to: 0
+            datasourceUid: puq-prometheus
+            model:
+              editorMode: code
+              expr: 100 * sum(container_memory_working_set_bytes{image!=""}) / clamp_min(sum(container_spec_memory_limit_bytes{image!=""} > 0), 1)
+              format: time_series
+              instant: true
+              intervalMs: 1000
+              maxDataPoints: 43200
+              range: false
+              refId: A
+          - refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: "-100"
+            model:
+              conditions:
+                - evaluator:
+                    params: [90]
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params: ["A", "5m", "now"]
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: "-100"
+              expression: A
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: B
+              type: classic_conditions
+        annotations:
+          summary: RAM container Linux vượt 90%
+          description: Cần cAdvisor và giới hạn memory của container để diễn giải chính xác.
+        labels:
+          severity: warning
+
+      - uid: puq-dcgm-xid-errors
+        title: Phát hiện lỗi XID GPU NVIDIA
+        condition: B
+        for: 1m
+        noDataState: OK
+        execErrState: Alerting
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: puq-prometheus
+            model:
+              editorMode: code
+              expr: max(DCGM_FI_DEV_XID_ERRORS)
+              format: time_series
+              instant: true
+              intervalMs: 1000
+              maxDataPoints: 43200
+              range: false
+              refId: A
+          - refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: "-100"
+            model:
+              conditions:
+                - evaluator:
+                    params: [0]
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params: ["A", "5m", "now"]
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: "-100"
+              expression: A
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: B
+              type: classic_conditions
+        annotations:
+          summary: DCGM báo XID error
+          description: DCGM_FI_DEV_XID_ERRORS là mã lỗi XID gần nhất; chỉ áp dụng khi DCGM exporter có dữ liệu.
+        labels:
+          severity: critical

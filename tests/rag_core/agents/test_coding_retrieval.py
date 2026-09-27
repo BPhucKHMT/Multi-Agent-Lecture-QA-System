@@ -1,3 +1,4 @@
+import asyncio
 import os
 import sys
 from pathlib import Path
@@ -14,13 +15,11 @@ class _FakeResponse:
         self.content = content
 
 
-class _RecordingLLM:
+class _FakeLLM:
     def __init__(self, content: str):
         self.content = content
-        self.prompts = []
 
-    def invoke(self, prompt):
-        self.prompts.append(str(prompt))
+    async def ainvoke(self, _prompt):
         return _FakeResponse(self.content)
 
 
@@ -52,7 +51,7 @@ def test_retrieve_lecture_context_returns_empty_on_no_docs(monkeypatch):
     monkeypatch.setattr(coding_retrieval.resource_manager, "get_hybrid_retriever", lambda: _FakeRetriever())
     monkeypatch.setattr(coding_retrieval.resource_manager, "get_tutor_reranker", lambda: object())
 
-    assert coding_retrieval.retrieve_lecture_context("query không khớp") == ""
+    assert coding_retrieval.retrieve_lecture_context("query không khớp") == ("", [])
 
 
 def test_retrieve_lecture_context_returns_empty_on_exception(monkeypatch):
@@ -61,30 +60,51 @@ def test_retrieve_lecture_context_returns_empty_on_exception(monkeypatch):
 
     monkeypatch.setattr(coding_retrieval.resource_manager, "get_hybrid_retriever", _raise_error)
 
-    assert coding_retrieval.retrieve_lecture_context("query bất kỳ") == ""
+    assert coding_retrieval.retrieve_lecture_context("query bất kỳ") == ("", [])
 
 
-def test_generate_code_uses_context_prompt_when_context_available(monkeypatch):
-    llm = _RecordingLLM("```python\nprint('ok')\n```")
+def test_generate_code_propagates_lecture_citations(monkeypatch):
+    llm = _FakeLLM("```python\nprint('ok')\n```")
+    references = [{
+        "video_url": "https://video.example/lecture",
+        "title": "Linear regression",
+        "filename": "lecture.mp4",
+        "start_timestamp": "00:01",
+        "end_timestamp": "00:03",
+    }]
     monkeypatch.setattr(coding_agent, "get_llm", lambda: llm)
     monkeypatch.setattr(coding_retrieval, "should_use_rag", lambda _query: True)
-    monkeypatch.setattr(coding_retrieval, "retrieve_lecture_context", lambda _query, top_k=3: "Nội dung bài giảng")
+    monkeypatch.setattr(
+        coding_retrieval,
+        "retrieve_lecture_context",
+        lambda _query, top_k=3: ("Nội dung bài giảng", references),
+    )
 
-    result = coding_agent.generate_code({"query": "Viết code linear regression", "retry_count": 0})
+    result = asyncio.run(
+        coding_agent.generate_code({"query": "Viết code linear regression", "retry_count": 0})
+    )
 
     assert result["code"] == "print('ok')"
-    assert any("Tham khảo nội dung bài giảng liên quan" in prompt for prompt in llm.prompts)
-    assert any("Nội dung bài giảng" in prompt for prompt in llm.prompts)
+    assert result["references"] == references
 
 
-def test_generate_code_uses_generic_prompt_when_no_context(monkeypatch):
-    llm = _RecordingLLM("```python\nprint('ok')\n```")
+def test_generate_code_returns_no_citations_without_lecture_context(monkeypatch):
+    llm = _FakeLLM("```python\nprint('ok')\n```")
+    references = [{
+        "video_url": "https://video.example/lecture",
+        "title": "Should not be used",
+    }]
     monkeypatch.setattr(coding_agent, "get_llm", lambda: llm)
     monkeypatch.setattr(coding_retrieval, "should_use_rag", lambda _query: False)
-    monkeypatch.setattr(coding_retrieval, "retrieve_lecture_context", lambda _query, top_k=3: "sẽ không dùng")
+    monkeypatch.setattr(
+        coding_retrieval,
+        "retrieve_lecture_context",
+        lambda _query, top_k=3: ("sẽ không dùng", references),
+    )
 
-    result = coding_agent.generate_code({"query": "Viết hàm cộng hai số", "retry_count": 0})
+    result = asyncio.run(
+        coding_agent.generate_code({"query": "Viết hàm cộng hai số", "retry_count": 0})
+    )
 
     assert result["code"] == "print('ok')"
-    assert any("Bạn là một chuyên gia lập trình Python" in prompt for prompt in llm.prompts)
-    assert all("Tham khảo nội dung bài giảng liên quan" not in prompt for prompt in llm.prompts)
+    assert result["references"] == []

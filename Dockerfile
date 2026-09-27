@@ -37,7 +37,7 @@ RUN apt-get update \
 COPY requirements.pipeline.txt ./
 RUN pip install -r requirements.pipeline.txt
 
-CMD ["python", "-m", "src.data_pipeline.pipeline"]
+CMD ["python", "-m", "src.data_pipeline.data_loader.pipeline"]
 
 FROM pytorch/pytorch:2.6.0-cuda12.4-cudnn9-runtime AS dev-gpu
 

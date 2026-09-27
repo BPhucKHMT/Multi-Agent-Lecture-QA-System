@@ -1,7 +1,8 @@
 # Environmental variables
 .env
-.env.bak
-.env.example.bak
+*.bak
+*.bak.*
+/test.py
 
 # Virtual Environments
 venv/

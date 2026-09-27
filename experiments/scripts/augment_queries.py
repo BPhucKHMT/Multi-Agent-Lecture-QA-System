@@ -56,7 +56,7 @@ def parse_json_list(text: str) -> list[str]:
     return queries
 
 def main():
-    parser = argparse.ArgumentParser(description="Paraphrase and augment synthetic queries using GPT-4o-mini.")
+    parser = argparse.ArgumentParser(description="Paraphrase and augment synthetic queries using GPT-6 Luna.")
     parser.add_argument("--batch-size", type=int, default=15, help="Number of queries to paraphrase per API call.")
     parser.add_argument("--workers", type=int, default=4, help="Number of concurrent threads.")
     parser.add_argument("--limit", type=int, default=None, help="Limit number of input queries to process.")

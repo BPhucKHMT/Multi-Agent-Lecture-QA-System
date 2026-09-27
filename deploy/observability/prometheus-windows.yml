@@ -1,0 +1,17 @@
+global:
+  scrape_interval: 15s
+  scrape_timeout: 10s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: puq-api
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["api:9102"]
+
+  # Điều kiện bên ngoài: windows_exporter v0.31.8 phải được cài native trên host
+  # và chỉ cho phép Docker Desktop/Prometheus truy cập cổng 9182. Docker không tự cài collector.
+  - job_name: windows
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["host.docker.internal:9182"]

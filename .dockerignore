@@ -24,12 +24,12 @@ venv
 scratch
 temp.txt
 *.log
+**/*.bak*
+/test.py
 
-# Large runtime artifacts mounted separately
-artifacts/database_semantic
-artifacts/chunks
-artifacts/videos
-artifacts/data_extraction
+# Dữ liệu/model runtime được mount từ host, không được đóng gói vào image.
+artifacts/
+models/
 
 # Frontend generated files
 frontend/node_modules

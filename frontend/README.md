@@ -30,7 +30,7 @@ frontend/
 │   ├── README.md
 │   ├── app/
 │   │   ├── App.tsx           # Root app component
-│   │   ├── providers.tsx     # Zustand + Context provider
+│   │   ├── providers.tsx     # React Context provider
 │   │   ├── router.tsx        # React Router routes
 │   │   └── layouts/
 │   │       └── MainLayout.tsx # Layout chính (sidebar + content)
@@ -69,7 +69,7 @@ frontend/
 │   │   └── WorkspacePage.tsx    # Workspace chính (Chatspace + Summary Hub)
 │   ├── store/
 │   │   ├── README.md
-│   │   ├── conversationStore.ts    # Zustand store cho chat state
+│   │   ├── conversationStore.ts    # React Context store cho chat state
 │   │   └── conversationStore.test.ts
 │   ├── styles/
 │   │   └── globals.css         # Global CSS + Tailwind entry
@@ -115,7 +115,7 @@ frontend/
 - react-syntax-highlighter (code highlighting)
 - KaTeX 0.16 (LaTeX math rendering)
 - Lucide React (icons)
-- Zustand (state management)
+- React Context + hooks (state management)
 - Vitest (testing)
 
 ---

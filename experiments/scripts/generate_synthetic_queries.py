@@ -113,7 +113,7 @@ def main():
     import threading
     from concurrent.futures import ThreadPoolExecutor, as_completed
 
-    parser = argparse.ArgumentParser(description="Generate synthetic training queries using GPT-4o-mini.")
+    parser = argparse.ArgumentParser(description="Generate synthetic training queries using GPT-6 Luna.")
     parser.add_argument("--limit", type=int, default=None, help="Limit the number of chunks to process.")
     parser.add_argument("--workers", type=int, default=1, help="Number of concurrent workers (default: 1).")
     args = parser.parse_args()

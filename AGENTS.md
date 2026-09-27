@@ -13,8 +13,8 @@ Ví dụ: nếu đang làm plan trong `Change_Generation.md` thì sau khi hoàn 
 
 - **Ngôn ngữ chính**: Python 3.12+
 - **Frontend**: React + Vite + TailwindCSS (`frontend/`)
-- **Backend**: FastAPI (`src/api/server.py`)
-- **LLM**: OpenAI GPT-4o-mini (qua LangChain `ChatOpenAI`)
+- **Backend**: FastAPI (`backend/app/main.py`)
+- **LLM**: Experiential Labs Jev (`jev-latest`, typed `/v1/systemone`) là Supervisor chính; GPT-6 Luna qua LangChain `ChatOpenAI` là fallback và phục vụ các agent
 - **Vector DB**: ChromaDB (persist tại `artifacts/database_semantic/`)
 - **Embedding**: BAAI/bge-m3 (HuggingFace) hoặc OpenAI `text-embedding-3-small`
 - **Reranker**: BAAI/bge-reranker-base (CrossEncoder)
@@ -138,7 +138,9 @@ final_project/
 | Biến | Mục đích |
 |------|----------|
 | `myAPIKey` | OpenAI API key (Bắt buộc) |
-| `OPENAI_MODEL` | Model chính (mặc định `gpt-4o-mini`) |
+| `OPENAI_MODEL` | Model chính (mặc định `gpt-6-luna`) |
+| `OPENAI_SUPERVISOR_MODEL` | Model dự phòng của Supervisor (mặc định `gpt-6-luna`) |
+| `EXPERIENTIAL_API_KEY` | API key server-side của Experiential Labs (`xpl_...`) cho Jev |
 | `YOUTUBE_API_KEY` | Dùng khi crawl playlist mới |
 | `PUQ_DATA_DIR` | Đường dẫn `artifacts/data` |
 | `PUQ_VECTOR_DB_DIR` | Đường dẫn `artifacts/database_semantic` |

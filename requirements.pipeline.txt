@@ -11,9 +11,7 @@ ffmpeg==1.4
 openai-whisper==20250625
 
 # Visualization / analysis tools
-streamlit
 plotly==6.4.0
-matplotlib==3.9.4
 
 # Visual pipeline & OCR
 opencv-python-headless

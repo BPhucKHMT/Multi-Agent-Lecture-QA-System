@@ -56,7 +56,7 @@ export function buildCitationItemsFromContext(text: string, docs: any[]): Citati
       end_timestamp: doc.end || doc.end_timestamp || "",
       confidence: "medium",
       video_url: finalUrl,
-      ...(!rawVideoUrl ? { warning: "out_of_range" as const } : !safeVideoUrl ? { warning: "unsafe_url" as const } : {}),
+      ...(!rawVideoUrl ? { warning: "missing_url" as const } : !safeVideoUrl ? { warning: "unsafe_url" as const } : {}),
     };
   });
 
@@ -80,7 +80,7 @@ export type CitationItem = {
   end_timestamp: string;
   confidence: string;
   video_url: string;
-  warning?: "out_of_range" | "unsafe_url";
+  warning?: "out_of_range" | "missing_url" | "unsafe_url";
 };
 
 function sanitizeCitationUrl(videoUrl: string): string {
@@ -123,6 +123,19 @@ export function buildCitationItems(text: string, metadata: CitationMetadata): Ci
 
   return uniqueMatches.map(({ index, marker }) => {
     const rawVideoUrl = metadata.video_url[index] ?? "";
+    if (index >= metadata.video_url.length) {
+      return {
+        index,
+        marker,
+        title: "",
+        filename: "",
+        start_timestamp: "",
+        end_timestamp: "",
+        confidence: "",
+        video_url: "",
+        warning: "out_of_range" as const,
+      };
+    }
     const safeVideoUrl = sanitizeCitationUrl(rawVideoUrl);
     const startTimestamp = metadata.start_timestamp[index] ?? "";
     const seconds = timestampToSeconds(startTimestamp);
@@ -145,9 +158,9 @@ export function buildCitationItems(text: string, metadata: CitationMetadata): Ci
       filename: metadata.filename[index] ?? "",
       start_timestamp: startTimestamp,
       end_timestamp: metadata.end_timestamp[index] ?? "",
-      confidence: metadata.confidence[index] ?? "medium",
+      confidence: metadata.confidence[index] ?? "",
       video_url: finalUrl,
-      ...(!rawVideoUrl ? { warning: "out_of_range" as const } : !safeVideoUrl ? { warning: "unsafe_url" as const } : {}),
+      ...(!rawVideoUrl ? { warning: "missing_url" as const } : !safeVideoUrl ? { warning: "unsafe_url" as const } : {}),
     };
   });
 

@@ -19,7 +19,11 @@ from langgraph.graph import StateGraph, START, END
 from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.tools import tool
-from langchain_core.callbacks import BaseCallbackHandler
+from langchain_core.runnables import RunnableConfig
+
+import httpx
+
+from src.shared.metrics import AGENT_NODE_DURATION, SUPERVISOR_FALLBACKS
 
 from typing import List, Optional, Union
 import logging
@@ -29,18 +33,12 @@ import asyncio
 import inspect
 
 from src.generation.llm_model import get_supervisor_llm, get_llm
+from src.generation.jev_router import JEV_MODEL, route_with_jev
 from src.rag_core.state import State
 from src.rag_core.agents.tutor import node_tutor
 from src.rag_core.agents.quiz import node_quiz
 from src.rag_core.agents.coding import build_coding_subgraph
 from src.rag_core.agents.math import build_math_subgraph
-from src.rag_core.router_patterns import (
-    FORCE_MATH_PATTERNS,
-    CHITCHAT_PATTERNS,
-    QUIZ_PATTERNS,
-    CODING_PATTERNS,
-    FORCE_TUTOR_PATTERNS
-)
 
 from src.rag_core.utils import _extract_tool_args_from_state
 from src.rag_core.agents.direct import node_direct_answer
@@ -114,6 +112,14 @@ SUPERVISOR_TOOLS = [
     generate_quiz_tool,
     ask_general_tool,
 ]
+
+SUPERVISOR_ROUTE_CRITERIA: dict[str, str] = {
+    "AskTutor": "Kiến thức học thuật hoặc lý thuyết cần truy hồi bài giảng; ưu tiên khi phân vân với AskGeneral.",
+    "MathSolver": "Bài toán, phép tính, chứng minh, đạo hàm, tích phân hoặc suy luận toán học.",
+    "CodeAssistant": "Viết, giải thích, sửa lỗi code hoặc câu hỏi về cú pháp lập trình.",
+    "GenerateQuiz": "Yêu cầu tạo quiz hoặc câu hỏi trắc nghiệm.",
+    "AskGeneral": "Chào hỏi, xã giao hoặc câu hỏi chung không cần truy hồi bài giảng.",
+}
 
 SUPERVISOR_SYSTEM_PROMPT = (
     "Bạn là một Supervisor (Bộ điều phối) thông minh. Nhiệm vụ của bạn là phân loại yêu cầu của người dùng.\n\n"
@@ -214,50 +220,34 @@ def _extract_tool_calls_from_intermediate_steps(intermediate_steps) -> Optional[
     return list(reversed(normalized))
 
 
-def _should_force_math_route(input_text: str) -> bool:
-    normalized = str(input_text or "").lower()
-    if not normalized.strip():
-        return False
-    return any(pattern in normalized for pattern in FORCE_MATH_PATTERNS)
+def jev_fallback_reason(error: Exception) -> str:
+    if isinstance(error, httpx.HTTPStatusError):
+        response = getattr(error, "response", None)
+        status_code = getattr(response, "status_code", None)
+        return "jev_429" if status_code == 429 else "jev_other"
+    if isinstance(error, httpx.TimeoutException):
+        return "jev_timeout"
+    if isinstance(error, ValueError):
+        return "jev_invalid"
+    return "jev_other"
 
 
-def _should_force_quiz_route(input_text: str) -> bool:
-    normalized = str(input_text or "").lower()
-    return any(pattern in normalized for pattern in QUIZ_PATTERNS)
+def _record_supervisor_fallback(error: Exception) -> str:
+    reason = jev_fallback_reason(error)
+    try:
+        SUPERVISOR_FALLBACKS.labels(reason=reason).inc()
+    except Exception as metric_error:
+        logger.warning(
+            "Supervisor fallback metric failed (%s)",
+            type(metric_error).__name__,
+        )
+    return reason
 
-
-def _should_force_coding_route(input_text: str) -> bool:
-    normalized = str(input_text or "").lower()
-    return any(pattern in normalized for pattern in CODING_PATTERNS)
-
-
-def _should_force_tutor_route(input_text: str) -> bool:
-    normalized = str(input_text or "").lower()
-    return any(pattern in normalized for pattern in FORCE_TUTOR_PATTERNS)
-
-
-
-def _is_greeting_input(input_text: str) -> bool:
-    normalized = str(input_text or "").strip().lower()
-    if not normalized:
-        return False
-    
-    # 1. Nếu khớp chính xác 100% với một mẫu chitchat
-    if any(normalized == pattern for pattern in CHITCHAT_PATTERNS):
-        return True
-        
-    # 2. Nếu bắt đầu/kết thúc bằng một chitchat pattern nhưng câu cực kỳ ngắn (tối đa 3 từ)
-    # Ví dụ: "chào bạn", "hello bot", "alo em" -> là greeting thuần túy.
-    # Nhưng "alo linear regression là gì" -> có chứa nội dung dài, không tự động coi là greeting.
-    words = normalized.split()
-    if len(words) <= 3:
-        if any(normalized.startswith(f"{pattern} ") or normalized.endswith(f" {pattern}") for pattern in CHITCHAT_PATTERNS):
-            return True
-            
-    return False
-
-async def node_supervisor(state: State):
-    """Route request sang đúng agent bằng deterministic rules trước, LLM sau."""
+async def node_supervisor(
+    state: State,
+    config: RunnableConfig | None = None,
+):
+    """Điều phối bằng Jev qua Experiential Labs, fallback sang GPT-6 Luna nếu lỗi."""
     messages = state.get("messages", [])
 
     try:
@@ -269,78 +259,89 @@ async def node_supervisor(state: State):
                 input_text = str(getattr(last_message, "content", "") or "")
             elif isinstance(last_message, AIMessage):
                 input_text = _extract_text_from_ai_content(getattr(last_message, "content", ""))
-        
+
         if not input_text:
             for message in reversed(messages):
                 if isinstance(message, HumanMessage):
                     input_text = str(getattr(message, "content", "") or "")
                     break
 
-        # 1. Hệ thống điều hướng cứng (Deterministic Steering)
-        if _should_force_math_route(input_text):
-            return {
-                "tool_calls": [{"name": "MathSolver", "args": {"query": input_text}}],
-            }
-        
-        if _should_force_quiz_route(input_text):
-            return {
-                "tool_calls": [{"name": "GenerateQuiz", "args": {"query": input_text}}],
-            }
+        jev_history = []
+        for message in chat_history:
+            if isinstance(message, HumanMessage):
+                role = "user"
+            elif isinstance(message, AIMessage):
+                role = "assistant"
+            else:
+                continue
+            content = _extract_text_from_ai_content(getattr(message, "content", ""))
+            if content:
+                jev_history.append({"role": role, "content": content})
 
-        if _should_force_coding_route(input_text):
-            return {
-                "tool_calls": [{"name": "CodeAssistant", "args": {"query": input_text}}],
-            }
+        try:
+            from langchain_core.runnables import RunnableLambda
 
-        if _is_greeting_input(input_text):
-            return {
-                "tool_calls": [{"name": "AskGeneral", "args": {"query": input_text}}],
-            }
+            async def _call_jev(_):
+                return await route_with_jev(
+                    input_text,
+                    jev_history,
+                    SUPERVISOR_ROUTE_CRITERIA,
+                )
 
-        if _should_force_tutor_route(input_text):
-            return {
-                "tool_calls": [{"name": "AskTutor", "args": {"query": input_text}}],
-            }
+            jev_chain = RunnableLambda(_call_jev).with_config(
+                run_name="jev_supervisor", metadata={"model": JEV_MODEL}
+            )
+            invoke_cfg = {"config": config} if config is not None else {}
+            decision = await jev_chain.ainvoke(None, **invoke_cfg)
+            if (
+                not isinstance(decision, dict)
+                or decision.get("name") not in SUPERVISOR_ROUTE_CRITERIA
+                or not isinstance(decision.get("args"), dict)
+            ):
+                raise ValueError("Experiential Jev returned an invalid supervisor tool call")
+        except Exception as error:
+            reason = _record_supervisor_fallback(error)
+            logger.warning(
+                "Experiential Jev supervisor failed; falling back to GPT-6 Luna "
+                "(reason=%s error=%s fallback_error=true)",
+                reason,
+                type(error).__name__,
+            )
+        else:
+            return {"tool_calls": [decision]}
 
-
-        # 2. Sử dụng LLM với bind_tools để phân phối (Pure Supervisor)
         formatted_prompt = supervisor_prompt.format_messages(
             input=input_text,
             chat_history=chat_history,
-            agent_scratchpad=[]
+            agent_scratchpad=[],
         )
-        
-        response = await supervisor_llm.ainvoke(formatted_prompt)
-        
+        invoke_kwargs = {"config": config} if config is not None else {}
+        response = await supervisor_llm.ainvoke(formatted_prompt, **invoke_kwargs)
         tool_calls = []
         if hasattr(response, "tool_calls") and response.tool_calls:
-            for tc in response.tool_calls:
-                args = tc["args"] or {}
-                if tc["name"] == "GenerateQuiz":
+            for tool_call in response.tool_calls:
+                args = tool_call["args"] or {}
+                if tool_call["name"] == "GenerateQuiz":
                     if "num_questions" not in args and "number_of_questions" in args:
                         args["num_questions"] = args.get("number_of_questions")
-                tool_calls.append({
-                    "name": tc["name"],
-                    "args": args
-                })
+                tool_calls.append({"name": tool_call["name"], "args": args})
 
-        # Logic Fallback nếu LLM không gọi tool (Pure Supervisor fallback)
         if not tool_calls:
-            # Nếu input có vẻ là câu hỏi kiến thức dài -> AskTutor
             if len(input_text.split()) > 4:
-                logger.info("Supervisor fallback: Forced AskTutor due to long query without tool call.")
+                logger.info("Luna supervisor fallback: route to AskTutor for a long query.")
                 tool_calls = [{"name": "AskTutor", "args": {"query": input_text}}]
             else:
-                # Ngược lại mặc định là AskGeneral (Chào hỏi/Xã giao)
-                logger.info("Supervisor fallback: Forced AskGeneral for short query without tool call.")
+                logger.info("Luna supervisor fallback: route to AskGeneral for a short query.")
                 tool_calls = [{"name": "AskGeneral", "args": {"query": input_text}}]
-        
-        # Luôn trả về tool_calls, không trả về AIMessage text ở node này để đảm bảo Pure Routing
-        return {"messages": [response], "tool_calls": tool_calls}
 
-    except Exception as e:
-        logger.error(f"Supervisor error: {e}")
-        return {"tool_calls": [{"name": "AskGeneral", "args": {"query": f"Lỗi hệ thống điều phối: {str(e)}"}}]}
+        return {"messages": [response], "tool_calls": tool_calls}
+    except Exception as error:
+        logger.error("Supervisor error: %s", type(error).__name__)
+        return {
+            "tool_calls": [
+                {"name": "AskGeneral", "args": {"query": "Lỗi hệ thống điều phối."}}
+            ]
+        }
 
 
 
@@ -381,19 +382,30 @@ def router(state: State) -> str:
 coding_subgraph = build_coding_subgraph()
 math_subgraph = build_math_subgraph()
 
-async def node_coding_wrapper(state: State):
+async def node_coding_wrapper(
+    state: State,
+    config: RunnableConfig | None = None,
+):
     """Adapter giữa State chung của graph và Coding subgraph riêng."""
     args = _extract_tool_args_from_state(state, "CodeAssistant")
     query = args.get("query", "")
-    res = await coding_subgraph.ainvoke({"query": query, "retry_count": 0})
+    invoke_kwargs = {"config": config} if config is not None else {}
+    res = await coding_subgraph.ainvoke(
+        {"query": query, "retry_count": 0},
+        **invoke_kwargs,
+    )
     return {"response": res.get("response", {})}
 
-async def node_math_wrapper(state: State):
+async def node_math_wrapper(
+    state: State,
+    config: RunnableConfig | None = None,
+):
     """Adapter giữa State chung của graph và Math subgraph riêng."""
     args = _extract_tool_args_from_state(state, "MathSolver")
     query = args.get("query", "")
+    invoke_kwargs = {"config": config} if config is not None else {}
     try:
-        res = await math_subgraph.ainvoke({"query": query})
+        res = await math_subgraph.ainvoke({"query": query}, **invoke_kwargs)
         response = res.get("response", {})
         
         # Đảm bảo type luôn là math cho agent này
@@ -415,20 +427,49 @@ graph = StateGraph(State)
 
 def timed_node(name: str, node_func):
     """Bọc node để log thời gian chạy mà không đổi signature LangGraph."""
-    async def wrapper(state: State):
-        start_time = time.time()
-        
-        # Gọi node function
-        result = node_func(state)
-        
-        # Nếu kết quả trả về là một awaitable (coroutine), ta phải await nó.
-        # Điều này giúp xử lý an toàn cả các node định nghĩa bằng 'def' và 'async def'.
-        if inspect.isawaitable(result):
-            result = await result
-            
-        elapsed = time.time() - start_time
-        logger.info(f"[PERFORMANCE LOG] Node '{name}' thực thi mất {elapsed:.2f}s")
-        return result
+    try:
+        parameters = inspect.signature(node_func).parameters.values()
+        accepts_config = any(
+            parameter.name == "config"
+            or parameter.kind is inspect.Parameter.VAR_KEYWORD
+            for parameter in parameters
+        )
+    except (TypeError, ValueError):
+        accepts_config = False
+
+    async def wrapper(
+        state: State,
+        config: RunnableConfig | None = None,
+    ):
+        start_time = time.perf_counter()
+        outcome = "success"
+        try:
+            if accepts_config:
+                result = node_func(state, config=config)
+            else:
+                result = node_func(state)
+            if inspect.isawaitable(result):
+                result = await result
+            if (
+                isinstance(result, dict)
+                and isinstance(result.get("response"), dict)
+                and result["response"].get("type") == "error"
+            ):
+                outcome = "error"
+            return result
+        except BaseException:
+            outcome = "error"
+            raise
+        finally:
+            elapsed = time.perf_counter() - start_time
+            try:
+                AGENT_NODE_DURATION.labels(node=name, outcome=outcome).observe(elapsed)
+            except Exception as metric_error:
+                logger.warning(
+                    "Agent node duration metric failed (%s)",
+                    type(metric_error).__name__,
+                )
+            logger.info(f"[PERFORMANCE LOG] Node '{name}' thực thi mất {elapsed:.2f}s")
     return wrapper
 
 graph.add_node("supervisor", timed_node("supervisor", node_supervisor))
@@ -454,61 +495,3 @@ graph.add_edge("direct", END)
 
 workflow = graph.compile()
 
-class PerformanceCallbackHandler(BaseCallbackHandler):
-    """Callback gom token usage từ LLM calls trong workflow."""
-
-    def __init__(self):
-        super().__init__()
-        self.total_input_tokens = 0
-        self.total_output_tokens = 0
-
-    def on_llm_end(self, response, **kwargs):
-        try:
-            if hasattr(response, "llm_output") and response.llm_output and "token_usage" in response.llm_output:
-                usage = response.llm_output["token_usage"]
-                self.total_input_tokens += usage.get("prompt_tokens", usage.get("input_tokens", 0))
-                self.total_output_tokens += usage.get("completion_tokens", usage.get("output_tokens", 0))
-            elif hasattr(response, "generations") and response.generations:
-                for gen_list in response.generations:
-                    for gen in gen_list:
-                        msg = getattr(gen, "message", None)
-                        if msg and hasattr(msg, "usage_metadata") and msg.usage_metadata:
-                            self.total_input_tokens += msg.usage_metadata.get("input_tokens", 0)
-                            self.total_output_tokens += msg.usage_metadata.get("output_tokens", 0)
-        except Exception:
-            pass
-
-
-def call_agent(chat_history: List[dict]) -> dict:
-    """Chạy workflow đồng bộ từ lịch sử chat dạng dict role/content.
-
-    Hàm này phục vụ các call site cũ hoặc smoke test. API streaming hiện tại
-    thường gọi trực tiếp `workflow.astream_events` để nhận token theo thời gian thực.
-    """
-    langchain_messages = []
-    for msg in chat_history:
-        if msg["role"] == "user":
-            langchain_messages.append(HumanMessage(content=msg["content"]))
-        elif msg["role"] == "assistant":
-            langchain_messages.append(AIMessage(content=msg["content"]))
-            
-    initial_state = {"messages": langchain_messages}
-    
-    cb = PerformanceCallbackHandler()
-    start_time = time.time()
-    
-    final_state = workflow.invoke(initial_state, config={"callbacks": [cb]})
-    
-    elapsed = time.time() - start_time
-    # Log tổng thời gian và token usage của toàn bộ workflow
-    logger.info(
-        f"[PERFORMANCE LOG] Tổng thời gian AI Workflow (call_agent): {elapsed:.2f}s | "
-        f"Tổng Token Input: {cb.total_input_tokens} | "
-        f"Tổng Token Output: {cb.total_output_tokens}"
-    )
-    print(
-        f"[TOKEN METRICS] mode=chat input={cb.total_input_tokens} "
-        f"output={cb.total_output_tokens} total={cb.total_input_tokens + cb.total_output_tokens}"
-    )
-    
-    return final_state.get("response", {})

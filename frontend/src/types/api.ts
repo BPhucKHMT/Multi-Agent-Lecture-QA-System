@@ -1,20 +1,8 @@
 import type { RagResponse } from "./rag";
 
-export type ChatMessage = {
-  role: "user" | "assistant";
-  content: string;
-};
-
 export type ChatRequest = {
   conversation_id: string;
-  messages: ChatMessage[];
   user_message: string;
-};
-
-export type ChatResponseEnvelope = {
-  conversation_id: string;
-  response: Partial<RagResponse>;
-  updated_at: string;
 };
 
 export type ChatStreamTokenEvent = {
@@ -38,14 +26,12 @@ export type ChatStreamStatusEvent = {
   status: string;
 };
 
-export type ChatStreamEvent = ChatStreamTokenEvent | ChatStreamMetadataEvent | ChatStreamContextEvent | ChatStreamStatusEvent;
-
-
-export type NormalizedChatResponse = {
-  conversation_id: string;
-  response: RagResponse;
-  updated_at: string;
+export type ChatStreamErrorEvent = {
+  type: "error";
+  content: string;
 };
+
+export type ChatStreamEvent = ChatStreamTokenEvent | ChatStreamMetadataEvent | ChatStreamContextEvent | ChatStreamStatusEvent | ChatStreamErrorEvent;
 
 export type VideoItem = {
   id: string;

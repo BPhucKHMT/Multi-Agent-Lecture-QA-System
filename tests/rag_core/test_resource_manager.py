@@ -25,21 +25,3 @@ def test_get_rag_core_builds_once(monkeypatch):
     assert calls["count"] == 1
 
 
-def test_get_quiz_resources_builds_once(monkeypatch):
-    rm = importlib.reload(resource_manager)
-    fake_retriever = object()
-    fake_reranker = object()
-    calls = {"count": 0}
-
-    def _fake_build_quiz_resources():
-        calls["count"] += 1
-        return fake_retriever, fake_reranker
-
-    monkeypatch.setattr(rm, "_build_quiz_resources", _fake_build_quiz_resources)
-
-    first = rm.get_quiz_resources()
-    second = rm.get_quiz_resources()
-
-    assert first == (fake_retriever, fake_reranker)
-    assert second == (fake_retriever, fake_reranker)
-    assert calls["count"] == 1

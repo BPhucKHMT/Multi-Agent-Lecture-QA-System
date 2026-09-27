@@ -1,5 +1,5 @@
 import { apiClient, API_BASE_URL } from "./client";
-import type { ChatRequest, ChatResponseEnvelope, NormalizedChatResponse, ChatStreamEvent } from "../../types/api";
+import type { ChatRequest, ChatStreamEvent } from "../../types/api";
 import type { RagConfidence, RagResponse, RagResponseType } from "../../types/rag";
 
 const VALID_TYPES: RagResponseType[] = ["rag", "direct", "quiz", "math", "coding", "error"];
@@ -37,19 +37,6 @@ export function normalizeRagResponse(response: Partial<RagResponse>): RagRespons
     math_data: response.math_data || undefined,
     coding_data: response.coding_data || undefined,
   };
-}
-
-export function normalizeChatResponse(payload: ChatResponseEnvelope): NormalizedChatResponse {
-  return {
-    conversation_id: payload.conversation_id,
-    updated_at: payload.updated_at,
-    response: normalizeRagResponse(payload.response ?? {}),
-  };
-}
-
-export async function postChat(payload: ChatRequest): Promise<NormalizedChatResponse> {
-  const response = await apiClient.post<ChatResponseEnvelope>("/api/v1/chat", payload);
-  return normalizeChatResponse(response);
 }
 
 export async function streamChat(
@@ -97,20 +84,25 @@ export async function streamChat(
         const dataStr = trimmed.slice(6);
         if (dataStr === "[DONE]") break;
 
+        let event: ChatStreamEvent;
         try {
-          const event = JSON.parse(dataStr) as ChatStreamEvent;
-          if (event.type === "token") {
-            onToken(event.content);
-          } else if (event.type === "metadata") {
-            onMetadata(normalizeRagResponse(event.response), event.conversation_id);
-          } else if (event.type === "context") {
-            onContext(event.docs);
-          } else if (event.type === "status") {
-            onStatus(event.status);
-          }
+          event = JSON.parse(dataStr) as ChatStreamEvent;
+        } catch (error) {
+          console.error("Failed to parse SSE data:", dataStr, error);
+          continue;
+        }
 
-        } catch (e) {
-          console.error("Failed to parse SSE data:", dataStr, e);
+        if (event.type === "error") {
+          throw new Error(event.content || "Lỗi xử lý luồng chat.");
+        }
+        if (event.type === "token") {
+          onToken(event.content);
+        } else if (event.type === "metadata") {
+          onMetadata(normalizeRagResponse(event.response), event.conversation_id);
+        } else if (event.type === "context") {
+          onContext(event.docs);
+        } else if (event.type === "status") {
+          onStatus(event.status);
         }
       }
     }

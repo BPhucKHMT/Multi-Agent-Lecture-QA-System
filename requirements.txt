@@ -3,13 +3,13 @@
 
 # Web & API
 
-streamlit
 fastapi==0.115.0
 uvicorn[standard]==0.32.1
-motor==3.6.0  # Async MongoDB driver for FastAPI
-pymongo==4.9  # MongoDB sync driver (dependency)
-requests==2.32.3  # For Streamlit -> FastAPI communication
+requests==2.32.3  # HTTP client dependency
 pydantic==2.10.3  # Data validation
+# Observability
+langfuse==4.15.6
+prometheus-client==0.26.0
 
 # LangChain ecosystem
 langchain==0.3.27

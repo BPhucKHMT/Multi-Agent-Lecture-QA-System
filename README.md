@@ -43,8 +43,15 @@ Then fill in the required values such as `myAPIKey`, `DATABASE_URL`, `JWT_SECRET
 ### 2. Run local CPU stack: frontend + backend + Redis
 
 ```powershell
-docker compose --profile cpu --profile frontend --profile redis up --build
+docker compose --profile cpu --profile frontend up --build
 ```
+The `cpu`/`gpu` profiles start local `redis-stack` and wait for its healthcheck. If `REDIS_URL` points to an external Redis reachable from containers, bypass the unused local dependency explicitly:
+
+```powershell
+docker compose --profile cpu --profile frontend up -d --build --no-deps api-cpu frontend
+```
+
+Use `--profile gpu` and `api-gpu` instead for the GPU service. Ensure the external Redis is ready before sending chat requests. `--no-deps` does not stop an already running local Redis container.
 
 Open:
 
@@ -59,7 +66,7 @@ RedisInsight: http://localhost:8001
 Use this when your local machine has an NVIDIA GPU and Docker Desktop GPU support/NVIDIA Container Toolkit is enabled.
 
 ```powershell
-docker compose --profile gpu --profile redis up --build
+docker compose --profile gpu up --build
 ```
 
 This command starts **2 services**: `api-gpu` and `redis-stack`.
@@ -67,7 +74,7 @@ This command starts **2 services**: `api-gpu` and `redis-stack`.
 To run **3 services** together (frontend + GPU backend + Redis):
 
 ```powershell
-docker compose --profile gpu --profile redis --profile frontend up --build
+docker compose --profile gpu --profile frontend up --build
 ```
 
 Locally tested GPU image size:
@@ -126,7 +133,7 @@ If you prefer to run the system directly on your host machine without Docker:
 1. **Python 3.12+**
 2. **Node.js** (v18 or higher) & **npm**
 3. **PostgreSQL** (running locally or in the cloud)
-4. **Redis** (running locally, required for semantic cache)
+4. **Redis** (running locally, required for auth revocation and semantic cache)
 
 ### Step 1: Install Python Dependencies
 
@@ -190,12 +197,9 @@ Open your browser at `http://localhost:5173`.
 
 ---
 
-## Demo Account
+## Demo account
 
-```txt
-Email: nguyenlam.baophuc@gmail.com
-Password: 123456789
-```
+Create a test account at `/register`. Never commit credentials to this repository.
 
 ---
 
@@ -239,7 +243,7 @@ final_project/
 │   │   ├── components/ # Chat, sidebar, shared UI
 │   │   ├── lib/        # API clients, utilities
 │   │   ├── pages/      # Gateway, Login, Workspace
-│   │   ├── store/      # Zustand state management
+│   │   ├── store/      # React Context state management
 │   │   ├── styles/     # Global CSS
 │   │   └── types/      # TypeScript types
 │   └── ui2figma/       # Figma integration tool
@@ -391,7 +395,7 @@ RedisInsight: http://localhost:8001
 ### Run data pipeline
 
 ```powershell
-python -m src.data_pipeline.pipeline
+python -m src.data_pipeline.data_loader.pipeline
 ```
 
 ### Quick compile check for modified Python files

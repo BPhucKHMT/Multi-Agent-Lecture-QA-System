@@ -149,8 +149,7 @@ def create_llm() -> Any:
 
     return ChatOpenAI(
         api_key=api_key,
-        model=os.getenv("QA_BENCHMARK_OPENAI_MODEL", os.getenv("OPENAI_MODEL", "gpt-4o-mini")),
-        temperature=float(os.getenv("QA_BENCHMARK_TEMPERATURE", "0.0")),
+        model=os.getenv("QA_BENCHMARK_OPENAI_MODEL", os.getenv("OPENAI_MODEL", "gpt-6-luna")),
         streaming=False,
         max_tokens=int(os.getenv("QA_BENCHMARK_MAX_TOKENS", "512")),
     )

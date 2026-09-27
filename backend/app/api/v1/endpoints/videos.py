@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException
 # from sqlalchemy.orm import Session
 import redis
 
-from backend.app.api.v1.endpoints.schemas import (
+from backend.app.schemas.api import (
     VideoSummaryRequest,
     VideoSummaryResponse,
     VideoListResponse,

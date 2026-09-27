@@ -15,6 +15,7 @@ import re
 import time
 
 from src.rag_core import resource_manager
+from src.shared.metrics import measure_rag_stage
 from src.rag_core.state import State
 
 
@@ -118,11 +119,6 @@ def _sync_citation_metadata_from_context(data: dict, context: str) -> dict:
     return data
 
 
-def get_rag_chain():
-    """Trả answer chain hiện tại để giữ tương thích với call site cũ."""
-    return resource_manager.get_tutor_chain()
-
-
 async def node_tutor(state: State):
     """Chạy Tutor node: lấy query, retrieval context, sinh answer và chuẩn hóa citation."""
     messages = state.get("messages", [])
@@ -176,9 +172,10 @@ async def node_tutor(state: State):
         # BƯỚC 2: GENERATION (Có truyền history_str vào prompt cuối)
         answer_chain = rag_core.get_answer_chain()
         generation_start = time.perf_counter()
-        rag_result = await answer_chain.ainvoke(
-            {"context": context, "question": query, "chat_history": history_str}
-        )
+        with measure_rag_stage("answer"):
+            rag_result = await answer_chain.ainvoke(
+                {"context": context, "question": query, "chat_history": history_str}
+            )
         generation_elapsed = time.perf_counter() - generation_start
         logger.info("[TUTOR_TIMING] answer_generation=%.2fs", generation_elapsed)
 

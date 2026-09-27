@@ -1,10 +1,7 @@
 
 # Web & API
-streamlit
 fastapi==0.115.0
 uvicorn[standard]==0.32.1
-motor==3.6.0
-pymongo==4.9
 requests==2.32.3
 pydantic==2.10.3
 
