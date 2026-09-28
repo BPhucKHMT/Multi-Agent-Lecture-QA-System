@@ -42,13 +42,26 @@ Then fill in the required values such as `myAPIKey`, `DATABASE_URL`, `JWT_SECRET
 
 ### 2. Run local CPU stack: frontend + backend + Redis
 
+With `COMPOSE_PROFILES` set in `.env` (e.g. `cpu,frontend,monitoring`), the same
+three commands manage the whole stack **including Prometheus + Grafana**:
+
 ```powershell
-docker compose --profile cpu --profile frontend up --build
+docker compose up -d --build     # start / rebuild everything (app + monitoring)
+docker compose logs -f api-cpu   # follow logs (or grafana / prometheus)
+docker compose down              # stop everything
+```
+
+Grafana: http://127.0.0.1:3001 (admin / `GRAFANA_ADMIN_PASSWORD` in `.env`) ·
+Prometheus: http://127.0.0.1:9091 · RedisInsight: http://127.0.0.1:8001
+
+
+```powershell
+docker compose up -d --build
 ```
 The `cpu`/`gpu` profiles start local `redis-stack` and wait for its healthcheck. If `REDIS_URL` points to an external Redis reachable from containers, bypass the unused local dependency explicitly:
 
 ```powershell
-docker compose --profile cpu --profile frontend up -d --build --no-deps api-cpu frontend
+docker compose up -d --build --no-deps api-cpu frontend
 ```
 
 Use `--profile gpu` and `api-gpu` instead for the GPU service. Ensure the external Redis is ready before sending chat requests. `--no-deps` does not stop an already running local Redis container.
@@ -66,7 +79,7 @@ RedisInsight: http://localhost:8001
 Use this when your local machine has an NVIDIA GPU and Docker Desktop GPU support/NVIDIA Container Toolkit is enabled.
 
 ```powershell
-docker compose --profile gpu up --build
+docker compose up -d --build
 ```
 
 This command starts **2 services**: `api-gpu` and `redis-stack`.
@@ -74,7 +87,7 @@ This command starts **2 services**: `api-gpu` and `redis-stack`.
 To run **3 services** together (frontend + GPU backend + Redis):
 
 ```powershell
-docker compose --profile gpu --profile frontend up --build
+docker compose up -d --build
 ```
 
 Locally tested GPU image size:
