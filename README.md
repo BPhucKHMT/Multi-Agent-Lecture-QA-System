@@ -38,33 +38,46 @@ pipeline-gpu -> GPU data pipeline, used when ingesting data with GPU support
 Copy-Item .env.example .env
 ```
 
-Then fill in the required values such as `myAPIKey`, `DATABASE_URL`, `JWT_SECRET`, and `REDIS_URL`.
+Then fill in `myAPIKey`, `DATABASE_URL`, `JWT_SECRET`, and `REDIS_URL`. For
+monitoring, also set a strong `GRAFANA_ADMIN_PASSWORD` in `.env`. It is not
+needed when using `-NoMonitoring`. The password stays local (`.env` is ignored
+by Git). On Windows, install native `windows_exporter` on port 9182 and set
+`PUQ_PROMETHEUS_CONFIG=prometheus-windows.yml` to collect host CPU/RAM
+metrics (GPU only if the exporter/driver exposes them); otherwise Prometheus
+only scrapes the API. Langfuse traces remain
+hosted in Langfuse Cloud and require their own keys.
 
-### 2. Run local CPU stack: frontend + backend + Redis
+### 2. Run the local CPU stack
 
-With `COMPOSE_PROFILES` set in `.env` (e.g. `cpu,frontend,monitoring`), the same
-three commands manage the whole stack **including Prometheus + Grafana**:
-
-```powershell
-docker compose up -d --build     # start / rebuild everything (app + monitoring)
-docker compose logs -f api-cpu   # follow logs (or grafana / prometheus)
-docker compose down              # stop everything
-```
-
-Grafana: http://127.0.0.1:3001 (admin / `GRAFANA_ADMIN_PASSWORD` in `.env`) ·
-Prometheus: http://127.0.0.1:9091 · RedisInsight: http://127.0.0.1:8001
-
+From PowerShell, one entry point selects CPU + frontend + Redis + monitoring:
 
 ```powershell
-docker compose up -d --build
+.\dev.ps1 up                 # start; use -Build after changing image/dependencies
+.\dev.ps1 restart            # restart API after Python code changes
+.\dev.ps1 status             # running services
+.\dev.ps1 logs api-cpu       # follow API logs; omit name for all services
+.\dev.ps1 down               # stop all project services; keep data volumes
 ```
-The `cpu`/`gpu` profiles start local `redis-stack` and wait for its healthcheck. If `REDIS_URL` points to an external Redis reachable from containers, bypass the unused local dependency explicitly:
 
-```powershell
-docker compose up -d --build --no-deps api-cpu frontend
-```
+Grafana: http://127.0.0.1:3001 (credentials from `.env`) ·
+Prometheus: http://127.0.0.1:9091 · RedisInsight: http://127.0.0.1:8001.
 
-Use `--profile gpu` and `api-gpu` instead for the GPU service. Ensure the external Redis is ready before sending chat requests. `--no-deps` does not stop an already running local Redis container.
+To run only the app without Grafana or a Grafana password, run
+`.\dev.ps1 down` when changing modes, then add `-NoMonitoring` to `up`,
+`status` and `logs` (for example `.\dev.ps1 up -NoMonitoring`).
+
+To use external Redis, set a container-reachable
+`REDIS_URL`, stop any previously started stack, then run
+`.\dev.ps1 up -ExternalRedis`. This starts API, frontend, Prometheus and
+Grafana without starting local Redis; add `-NoMonitoring` to omit monitoring.
+The external Redis must be ready before sending chat requests.
+
+On Linux, use Compose directly: set `PUQ_PROMETHEUS_CONFIG=prometheus-linux.yml`
+in `.env`, then run
+`docker compose -f docker-compose.yaml -f docker-compose.observability.yaml --profile cpu --profile frontend --profile monitoring --profile linux-monitoring up -d`.
+For NVIDIA host metrics, use `prometheus-linux-gpu.yml` and add
+`--profile nvidia-monitoring`. For an app-only run (no Grafana password),
+use `docker compose --profile cpu --profile frontend up -d`.
 
 Open:
 
@@ -74,21 +87,17 @@ Backend API: http://localhost:8000
 RedisInsight: http://localhost:8001
 ```
 
-### 3. Run local GPU stack: GPU backend + Redis
+### 3. Run the local GPU stack
 
-Use this when your local machine has an NVIDIA GPU and Docker Desktop GPU support/NVIDIA Container Toolkit is enabled.
-
-```powershell
-docker compose up -d --build
-```
-
-This command starts **2 services**: `api-gpu` and `redis-stack`.
-
-To run **3 services** together (frontend + GPU backend + Redis):
+Requires NVIDIA GPU and a working Docker GPU runtime. Stop the CPU stack
+before switching (`.\dev.ps1 down`); both APIs use port 8000.
 
 ```powershell
-docker compose up -d --build
+.\dev.ps1 up -Gpu                 # GPU + frontend + Redis + monitoring
+.\dev.ps1 up -Gpu -NoFrontend     # GPU + Redis + monitoring, no frontend
 ```
+
+Add `-NoMonitoring` to either command if you do not need Prometheus/Grafana.
 
 Locally tested GPU image size:
 

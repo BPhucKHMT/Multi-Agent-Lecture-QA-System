@@ -36,33 +36,44 @@ pipeline-gpu -> Data pipeline GPU, chạy khi cần ingest dữ liệu bằng GP
 Copy-Item .env.example .env
 ```
 
-Sau đó điền các biến cần thiết như `myAPIKey`, `DATABASE_URL`, `JWT_SECRET`, `REDIS_URL`.
+Sau đó điền `myAPIKey`, `DATABASE_URL`, `JWT_SECRET`, `REDIS_URL`. Nếu dùng
+monitoring, đặt thêm `GRAFANA_ADMIN_PASSWORD` đủ mạnh trong `.env`; chạy
+`-NoMonitoring` thì không cần. `.env` không được Git theo dõi. Trên Windows,
+cài `windows_exporter` native (cổng 9182) rồi đặt
+`PUQ_PROMETHEUS_CONFIG=prometheus-windows.yml` để theo dõi CPU/RAM host;
+nếu không, Prometheus chỉ lấy metrics API. Trace Langfuse vẫn ở Langfuse Cloud
+và cần khóa cấu hình riêng.
 
-### 2. Chạy local CPU: frontend + backend + Redis
+### 2. Chạy local CPU
 
-Khi đã đặt `COMPOSE_PROFILES` trong `.env` (ví dụ `cpu,frontend,monitoring`), ba lệnh sau
-quản lý toàn bộ stack **bao gồm cả Prometheus + Grafana**:
-
-```powershell
-docker compose up -d --build     # khởi động / dựng lại tất cả (app + giám sát)
-docker compose logs -f api-cpu   # xem log (hoặc grafana / prometheus)
-docker compose down              # dừng tất cả
-```
-
-Grafana: http://127.0.0.1:3001 (admin / `GRAFANA_ADMIN_PASSWORD` trong `.env`) ·
-Prometheus: http://127.0.0.1:9091 · RedisInsight: http://127.0.0.1:8001
-
+PowerShell dùng một lệnh gốc để chọn CPU + frontend + Redis + monitoring:
 
 ```powershell
-docker compose up -d --build
+.\dev.ps1 up                 # khởi động; thêm -Build khi đổi image/dependencies
+.\dev.ps1 restart            # khởi động lại API sau khi sửa code Python
+.\dev.ps1 status             # xem container đang chạy
+.\dev.ps1 logs api-cpu       # theo dõi log API; bỏ tên service để xem tất cả
+.\dev.ps1 down               # dừng toàn bộ project, giữ data volumes
 ```
-Profile `cpu`/`gpu` khởi động `redis-stack` local và chờ healthcheck. Nếu `REDIS_URL` trỏ tới Redis ngoài mà container truy cập được, bỏ qua Redis local bằng lệnh:
 
-```powershell
-docker compose up -d --build --no-deps api-cpu frontend
-```
+Grafana: http://127.0.0.1:3001 (tài khoản trong `.env`) ·
+Prometheus: http://127.0.0.1:9091 · RedisInsight: http://127.0.0.1:8001.
 
-Đổi `cpu`/`api-cpu` thành `gpu`/`api-gpu` khi dùng GPU. Redis bên ngoài phải sẵn sàng trước khi gửi chat; `--no-deps` không dừng Redis local đã chạy sẵn.
+Chỉ chạy app, không cần Grafana/mật khẩu: dừng stack cũ bằng `.\dev.ps1 down`
+trước khi đổi chế độ; thêm `-NoMonitoring` vào `up`, `status`, `logs`
+(ví dụ `.\dev.ps1 up -NoMonitoring`).
+
+Nếu dùng Redis ngoài, đặt `REDIS_URL` mà container truy cập được, dừng stack
+đang chạy rồi gọi `.\dev.ps1 up -ExternalRedis`. Lệnh này khởi động API,
+frontend, Prometheus và Grafana nhưng không bật Redis local; thêm
+`-NoMonitoring` để bỏ giám sát. Redis ngoài cần sẵn sàng trước khi gửi chat.
+
+Trên Linux (không dùng PowerShell), đặt `PUQ_PROMETHEUS_CONFIG=prometheus-linux.yml`
+trong `.env`, rồi chạy
+`docker compose -f docker-compose.yaml -f docker-compose.observability.yaml --profile cpu --profile frontend --profile monitoring --profile linux-monitoring up -d`.
+Muốn đo GPU NVIDIA host, đổi thành `prometheus-linux-gpu.yml` và thêm
+`--profile nvidia-monitoring`. Chỉ chạy app, không cần mật khẩu Grafana:
+`docker compose --profile cpu --profile frontend up -d`.
 
 Truy cập:
 
@@ -72,21 +83,17 @@ Backend API: http://localhost:8000
 RedisInsight: http://localhost:8001
 ```
 
-### 3. Chạy local GPU: backend GPU + Redis
+### 3. Chạy local GPU
 
-Dùng khi máy local có NVIDIA GPU, Docker Desktop đã bật GPU support/NVIDIA Container Toolkit.
-
-```powershell
-docker compose up -d --build
-```
-
-Lệnh trên chạy **2 service**: `api-gpu` + `redis-stack`.
-
-Nếu muốn chạy cùng lúc **3 service** (frontend + backend GPU + Redis):
+Cần NVIDIA GPU và Docker GPU runtime. Dừng stack CPU trước
+(`.\dev.ps1 down`) vì hai API cùng dùng cổng 8000.
 
 ```powershell
-docker compose up -d --build
+.\dev.ps1 up -Gpu                 # GPU + frontend + Redis + monitoring
+.\dev.ps1 up -Gpu -NoFrontend     # GPU + Redis + monitoring, không có frontend
 ```
+
+Thêm `-NoMonitoring` vào mỗi lệnh nếu không cần Prometheus/Grafana.
 
 Image GPU đã test build local:
 
