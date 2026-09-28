@@ -1,10 +1,9 @@
-# Overlay giám sát: được Compose tự động ghép (docker-compose.override.yaml).
-# KHÔNG cần -f -f: chỉ cần đặt COMPOSE_PROFILES trong .env, ví dụ COMPOSE_PROFILES=cpu,frontend,monitoring
-#   docker compose up -d --build        # toàn bộ stack + giám sát
-#   docker compose down                 # dừng tất cả
-# Linux host: đặt PUQ_PROMETHEUS_CONFIG=prometheus-linux.yml và thêm profile linux-monitoring vào COMPOSE_PROFILES.
-# Linux NVIDIA: PUQ_PROMETHEUS_CONFIG=prometheus-linux-gpu.yml, thêm profile nvidia-monitoring.
-# Windows: windows_exporter chạy native trên host (đã cấu hình sẵn target host.docker.internal:9182).
+# Overlay giám sát tùy chọn; lệnh .\dev.ps1 up chỉ nạp file này khi bật monitoring.
+# Chạy Compose trực tiếp: docker compose -f docker-compose.yaml -f docker-compose.observability.yaml
+# Cần GRAFANA_ADMIN_PASSWORD trong .env khi khởi động Grafana.
+# Linux: chọn prometheus-linux.yml, thêm profile linux-monitoring.
+# Linux NVIDIA: chọn prometheus-linux-gpu.yml, thêm profile nvidia-monitoring.
+# Windows: prometheus-windows.yml cần windows_exporter chạy trên host:9182.
 services:
   api-cpu:
     environment:
