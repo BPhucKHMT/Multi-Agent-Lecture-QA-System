@@ -7,7 +7,7 @@ import asyncio
 import hashlib
 import hmac
 from collections.abc import Callable
-from contextlib import aclosing, nullcontext
+from contextlib import aclosing, contextmanager, nullcontext
 from dataclasses import dataclass, field
 import json as json_lib
 import logging
@@ -26,7 +26,13 @@ from langfuse import propagate_attributes
 from langfuse.langchain import CallbackHandler
 
 from src.rag_core.lang_graph_rag import workflow
-from src.shared.metrics import CHAT_ACTIVE, CHAT_DURATION, CHAT_REQUESTS, CHAT_TTFT
+from src.shared.metrics import (
+    CHAT_ACTIVE,
+    CHAT_DURATION,
+    CHAT_REQUESTS,
+    CHAT_TTFT,
+    measure_chat_stage,
+)
 from src.shared.observability import get_langfuse_client, trace_content_enabled
 from backend.app.models.user import ChatHistory
 from backend.app.core.config import settings
@@ -255,6 +261,50 @@ async def _yield_token_events(
         yield f"data: {json_lib.dumps({'type': 'token', 'content': chunk})}\n\n"
         await asyncio.sleep(0)
 
+def _token_count(value: Any) -> int:
+    try:
+        return max(0, int(value or 0))
+    except (TypeError, ValueError, OverflowError):
+        return 0
+
+
+def _extract_usage_metadata(output: Any) -> dict[str, int]:
+    usage = getattr(output, "usage_metadata", None)
+    if not isinstance(usage, dict):
+        response_metadata = getattr(output, "response_metadata", {}) or {}
+        usage = response_metadata.get("token_usage")
+    if not isinstance(usage, dict):
+        return {}
+
+    input_tokens = _token_count(
+        usage.get("input_tokens", usage.get("prompt_tokens", 0))
+    )
+    output_tokens = _token_count(
+        usage.get("output_tokens", usage.get("completion_tokens", 0))
+    )
+    total_tokens = max(
+        _token_count(usage.get("total_tokens")),
+        input_tokens + output_tokens,
+    )
+    return {
+        "input_tokens": input_tokens,
+        "output_tokens": output_tokens,
+        "total_tokens": total_tokens,
+    }
+
+@contextmanager
+def _request_stage(client: Any, name: str):
+    observation = (
+        client.start_as_current_observation(as_type="span", name=name)
+        if client is not None
+        else nullcontext()
+    )
+    with measure_chat_stage(name):
+        with observation:
+            yield
+
+
+
 
 # --- Core Service Logic ---
 @dataclass(slots=True)
@@ -266,6 +316,13 @@ class _StreamTelemetry:
     response_type: str = "error"
     answer_chars: int = 0
     citation_count: int = 0
+    llm_input_tokens: int = 0
+    llm_output_tokens: int = 0
+    llm_total_tokens: int = 0
+    llm_generation_count: int = 0
+    unpriced_external_calls: int = 0
+    seen_model_run_ids: set[str] = field(default_factory=set)
+    seen_unpriced_run_ids: set[str] = field(default_factory=set)
     first_token_recorded: bool = False
     response: dict | None = None
 
@@ -291,6 +348,26 @@ class _StreamTelemetry:
         self.citation_count = len(citations) if isinstance(citations, list) else 0
         self.outcome = "error" if self.response_type == "error" else "success"
 
+    def record_model_usage(self, event: dict) -> None:
+        run_id = str(event.get("run_id") or "")
+        if not run_id or run_id in self.seen_model_run_ids:
+            return
+        usage = _extract_usage_metadata(event.get("data", {}).get("output"))
+        if not usage:
+            return
+        self.seen_model_run_ids.add(run_id)
+        self.llm_input_tokens += usage["input_tokens"]
+        self.llm_output_tokens += usage["output_tokens"]
+        self.llm_total_tokens += usage["total_tokens"]
+        self.llm_generation_count += 1
+
+    def record_unpriced_call(self, event: dict) -> None:
+        run_id = str(event.get("run_id") or "")
+        if not run_id or run_id in self.seen_unpriced_run_ids:
+            return
+        self.seen_unpriced_run_ids.add(run_id)
+        self.unpriced_external_calls += 1
+
 
 
 
@@ -302,6 +379,7 @@ async def _generate_chat_stream(
     redis_client: Optional[redis.Redis],
     telemetry: _StreamTelemetry,
     callbacks: list,
+    trace_client: Any | None,
 ) -> AsyncGenerator[str, None]:
     """
     Generator xử lý hội thoại AI:
@@ -310,14 +388,17 @@ async def _generate_chat_stream(
     3. Stream từng token về client.
     4. Lưu kết quả vào PostgreSQL.
     """
-    # 1. Lấy lịch sử hội thoại từ DB trước khi thêm message mới
-    history = (
-        db.query(ChatHistory)
-        .filter(ChatHistory.user_id == user_id, ChatHistory.session_id == session_id)
-        .order_by(ChatHistory.created_at.asc())
-        .all()
-    )
-    history = history[-MAX_HISTORY_MESSAGES:]
+    with _request_stage(trace_client, "history_load"):
+        history = (
+            db.query(ChatHistory)
+            .filter(
+                ChatHistory.user_id == user_id,
+                ChatHistory.session_id == session_id,
+            )
+            .order_by(ChatHistory.created_at.asc())
+            .all()
+        )
+        history = history[-MAX_HISTORY_MESSAGES:]
 
     langchain_messages = []
     for msg in history:
@@ -332,43 +413,49 @@ async def _generate_chat_stream(
     user_chat = ChatHistory(
         user_id=user_id, session_id=session_id, role="user", content=user_message
     )
-    db.add(user_chat)
-    db.commit()
+    with _request_stage(trace_client, "user_message_commit"):
+        db.add(user_chat)
+        db.commit()
 
     # 3. Kiểm tra Semantic Cache sau khi DB đã có câu hỏi user
     cache_provider = None
-    if SEMANTIC_CACHE_ENABLED and redis_client:
-        telemetry.cache = "miss"
-        cache_provider = SemanticCache(redis_client)
-        cached_resp = await cache_provider.get(user_message)
-        if cached_resp:
-            telemetry.cache = "hit"
-            telemetry.route = "cache"
-            yield f"data: {json_lib.dumps({'type': 'status', 'status': '✨ Đang tổng hợp câu trả lời phù hợp...'})}\n\n"
+    cached_resp = None
+    with _request_stage(trace_client, "semantic_cache_get"):
+        if SEMANTIC_CACHE_ENABLED and redis_client:
+            telemetry.cache = "miss"
+            cache_provider = SemanticCache(redis_client)
+            cached_resp = await cache_provider.get(user_message)
 
-            full_text = cached_resp.get("text", "")
-            await asyncio.sleep(0.12)
-            for chunk in _split_stream_token(full_text, max_chars=18):
-                if chunk.strip():
-                    telemetry.mark_first_visible()
-                yield f"data: {json_lib.dumps({'type': 'token', 'content': chunk})}\n\n"
-                await asyncio.sleep(0.018 if chunk.strip() else 0.006)
+    if cached_resp:
+        telemetry.cache = "hit"
+        telemetry.route = "cache"
+        yield f"data: {json_lib.dumps({'type': 'status', 'status': '✨ Đang tổng hợp câu trả lời phù hợp...'})}\n\n"
 
-            assistant_chat = ChatHistory(
-                user_id=user_id,
-                session_id=session_id,
-                role="assistant",
-                content=full_text,
-                agent_type="cache",
-                metadata_json=cached_resp,
-            )
+        full_text = cached_resp.get("text", "")
+        await asyncio.sleep(0.12)
+        for chunk in _split_stream_token(full_text, max_chars=18):
+            if chunk.strip():
+                telemetry.mark_first_visible()
+            yield f"data: {json_lib.dumps({'type': 'token', 'content': chunk})}\n\n"
+            await asyncio.sleep(0.018 if chunk.strip() else 0.006)
+
+        assistant_chat = ChatHistory(
+            user_id=user_id,
+            session_id=session_id,
+            role="assistant",
+            content=full_text,
+            agent_type="cache",
+            metadata_json=cached_resp,
+        )
+        with _request_stage(trace_client, "assistant_message_commit"):
             db.add(assistant_chat)
             db.commit()
-            telemetry.complete(cached_resp)
+        telemetry.complete(cached_resp)
 
+        with _request_stage(trace_client, "sse_finalize"):
             yield f"data: {json_lib.dumps({'type': 'metadata', 'conversation_id': session_id, 'response': cached_resp})}\n\n"
             yield "data: [DONE]\n\n"
-            return
+        return
 
     initial_state = {"messages": langchain_messages}
     cleaner = JsonStreamCleaner()
@@ -392,6 +479,10 @@ async def _generate_chat_stream(
         ):
             node_name = event.get("metadata", {}).get("langgraph_node", "")
             event_type = event.get("event")
+            if event_type == "on_chat_model_end":
+                telemetry.record_model_usage(event)
+            if event_type == "on_chain_end" and event.get("name") == "jev_supervisor":
+                telemetry.record_unpriced_call(event)
             if event_type == "on_chain_start" and node_name in {
                 "tutor", "quiz", "coding", "math", "direct"
             }:
@@ -468,22 +559,25 @@ async def _generate_chat_stream(
                     agent_type=telemetry.route if final_response.get("type") != "error" else "error",
                     metadata_json=final_response,
                 )
-                db.add(assistant_chat)
-                db.commit()
+                with _request_stage(trace_client, "assistant_message_commit"):
+                    db.add(assistant_chat)
+                    db.commit()
 
-            # 5. Lưu vào Semantic Cache (Nếu thành công)
             if cache_provider and final_response.get("text"):
-                await cache_provider.set(user_message, final_response)
+                with _request_stage(trace_client, "semantic_cache_set"):
+                    await cache_provider.set(user_message, final_response)
         telemetry.complete(final_response)
 
-        yield f"data: {json_lib.dumps({'type': 'metadata', 'conversation_id': session_id, 'response': final_response})}\n\n"
-        yield "data: [DONE]\n\n"
+        with _request_stage(trace_client, "sse_finalize"):
+            yield f"data: {json_lib.dumps({'type': 'metadata', 'conversation_id': session_id, 'response': final_response})}\n\n"
+            yield "data: [DONE]\n\n"
 
     except Exception as error:
         telemetry.outcome = "error"
         logger.error("Chat stream error (%s)", type(error).__name__)
-        yield f"data: {json_lib.dumps({'type': 'error', 'content': 'Lỗi xử lý câu hỏi. Vui lòng thử lại.'})}\n\n"
-        yield "data: [DONE]\n\n"
+        with _request_stage(trace_client, "sse_finalize"):
+            yield f"data: {json_lib.dumps({'type': 'error', 'content': 'Lỗi xử lý câu hỏi. Vui lòng thử lại.'})}\n\n"
+            yield "data: [DONE]\n\n"
 
 
 async def generate_chat_stream(
@@ -525,8 +619,14 @@ async def generate_chat_stream(
             with attributes:
                 try:
                     stream = _generate_chat_stream(
-                        db, user_id, session_id, user_message, redis_client,
-                        telemetry, callbacks,
+                        db,
+                        user_id,
+                        session_id,
+                        user_message,
+                        redis_client,
+                        telemetry,
+                        callbacks,
+                        client,
                     )
                     async with aclosing(stream):
                         async for frame in stream:
@@ -557,6 +657,20 @@ async def generate_chat_stream(
                             "response_type": telemetry.response_type,
                             "answer_chars": telemetry.answer_chars,
                             "citation_count": telemetry.citation_count,
+                            "llm_input_tokens": telemetry.llm_input_tokens,
+                            "llm_output_tokens": telemetry.llm_output_tokens,
+                            "llm_total_tokens": telemetry.llm_total_tokens,
+                            "llm_generation_count": telemetry.llm_generation_count,
+                            "unpriced_external_calls": telemetry.unpriced_external_calls,
+                            "cost_coverage": (
+                                "partial"
+                                if telemetry.unpriced_external_calls
+                                else (
+                                    "full"
+                                    if telemetry.llm_generation_count
+                                    else "none"
+                                )
+                            ),
                         })
                         if trace_content_enabled() and telemetry.response is not None:
                             root.update(output={"text": telemetry.response.get("text", "")})
