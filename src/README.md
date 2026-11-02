@@ -23,15 +23,7 @@ src/
 │   │   ├── coding_retrieval.py      # Retrieval helper riêng cho coding agent
 │   │   ├── math.py                  # Agent toán: SymPy + LaTeX step-by-step
 │   │   ├── quiz.py                  # Agent quiz: tạo câu hỏi trắc nghiệm
-│   │   ├── direct.py                # Agent direct: chào hỏi, câu hỏi tổng quát
-│   │   ├── coding.py.bak            # Backup coding.py
-│   │   ├── coding.py.bak.21_04_2026 # Backup coding.py (21/04/2026)
-│   │   ├── math.py.bak              # Backup math.py
-│   │   ├── math.py.bak.21_04_2026   # Backup math.py (21/04/2026)
-│   │   ├── quiz.py.bak              # Backup quiz.py
-│   │   ├── quiz.py.bak.21_04_2026   # Backup quiz.py (21/04/2026)
-│   │   ├── tutor.py.bak             # Backup tutor.py
-│   │   └── tutor.py.bak.21_04_2026  # Backup tutor.py (21/04/2026)
+│   │   └── direct.py                # Agent direct: chào hỏi, câu hỏi tổng quát
 │   └── tools/
 │       ├── __init__.py
 │       └── sandbox.py               # Sandbox chạy code an toàn cho coding agent
@@ -39,7 +31,6 @@ src/
 │   ├── __init__.py
 │   ├── hybrid_search.py             # Kết hợp vector search + BM25 keyword search
 │   ├── keyword_search.py            # BM25 keyword search đơn lẻ
-│   ├── keyword_search.py.bak        # Backup keyword_search.py
 │   ├── reranking.py                 # CrossEncoder reranking (Jina v2)
 │   └── text_splitters/
 │       ├── __init__.py
@@ -84,8 +75,7 @@ src/
     ├── architecture.png
     ├── demo1.png
     ├── pipeline.ipynb               # Jupyter notebook pipeline
-    ├── pipeline.png
-    └── 0.26.0/                      # Versioned artifacts
+    └── pipeline.png
 ```
 
 ---
@@ -188,4 +178,4 @@ artifacts/
 - Không thay đổi `rag_core/state.py` nếu chưa kiểm tra toàn bộ workflow.
 - Nếu sửa retrieval, kiểm tra citation và response streaming ở backend/frontend.
 - Nếu sửa data pipeline, đảm bảo `artifacts/` và ChromaDB vẫn tương thích.
-- File `.bak` là backup từ các lần refactor trước, không sửa trực tiếp.
+- Không đưa file backup (`.bak`, `.bak.*`), metadata hệ điều hành hoặc log cài đặt vào source control.

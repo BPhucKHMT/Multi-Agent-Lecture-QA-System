@@ -10,7 +10,6 @@
 experiments/
 ├── __init__.py
 ├── configs/
-│   ├── .gitkeep
 │   ├── embedding/
 │   │   ├── benchmark.yaml
 │   │   ├── parent_child_180s_45s_bge_m3_child.yaml
