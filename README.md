@@ -133,6 +133,8 @@ docker compose --profile test run --rm api-test
 
 The host virtual environment is optional for this workflow. The production CPU image does not include `pytest`; test tooling is isolated in the `test-cpu` target.
 
+GitHub Actions (`.github/workflows/ci.yml`) runs Python 3.12 CPU tests in `tests/` and `experiments/tests/`, plus frontend Vitest and the production build, on every push and pull request. CI uses offline model settings and no live provider credentials. Real-model reranker checks use their existing missing-artifact skips; `PYTEST_ADDOPTS` also deselects `test_load_reranker_openvino_falls_back_to_onnx`, whose existing artifact check reaches model loading before its mocked backends. Run `python -m pytest -q tests` locally without that CI-only deselection to see the full result.
+
 ### 6. Build standalone images for size checks
 
 CPU runtime:
