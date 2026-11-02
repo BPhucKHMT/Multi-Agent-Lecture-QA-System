@@ -13,12 +13,34 @@ from experiments.src.reranker.candidate_set import build_candidates, write_json,
 from experiments.src.reranker.models import ModelLoadResult, RerankerModel, load_reranker
 
 
-def run_reranker_benchmark(config: Dict[str, Any], limit: Optional[int] = None, only: Optional[Set[str]] = None) -> Path:
+def run_reranker_benchmark(
+    config: Dict[str, Any],
+    limit: Optional[int] = None,
+    only: Optional[Set[str]] = None,
+    offset: int = 0,
+) -> Path:
     run_dir = build_run_dir(Path(config["run_root"]), config["strategy_id"])
-    write_json(run_dir / "config.json", config)
+    run_config = {
+        **config,
+        "query_limit": limit,
+        "query_offset": offset,
+    }
+    write_json(run_dir / "config.json", run_config)
     chunks = load_chunks(config["chunks_dir"], strategy_id=config["strategy_id"])
-    candidates, candidate_metrics = build_candidates(config, run_dir, limit)
+    candidate_limit = offset + limit if limit is not None else None
+    candidates, candidate_metrics = build_candidates(
+        config,
+        run_dir,
+        candidate_limit,
+    )
+    candidates = select_candidate_records(
+        candidates,
+        offset=offset,
+        limit=limit,
+    )
     candidates_by_embedding = group_candidates_by_embedding(candidates)
+    candidate_metrics["benchmark_query_offset"] = offset
+    candidate_metrics["benchmark_query_count"] = len(candidates)
     qrels = load_strategy_qrels(config, chunks)
     rows = []
     for model_config in config.get("models", []):
@@ -35,7 +57,7 @@ def run_reranker_benchmark(config: Dict[str, Any], limit: Optional[int] = None, 
                 continue
             for pool_size in lane_config["candidate_pool_sizes"]:
                 for embedding_candidates in candidates_by_embedding.values():
-                    rows.append(run_model_lane(run_dir, config, model_config, loaded, lane_name, int(pool_size), embedding_candidates, qrels))
+                    rows.append(run_model_lane(run_dir, run_config, model_config, loaded, lane_name, int(pool_size), embedding_candidates, qrels))
             # Clean up GPU/RAM memory for the loaded model
             del loaded
             import gc
@@ -46,8 +68,14 @@ def run_reranker_benchmark(config: Dict[str, Any], limit: Optional[int] = None, 
                     torch.cuda.empty_cache()
             except ImportError:
                 pass
-    write_summary(run_dir, rows, candidate_metrics, config)
-    append_registry(Path(config["registry_path"]), run_dir, rows, config)
+    rows = apply_candidate_pool_gates(
+        rows,
+        config.get("candidate_pool_gates", {}),
+    )
+    write_summary(run_dir, rows, candidate_metrics, run_config)
+    if run_config.get("require_completed_models"):
+        ensure_required_runs_completed(rows)
+    append_registry(Path(config["registry_path"]), run_dir, rows, run_config)
     return run_dir
 
 
@@ -56,6 +84,47 @@ def group_candidates_by_embedding(candidates: list[dict[str, Any]]) -> dict[str,
     for record in candidates:
         grouped.setdefault(str(record.get("embedding_model", "unknown")), []).append(record)
     return grouped
+
+
+def select_candidate_records(
+    records: list[dict[str, Any]],
+    *,
+    offset: int = 0,
+    limit: int | None = None,
+) -> list[dict[str, Any]]:
+    if offset < 0:
+        raise ValueError("offset phải lớn hơn hoặc bằng 0")
+    if limit is not None and limit < 1:
+        raise ValueError("limit phải lớn hơn 0")
+
+    selected = []
+    source_positions: dict[str, int] = {}
+    for record in records:
+        source = str(record.get("embedding_model", "unknown"))
+        position = source_positions.get(source, 0)
+        source_positions[source] = position + 1
+        if position < offset:
+            continue
+        if limit is not None and position >= offset + limit:
+            continue
+        selected.append(record)
+    return selected
+
+
+def ensure_required_runs_completed(rows: list[dict[str, Any]]) -> None:
+    failed = [
+        row
+        for row in rows
+        if row.get("status") != "completed"
+    ]
+    if not failed:
+        return
+    details = "; ".join(
+        f"{row.get('model', 'unknown')}: "
+        f"{row.get('skip_reason', row.get('status', 'unknown'))}"
+        for row in failed
+    )
+    raise RuntimeError(f"Reranker benchmark không hoàn tất: {details}")
 
 
 def load_strategy_qrels(config: dict[str, Any], chunks: list[dict[str, Any]]) -> dict[str, Any]:
@@ -75,9 +144,35 @@ def run_model_lane(
     qrels: dict[str, dict[str, int]],
 ) -> dict[str, Any]:
     assert loaded.model is not None
-    embedding_model = str(candidates[0].get("embedding_model", "unknown")) if candidates else "unknown"
-    model_dir = run_dir / "models" / slugify(model_config["name"]) / slugify(embedding_model) / lane_name / f"top_{pool_size}"
-    results, timings = rerank_candidates(loaded.model, candidates, pool_size)
+    embedding_model = (
+        str(candidates[0].get("embedding_model", "unknown"))
+        if candidates
+        else "unknown"
+    )
+    model_dir = (
+        run_dir
+        / "models"
+        / slugify(model_config["name"])
+        / slugify(embedding_model)
+        / lane_name
+        / f"top_{pool_size}"
+    )
+    progress_label = (
+        f"model={model_config['name']} embedding={embedding_model} "
+        f"lane={lane_name} pool={pool_size}"
+    )
+    if candidates:
+        warmup_candidates = candidates[0]["candidates"][:pool_size]
+        loaded.model.score_pairs(
+            candidates[0]["query"],
+            [candidate["text"] for candidate in warmup_candidates],
+        )
+    results, timings = rerank_candidates(
+        loaded.model,
+        candidates,
+        pool_size,
+        progress_label=progress_label,
+    )
     rankings = {f"{record['embedding_model']}::{record['query_id']}": [item["doc_id"] for item in record["results"]] for record in results}
     expanded_qrels = {f"{record['embedding_model']}::{record['query_id']}": qrels.get(record["query_id"], {}) for record in results}
     metric_config = config.get("metrics", {})
@@ -89,6 +184,7 @@ def run_model_lane(
         ndcg_at=metric_config.get("ndcg_at", [10]),
         precision_at=metric_config.get("precision_at", [1]),
         map_at=metric_config.get("map_at", [10]),
+        hit_at=metric_config.get("hit_at", [5]),
     )
     latency = summarize_latency(timings, config.get("latency_gates", {}))
     manifest = {
@@ -96,20 +192,31 @@ def run_model_lane(
         "task": "reranker_benchmark",
         "model": model_config["name"],
         "model_type": model_config.get("type"),
+        "backend": model_config.get("backend"),
+        "batch_size": model_config.get("batch_size"),
         "embedding_model": embedding_model,
         "lane": lane_name,
         "candidate_pool_size": pool_size,
+        "max_length": config["lanes"][lane_name].get("max_length"),
+        "query_count": len(candidates),
+        "query_limit": config.get("query_limit"),
+        "query_offset": config.get("query_offset", 0),
         "status": loaded.status,
         "created_at": datetime.now(timezone.utc).isoformat(),
     }
     write_jsonl(model_dir / "reranked_results.jsonl", results)
     write_json(model_dir / "metrics.json", metrics)
-    write_json(model_dir / "latency.json", latency)
+    write_json(
+        model_dir / "latency.json",
+        {**latency, "samples_ms": timings},
+    )
     write_json(model_dir / "manifest.json", manifest)
     return {
         "model": model_config["name"],
         "embedding_model": embedding_model,
         "lane": lane_name,
+        "batch_size": model_config.get("batch_size"),
+        "query_count": len(candidates),
         "candidate_pool_size": pool_size,
         "status": loaded.status,
         "metrics_path": str(model_dir / "metrics.json"),
@@ -119,10 +226,80 @@ def run_model_lane(
     }
 
 
-def rerank_candidates(model: RerankerModel, records: list[dict[str, Any]], pool_size: int) -> tuple[list[dict[str, Any]], list[float]]:
+def apply_candidate_pool_gates(
+    rows: list[dict[str, Any]],
+    gates: dict[str, Any],
+) -> list[dict[str, Any]]:
+    if not gates:
+        return rows
+
+    gated_rows = [dict(row) for row in rows]
+    groups: dict[tuple[str, str, str], list[dict[str, Any]]] = {}
+    for row in gated_rows:
+        if row.get("status") != "completed":
+            continue
+        pool_size = row.get("candidate_pool_size")
+        if not isinstance(pool_size, int):
+            continue
+        key = (
+            str(row.get("model", "")),
+            str(row.get("embedding_model", "")),
+            str(row.get("lane", "")),
+        )
+        groups.setdefault(key, []).append(row)
+
+    quality_checks = (
+        ("ndcg@10", "ndcg_at_10_max_drop"),
+        ("mrr@10", "mrr_at_10_max_drop"),
+        ("recall@10", "recall_at_10_max_drop"),
+        ("hit@5", "hit_at_5_max_drop"),
+    )
+    min_improvement = float(gates.get("p95_min_improvement", 0.20))
+    for group_rows in groups.values():
+        reference = max(
+            group_rows,
+            key=lambda row: int(row["candidate_pool_size"]),
+        )
+        reference_p95 = float(reference["latency_p95_ms"])
+        for row in group_rows:
+            failures = []
+            for metric_name, gate_name in quality_checks:
+                drop = float(reference[metric_name]) - float(row[metric_name])
+                row[f"{metric_name}_drop"] = drop
+                if drop > float(gates[gate_name]) + 1e-12:
+                    failures.append(f"{metric_name}_drop")
+
+            row_p95 = float(row["latency_p95_ms"])
+            improvement = (
+                (reference_p95 - row_p95) / reference_p95
+                if reference_p95 > 0
+                else 0.0
+            )
+            row["latency_p95_improvement"] = improvement
+            if row is reference:
+                row["candidate_gate_status"] = "reference"
+                row["candidate_gate_failures"] = []
+                continue
+            if improvement + 1e-12 < min_improvement:
+                failures.append("p95_improvement")
+            if row.get("latency_status") == "reject":
+                failures.append("latency_hard_cap")
+            row["candidate_gate_status"] = "reject" if failures else "pass"
+            row["candidate_gate_failures"] = failures
+
+    return gated_rows
+
+
+def rerank_candidates(
+    model: RerankerModel,
+    records: list[dict[str, Any]],
+    pool_size: int,
+    *,
+    progress_label: str | None = None,
+) -> tuple[list[dict[str, Any]], list[float]]:
     output = []
     timings = []
-    for record in records:
+    for index, record in enumerate(records, start=1):
         selected = record["candidates"][:pool_size]
         start = time.perf_counter()
         scores = model.score_pairs(record["query"], [candidate["text"] for candidate in selected])
@@ -140,6 +317,12 @@ def rerank_candidates(model: RerankerModel, records: list[dict[str, Any]], pool_
                 "results": [to_result(index, item) for index, item in enumerate(reranked, start=1)],
             }
         )
+        if progress_label:
+            print(
+                f"[{progress_label}] {index}/{len(records)} "
+                f"{elapsed_ms:.1f} ms",
+                flush=True,
+            )
     return output, timings
 
 
@@ -211,23 +394,50 @@ def write_summary(run_dir: Path, rows: list[dict[str, Any]], candidate_metrics: 
     lines = ["# Reranker Benchmark Summary", "", "## Candidate Metrics", ""]
     for key, value in candidate_metrics.items():
         lines.append(f"- `{key}`: {value}")
-    lines.extend(["", "## Runs", "", "| Embedding | Reranker | Pool | Status | NDCG@10 | MRR@10 | Recall@40 | P95 ms | Latency |", "|---|---|---:|---|---:|---:|---:|---:|---|"])
+    lines.extend(
+        [
+            "",
+            "## Runs",
+            "",
+            "| Embedding | Reranker | Batch | Pool | NDCG@10 | MRR@10 | Recall@10 | Hit@5 | P95 ms | P95 improvement | Gate | Failures |",
+            "|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---|---|",
+        ]
+    )
     for row in rows:
+        failures = ", ".join(row.get("candidate_gate_failures", []))
         lines.append(
-            "| {embedding} | {model} | {pool} | {status} | {ndcg} | {mrr} | {recall} | {p95} | {latency} |".format(
+            "| {embedding} | {model} | {batch} | {pool} | {ndcg} | {mrr} | "
+            "{recall} | {hit} | {p95} | {improvement} | {gate} | {failures} |".format(
                 embedding=row.get("embedding_model", ""),
                 model=row.get("model", ""),
-                lane=row.get("lane", ""),
+                batch=row.get("batch_size", ""),
                 pool=row.get("candidate_pool_size", ""),
-                status=row.get("status", ""),
                 ndcg=row.get("ndcg@10", ""),
                 mrr=row.get("mrr@10", ""),
-                recall=row.get("recall@40", ""),
+                recall=row.get("recall@10", ""),
+                hit=row.get("hit@5", ""),
                 p95=row.get("latency_p95_ms", ""),
-                latency=row.get("latency_status", ""),
+                improvement=row.get("latency_p95_improvement", ""),
+                gate=row.get("candidate_gate_status", row.get("status", "")),
+                failures=failures,
             )
         )
-    lines.extend(["", "## Config", "", f"- Dataset: `{config['dataset_version']}`", f"- Strategy: `{config['strategy_id']}`"])
+    lines.extend(["", "## Raw artifacts", ""])
+    for row in rows:
+        if row.get("metrics_path") and row.get("latency_path"):
+            lines.append(
+                f"- `{row.get('model')}` pool `{row.get('candidate_pool_size')}`: "
+                f"`{row['metrics_path']}`; `{row['latency_path']}`"
+            )
+    lines.extend(
+        [
+            "",
+            "## Config",
+            "",
+            f"- Dataset: `{config['dataset_version']}`",
+            f"- Strategy: `{config['strategy_id']}`",
+        ]
+    )
     (run_dir / "summary.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
@@ -238,6 +448,8 @@ def append_registry(path: Path, run_dir: Path, rows: list[dict[str, Any]], confi
         "task": "reranker_benchmark",
         "dataset_version": config["dataset_version"],
         "strategy_id": config["strategy_id"],
+        "query_limit": config.get("query_limit"),
+        "query_offset": config.get("query_offset", 0),
         "run_dir": str(run_dir),
         "summary_path": str(run_dir / "summary.md"),
         "status": "completed",

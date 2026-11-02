@@ -1,0 +1,17 @@
+{
+  "query_count": 20,
+  "sources": {
+    "bge_m3-finetuned-v3": {
+      "query_count": 20,
+      "no_qrels_query_count": 0,
+      "recall@10": 0.51,
+      "recall_new@10": 0.51,
+      "recall@40": 0.7116666666666667,
+      "recall_new@40": 0.7116666666666667,
+      "mrr@10": 0.6808333333333334,
+      "ndcg@10": 0.49919783425180747,
+      "precision@1": 0.55,
+      "map@10": 0.34843882275132276
+    }
+  }
+}
