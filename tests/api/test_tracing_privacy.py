@@ -66,7 +66,28 @@ def _capture_spans():
                 "langfuse.observation.metadata.route", "tutor"
             )
             root.set_attribute(
+                "langfuse.observation.metadata.outcome", "success"
+            )
+            root.set_attribute(
                 "langfuse.observation.metadata.model", "jev-latest"
+            )
+            root.set_attribute(
+                "langfuse.observation.metadata.llm_input_tokens", 120
+            )
+            root.set_attribute(
+                "langfuse.observation.metadata.llm_output_tokens", 30
+            )
+            root.set_attribute(
+                "langfuse.observation.metadata.llm_total_tokens", 150
+            )
+            root.set_attribute(
+                "langfuse.observation.metadata.llm_generation_count", 2
+            )
+            root.set_attribute(
+                "langfuse.observation.metadata.unpriced_external_calls", 1
+            )
+            root.set_attribute(
+                "langfuse.observation.metadata.cost_coverage", "partial"
             )
             root.set_attribute(
                 "langfuse.observation.metadata.untrusted", "metadata-canary"
@@ -83,6 +104,30 @@ def _capture_spans():
                 )
                 child.set_attribute(
                     "langfuse.observation.metadata.model", "raw-model-canary"
+                )
+                child.set_attribute(
+                    "langfuse.observation.metadata.query_count", 4
+                )
+                child.set_attribute(
+                    "langfuse.observation.metadata.raw_docs", 320
+                )
+                child.set_attribute(
+                    "langfuse.observation.metadata.unique_docs", 49
+                )
+                child.set_attribute(
+                    "langfuse.observation.metadata.rerank_input_docs", 49
+                )
+                child.set_attribute(
+                    "langfuse.observation.metadata.rerank_output_docs", 10
+                )
+                child.set_attribute(
+                    "langfuse.observation.metadata.context_chars", 11640
+                )
+                child.set_attribute(
+                    "langfuse.observation.metadata.rerank_backend", "openvino"
+                )
+                child.set_attribute(
+                    "langfuse.observation.metadata.expand_query", True
                 )
         client.flush()
         return list(exporter.get_finished_spans())
@@ -116,7 +161,73 @@ def test_actual_sdk_export_hook_redacts_callback_attributes(monkeypatch):
         for span in spans
     )
     assert any(
+        span.attributes.get("langfuse.observation.metadata.outcome") == "success"
+        for span in spans
+    )
+    assert any(
         span.attributes.get("langfuse.observation.metadata.model") == "jev-latest"
+        for span in spans
+    )
+
+    assert any(
+        span.attributes.get("langfuse.observation.metadata.llm_input_tokens") == 120
+        for span in spans
+    )
+    assert any(
+        span.attributes.get("langfuse.observation.metadata.llm_output_tokens") == 30
+        for span in spans
+    )
+    assert any(
+        span.attributes.get("langfuse.observation.metadata.llm_total_tokens") == 150
+        for span in spans
+    )
+    assert any(
+        span.attributes.get("langfuse.observation.metadata.llm_generation_count") == 2
+        for span in spans
+    )
+    assert any(
+        span.attributes.get(
+            "langfuse.observation.metadata.unpriced_external_calls"
+        )
+        == 1
+        for span in spans
+    )
+    assert any(
+        span.attributes.get("langfuse.observation.metadata.cost_coverage")
+        == "partial"
+        for span in spans
+    )
+    assert any(
+        span.attributes.get("langfuse.observation.metadata.query_count") == 4
+        for span in spans
+    )
+    assert any(
+        span.attributes.get("langfuse.observation.metadata.raw_docs") == 320
+        for span in spans
+    )
+    assert any(
+        span.attributes.get("langfuse.observation.metadata.unique_docs") == 49
+        for span in spans
+    )
+    assert any(
+        span.attributes.get("langfuse.observation.metadata.rerank_input_docs") == 49
+        for span in spans
+    )
+    assert any(
+        span.attributes.get("langfuse.observation.metadata.rerank_output_docs") == 10
+        for span in spans
+    )
+    assert any(
+        span.attributes.get("langfuse.observation.metadata.context_chars") == 11640
+        for span in spans
+    )
+    assert any(
+        span.attributes.get("langfuse.observation.metadata.rerank_backend")
+        == "openvino"
+        for span in spans
+    )
+    assert any(
+        span.attributes.get("langfuse.observation.metadata.expand_query") is True
         for span in spans
     )
 
