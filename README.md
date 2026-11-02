@@ -28,6 +28,7 @@ api-gpu -> FastAPI/RAG local GPU, http://localhost:8000
 redis-stack -> Redis Stack + RedisInsight, http://localhost:8001
 pipeline-cpu -> CPU data pipeline, used when ingesting data
 pipeline-gpu -> GPU data pipeline, used when ingesting data with GPU support
+api-test -> reproducible Python test runner based on the CPU runtime image
 ```
 
 > Frontend and backend run as **two separate containers**, managed together by `docker-compose.yaml`.
@@ -121,7 +122,18 @@ docker compose --profile pipeline-gpu run --rm pipeline-gpu
 
 The pipeline image contains heavy OCR/Whisper/video dependencies and is separated from the API deployment image.
 
-### 5. Build standalone images for size checks
+### 5. Run Python tests in Docker
+
+Build the test target once after dependency changes, then reuse it in later sessions. Source and tests are bind-mounted, so normal Python edits do not require rebuilding.
+
+```powershell
+docker compose --profile test build api-test
+docker compose --profile test run --rm api-test
+```
+
+The host virtual environment is optional for this workflow. The production CPU image does not include `pytest`; test tooling is isolated in the `test-cpu` target.
+
+### 6. Build standalone images for size checks
 
 CPU runtime:
 
@@ -453,15 +465,27 @@ Full retrieval benchmark pipeline lives in `experiments/`. See [experiments/READ
 | C19 | `semantic` | `bge_m3-finetuned-v3` | 0.9033 | 0.7387 | 0.5355 |
 | C22 | `parent_child_180s_45s` | `bge_m3-finetuned-v3` | 0.9067 | 0.6723 | 0.5494 |
 
+#### CPU Inference Acceleration (Reranker Optimization)
+
+To achieve low latency on servers and workstations without a discrete GPU, Jina Reranker v2 is optimized across multiple runtimes:
+
+| Runtime / Precision | Mean Latency | P50 Latency | P95 Latency | Speedup (Mean) |
+|---|---:|---:|---:|---:|
+| **PyTorch CPU FP32** *(Original)* | 52.12 s | 54.01 s | 59.52 s | 1.0x *(Baseline)* |
+| **ONNX Runtime INT8** | 3.53 s | **0.66 s** | 9.33 s | 14.8x |
+| **OpenVINO Runtime INT8** | **1.91 s** | 1.85 s | **2.22 s** | **27.3x** |
+
+These latency-only figures came from the 20-query, pool-10 runtime benchmark. Ranking-agreement figures from that run are omitted because the optimized backends were later found to ignore the query; corrected-query quality results are tracked in the linked CPU reranker report.
+
 ### Detailed evaluation reports
 
 - [End-to-end retrieval benchmark (22 configs)](experiments/docs/evaluation/end_to_end_retrieval.md) — full results table, selection rationale, winner analysis
 - [Embedding model comparison (7 models)](experiments/docs/evaluation/embedding.md) — BGE-M3 variants, multilingual-e5-large, halong_embedding
 - [Reranker comparison (6 models)](experiments/docs/evaluation/reranker.md) — Jina v2 winner, latency analysis
+- [CPU Reranker Inference Acceleration (OpenVINO vs ONNX INT8)](docs/reranker-cpu-int8-openvino-research.md) — comprehensive CPU benchmark, 3-way analysis, p50/p95 latency, model compression
 - [QA quality metrics (BERTScore + RAGAS)](experiments/docs/evaluation/qa_metrics.md) — faithfulness, context precision/recall, answer relevancy
 - [Ground truth dataset guide](experiments/docs/data/groundtruth.md) — how the 350-question evaluation set was created
 - [**Ablation Study Report**](docs/ablation_report.md) — full 4-stage ablation: embedding → reranker → chunking (E2E) → generation quality. Explains why C21 was selected as production config.
-
 ### Verification & Run Logs (Audit Trail)
 
 To verify the authenticity of all metrics presented in the evaluation reports, you can examine the raw benchmark results (`metrics.json` and `eval_results.json`) generated under `experiments/runs/`:
