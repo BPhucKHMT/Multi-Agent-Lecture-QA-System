@@ -58,6 +58,12 @@ CHAT_TTFT = Histogram(
     buckets=_TTFT_BUCKETS,
 )
 CHAT_ACTIVE = Gauge("puq_chat_active", "Luồng chat đang hoạt động")
+CHAT_STAGE_DURATION = Histogram(
+    "puq_chat_stage_duration_seconds",
+    "Thời gian từng giai đoạn ngoài LangGraph của chat stream",
+    labelnames=("stage", "outcome"),
+    buckets=_DURATION_BUCKETS,
+)
 
 JEV_REQUESTS = Counter(
     "puq_jev_requests_total",
@@ -87,6 +93,39 @@ RAG_STAGE_DURATION = Histogram(
     labelnames=("stage", "outcome"),
     buckets=_DURATION_BUCKETS,
 )
+RAG_QUERY_EXPANSION_DECISIONS = Counter(
+    "puq_rag_query_expansion_decisions_total",
+    "Quyết định chạy hoặc bỏ query expansion",
+    labelnames=("decision",),
+)
+RAG_RERANK_INPUT_DOCUMENTS = Histogram(
+    "puq_rag_rerank_input_documents",
+    "Số documents đưa vào reranker mỗi query",
+    labelnames=("backend",),
+    buckets=(10, 16, 24, 32, 40, 48, 60, 80),
+)
+RAG_PREWARM_READY = Gauge(
+    "puq_rag_prewarm_ready",
+    "1 khi local retrieval/reranker warm-up hoàn tất",
+)
+
+
+@contextmanager
+def measure_chat_stage(stage: str):
+    started = perf_counter()
+    outcome = "error"
+    try:
+        yield
+        outcome = "success"
+    finally:
+        try:
+            CHAT_STAGE_DURATION.labels(stage=stage, outcome=outcome).observe(
+                perf_counter() - started
+            )
+        except Exception as error:
+            logging.getLogger(__name__).warning(
+                "Không thể ghi chat metric (%s)", type(error).__name__
+            )
 
 
 @contextmanager
@@ -118,5 +157,10 @@ __all__ = [
     "SUPERVISOR_FALLBACKS",
     "AGENT_NODE_DURATION",
     "RAG_STAGE_DURATION",
+    "RAG_QUERY_EXPANSION_DECISIONS",
+    "RAG_RERANK_INPUT_DOCUMENTS",
+    "RAG_PREWARM_READY",
+    "CHAT_STAGE_DURATION",
+    "measure_chat_stage",
     "measure_rag_stage",
 ]

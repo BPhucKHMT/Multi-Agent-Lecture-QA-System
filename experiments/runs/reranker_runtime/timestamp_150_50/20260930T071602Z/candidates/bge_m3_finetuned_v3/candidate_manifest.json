@@ -1,0 +1,19 @@
+{
+  "component": "reranker",
+  "task": "candidate_generation",
+  "created_at": "2026-09-30T07:16:03.340306+00:00",
+  "query_count": 10,
+  "chunk_count": 2304,
+  "candidate_top_n": 60,
+  "retriever": {
+    "embedding_model": "bge_m3-finetuned-v3",
+    "batch_size": 16,
+    "normalize_embeddings": true,
+    "retrieval_backend": "precomputed"
+  },
+  "index_info": {
+    "retrieval_backend": "precomputed",
+    "candidate_source_path": "C:\\uit_HK5\\CS431\\final_project\\experiments\\runs\\hybrid_ablation\\hybrid_0_5_0_5\\timestamp_150_50\\experiments-runs-finetune-embedding-20260616-120132\\20260929T080723Z_cb4b49ac5516\\eval_results.json",
+    "embedding_model": "bge_m3-finetuned-v3"
+  }
+}

@@ -45,6 +45,18 @@ async def close_jev_http_client() -> None:
     _jev_http_client = None
     if client is not None and not client.is_closed:
         await client.aclose()
+
+
+QUERY_EXPANSION_CHOICES = {
+    "skip": (
+        "Câu hỏi tự đủ nghĩa, nêu rõ chủ đề/khái niệm/công thức và có thể "
+        "truy hồi trực tiếp mà không cần viết lại."
+    ),
+    "expand": (
+        "Câu hỏi có đại từ hoặc tham chiếu lịch sử, mơ hồ, đa ý, quá rộng "
+        "hoặc cần từ đồng nghĩa/biến thể để tăng recall."
+    ),
+}
 QUIZ_COUNT_CHOICES = {
     "unspecified": "Không nêu số lượng câu.",
     "other": "Có yêu cầu số câu ngoài 1–20; giữ nguyên số trong câu hỏi gốc.",
@@ -180,6 +192,15 @@ async def route_with_jev(
             ),
             "criteria": dict(route_criteria),
         },
+        "query_expansion": {
+            "type": "choice",
+            "instructions": (
+                "Chỉ quyết định nhu cầu mở rộng truy vấn cho AskTutor. Chọn skip cho "
+                "câu hỏi học thuật ngắn nhưng tự đủ nghĩa; chọn expand khi phụ thuộc "
+                "lịch sử, mơ hồ, đa ý hoặc cần biến thể tìm kiếm."
+            ),
+            "criteria": QUERY_EXPANSION_CHOICES,
+        },
         "num_questions": {
             "type": "choice",
             "instructions": (
@@ -264,6 +285,11 @@ async def route_with_jev(
         args: dict[str, object] = {"query": input_text}
         if route == "GenerateQuiz":
             args = _quiz_tool_args(input_text, answers)
+        elif route == "AskTutor":
+            args["expand_query"] = (
+                _choice(answers, "query_expansion", QUERY_EXPANSION_CHOICES)
+                == "expand"
+            )
         outcome = "success"
     except httpx.HTTPStatusError as error:
         outcome = "http_429" if error.response.status_code == 429 else "http_other"

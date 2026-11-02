@@ -62,9 +62,60 @@ class FlashRankReranker:
         return scores
 
 
-def load_reranker(config: dict[str, Any], lane_config: dict[str, Any], device: str | None) -> ModelLoadResult:
+class RuntimeBackendReranker:
+    def __init__(
+        self,
+        name: str,
+        backend: str,
+        batch_size: int,
+        max_length: int,
+        device: str | None,
+    ) -> None:
+        if batch_size < 1:
+            raise ValueError("batch_size phải lớn hơn 0")
+        from src.retrieval.reranking import load_reranker as load_runtime_reranker
+
+        self.name = name
+        self.model = load_runtime_reranker(
+            backend=backend,
+            device=device,
+            max_length=max_length,
+        )
+        self.model.batch_size = batch_size
+
+    def score_pairs(self, query: str, passages: list[str]) -> list[float]:
+        return self.model.score_pairs(query, passages)
+
+
+def load_reranker(
+    config: dict[str, Any],
+    lane_config: dict[str, Any],
+    device: str | None,
+) -> ModelLoadResult:
     name = config["name"]
     model_type = config.get("type", "sentence_transformers_cross_encoder")
+    if model_type == "runtime_backend":
+        try:
+            model = RuntimeBackendReranker(
+                name=name,
+                backend=str(config.get("backend", "openvino")),
+                batch_size=int(config.get("batch_size", 8)),
+                max_length=int(lane_config.get("max_length", 256)),
+                device=device,
+            )
+            return ModelLoadResult(name=name, status="completed", model=model)
+        except ModuleNotFoundError as error:
+            return ModelLoadResult(
+                name=name,
+                status="skipped_dependency_missing",
+                reason=str(error),
+            )
+        except Exception as error:
+            return ModelLoadResult(
+                name=name,
+                status="skipped_model_load_failed",
+                reason=f"{type(error).__name__}: {error}",
+            )
     if model_type == "baseline":
         return ModelLoadResult(name=name, status="completed", model=NoRerankModel())
     if model_type == "flashrank":

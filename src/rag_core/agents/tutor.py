@@ -17,6 +17,7 @@ import time
 from src.rag_core import resource_manager
 from src.shared.metrics import measure_rag_stage
 from src.rag_core.state import State
+from src.rag_core.utils import _extract_tool_args_from_state
 
 
 logger = logging.getLogger(__name__)
@@ -123,7 +124,6 @@ async def node_tutor(state: State):
     """Chạy Tutor node: lấy query, retrieval context, sinh answer và chuẩn hóa citation."""
     messages = state.get("messages", [])
     if not messages:
-        print(f"Nội dung người dùng gửi {messages}")
         return {"response": {}}
 
     # Format chat history cho prompt
@@ -133,9 +133,13 @@ async def node_tutor(state: State):
         history_str += f"{role}: {m.content}\n"
 
     last_message = messages[-1]
-    query = ""
+    tool_args = _extract_tool_args_from_state(state, "AskTutor")
+    query = str(tool_args.get("query") or "").strip()
+    expand_query = tool_args.get("expand_query", True)
+    if not isinstance(expand_query, bool):
+        expand_query = True
 
-    if hasattr(last_message, "tool_calls") and last_message.tool_calls:
+    if not query and hasattr(last_message, "tool_calls") and last_message.tool_calls:
         for tool_call in last_message.tool_calls:
             if tool_call["name"] in ["AskTutor", "Retrieve"]:
                 query = tool_call["args"].get("query", "")
@@ -148,20 +152,29 @@ async def node_tutor(state: State):
                 break
         if not query:
             query = last_message.content
-
     try:
         # BƯỚC 1: RETRIEVAL (Có truyền history_str để rewrite query)
         rag_core = resource_manager.get_rag_core()
-        # In ra màn hình console câu query
-        print(f"Query to RAG: {query}")
-        
         from langchain_core.runnables import RunnableLambda
+
         async def fetch_context(params: dict) -> str:
-            return await params["rag_core"].get_context(params["query"], chat_history=params["history_str"])
-            
-        context_chain = RunnableLambda(fetch_context).with_config(run_name="retrieve_context")
+            return await params["rag_core"].get_context(
+                params["query"],
+                chat_history=params["history_str"],
+                expand_query=params["expand_query"],
+            )
+
+        context_chain = RunnableLambda(fetch_context).with_config(
+            run_name="retrieve_context",
+            metadata={"expand_query": expand_query},
+        )
         context_start = time.perf_counter()
-        context = await context_chain.ainvoke({"rag_core": rag_core, "query": query, "history_str": history_str})
+        context = await context_chain.ainvoke({
+            "rag_core": rag_core,
+            "query": query,
+            "history_str": history_str,
+            "expand_query": expand_query,
+        })
         context_elapsed = time.perf_counter() - context_start
         logger.info(
             "[TUTOR_TIMING] context_chain=%.2fs context_chars=%d",
@@ -198,5 +211,10 @@ async def node_tutor(state: State):
         data["type"] = "rag"
         return {"response": data}
 
-    except Exception as e:
-        return {"response": _build_tutor_error_response(f"Lỗi: {e}")}
+    except Exception as error:
+        logger.error("Tutor failed (%s)", type(error).__name__)
+        return {
+            "response": _build_tutor_error_response(
+                "Không thể xử lý câu hỏi lúc này."
+            )
+        }

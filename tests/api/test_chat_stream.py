@@ -6,15 +6,20 @@ import sys
 import hashlib
 import uuid
 import time
+import threading
+from types import SimpleNamespace
 import numpy as np
 from pathlib import Path
 import pytest
 from prometheus_client import REGISTRY
+from langchain_core.messages import AIMessage
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, os.fspath(PROJECT_ROOT))
+from src.shared import metrics as shared_metrics
 
 from backend.app.services import chat as chat_service
+from backend.app.core.cache import semantic as semantic_cache_module
 from backend.app.models.user import ChatHistory
 from backend.app.core.cache.semantic import (
     SemanticCache,
@@ -65,6 +70,110 @@ async def _collect_stream(gen):
     async for item in gen:
         chunks.append(item)
     return chunks
+
+def test_stream_telemetry_deduplicates_model_usage_by_run_id():
+    telemetry = chat_service._StreamTelemetry()
+    first = {
+        "run_id": "generation-1",
+        "data": {
+            "output": AIMessage(
+                content="answer",
+                usage_metadata={
+                    "input_tokens": 120,
+                    "output_tokens": 30,
+                    "total_tokens": 150,
+                },
+            )
+        },
+    }
+    duplicate = dict(first)
+    second = {
+        "run_id": "generation-2",
+        "data": {
+            "output": AIMessage(
+                content="internal",
+                usage_metadata={
+                    "input_tokens": 20,
+                    "output_tokens": 5,
+                    "total_tokens": 25,
+                },
+            )
+        },
+    }
+
+    telemetry.record_model_usage(first)
+    telemetry.record_model_usage(duplicate)
+    telemetry.record_model_usage(second)
+
+    assert telemetry.llm_input_tokens == 140
+    assert telemetry.llm_output_tokens == 35
+    assert telemetry.llm_total_tokens == 175
+    assert telemetry.llm_generation_count == 2
+
+
+def test_usage_metadata_is_fail_safe_and_preserves_total_invariant():
+    malformed = SimpleNamespace(
+        usage_metadata={
+            "input_tokens": "invalid",
+            "output_tokens": None,
+            "total_tokens": -3,
+        }
+    )
+    missing_total = SimpleNamespace(
+        usage_metadata={
+            "input_tokens": 20,
+            "output_tokens": 5,
+            "total_tokens": 0,
+        }
+    )
+
+    assert chat_service._extract_usage_metadata(malformed) == {
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "total_tokens": 0,
+    }
+    assert chat_service._extract_usage_metadata(missing_total) == {
+        "input_tokens": 20,
+        "output_tokens": 5,
+        "total_tokens": 25,
+    }
+
+
+
+def test_chat_stage_metric_failure_does_not_break_request(monkeypatch):
+    class BrokenMetric:
+        def labels(self, **_labels):
+            return self
+
+        def observe(self, _value):
+            raise RuntimeError("metrics unavailable")
+
+    monkeypatch.setattr(shared_metrics, "CHAT_STAGE_DURATION", BrokenMetric())
+
+    with shared_metrics.measure_chat_stage("history_load"):
+        pass
+
+def test_semantic_cache_get_keeps_event_loop_responsive():
+    cache = SemanticCache.__new__(SemanticCache)
+    started = threading.Event()
+    release = threading.Event()
+
+    def blocking_get(_prompt):
+        started.set()
+        release.wait(timeout=1)
+        return {"text": "cached"}
+
+    cache._get_sync = blocking_get
+
+    async def exercise():
+        lookup = asyncio.create_task(cache.get("query"))
+        await asyncio.sleep(0.01)
+        assert started.is_set()
+        assert not lookup.done()
+        release.set()
+        return await asyncio.wait_for(lookup, timeout=1)
+
+    assert asyncio.run(exercise()) == {"text": "cached"}
 
 
 class _BrokenWorkflow:
@@ -231,6 +340,26 @@ def test_generate_stream_uses_single_workflow_execution(monkeypatch):
     assert workflow.ainvoke_calls == 0
     assert chunks[-1] == "data: [DONE]\n\n"
 
+def test_generate_stream_records_history_stage_metric(monkeypatch):
+    monkeypatch.setattr(chat_service, "workflow", _SingleRunWorkflow(), raising=False)
+    labels = {"stage": "history_load", "outcome": "success"}
+    before = REGISTRY.get_sample_value(
+        "puq_chat_stage_duration_seconds_count", labels=labels
+    ) or 0
+
+    asyncio.run(
+        _collect_stream(
+            chat_service.generate_chat_stream(
+                _MockDBSession(), "user-1", "conv-1", "tạo quiz cnn"
+            )
+        )
+    )
+
+    after = REGISTRY.get_sample_value(
+        "puq_chat_stage_duration_seconds_count", labels=labels
+    ) or 0
+    assert after == before + 1
+
 
 def test_generate_stream_emits_token_before_metadata(monkeypatch):
     workflow = _SingleRunWorkflow()
@@ -349,6 +478,7 @@ def test_chat_stream_cache_hit_saves_user_and_assistant_to_db(monkeypatch):
 
     assert user_msg.role == "user"
     assert user_msg.content == "RAG là gì?"
+
     assert user_msg.user_id == "user-100"
     assert user_msg.session_id == "session-200"
 
@@ -365,6 +495,54 @@ def test_chat_stream_cache_hit_saves_user_and_assistant_to_db(monkeypatch):
     assert payloads[-1]["type"] == "metadata"
     assert payloads[-1]["response"]["text"] == "Đây là câu trả lời được lấy từ cache, rất nhanh chóng và chính xác."
     assert chunks[-1] == "data: [DONE]\n\n"
+
+def test_semantic_cache_openai_embedding_records_usage_without_content(monkeypatch):
+    recorded = {}
+
+    class Observation:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return False
+
+        def update(self, **kwargs):
+            assert "input" not in kwargs
+            assert "output" not in kwargs
+            recorded["usage"] = kwargs["usage_details"]
+
+    class Client:
+        def start_as_current_observation(self, **kwargs):
+            recorded["model"] = kwargs["model"]
+            return Observation()
+
+    class EmbeddingsClient:
+        def create(self, *, input, model):
+            assert input == ["private prompt"]
+            assert model == "text-embedding-3-small"
+            return SimpleNamespace(
+                data=[SimpleNamespace(embedding=[0.1, 0.2, 0.3])],
+                usage=SimpleNamespace(prompt_tokens=7, total_tokens=7),
+            )
+
+    class Embeddings:
+        client = EmbeddingsClient()
+
+    monkeypatch.setattr(
+        semantic_cache_module,
+        "get_langfuse_client",
+        lambda: Client(),
+    )
+    cache = SemanticCache.__new__(SemanticCache)
+    cache.model_name = "text-embedding-3-small"
+    cache.embeddings = Embeddings()
+    cache._uses_openai_embeddings = True
+
+    vector = cache._embed("private prompt")
+
+    assert vector.tolist() == pytest.approx([0.1, 0.2, 0.3])
+    assert recorded["usage"] == {"input": 7, "total": 7}
+    assert recorded["model"] == "text-embedding-3-small"
 
 
 def test_semantic_cache_decision_logic():

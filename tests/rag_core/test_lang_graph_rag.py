@@ -71,7 +71,10 @@ def _record_node_duration(monkeypatch):
 
 def test_jev_supervisor_routes_to_agent_when_available(monkeypatch):
     async def _route(input_text, _history, _criteria):
-        return {"name": "AskTutor", "args": {"query": input_text}}
+        return {
+            "name": "AskTutor",
+            "args": {"query": input_text, "expand_query": False},
+        }
 
     monkeypatch.setattr(lang_graph_rag, "route_with_jev", _route)
     monkeypatch.setattr(lang_graph_rag, "supervisor_llm", FailingLLM())
@@ -86,9 +89,29 @@ def test_jev_supervisor_routes_to_agent_when_available(monkeypatch):
 
     assert result["tool_calls"] == [{
         "name": "AskTutor",
-        "args": {"query": "giải thích self-attention"},
+        "args": {
+            "query": "giải thích self-attention",
+            "expand_query": False,
+        },
     }]
 
+
+def test_luna_legacy_tutor_call_keeps_missing_expansion_default(monkeypatch):
+    fake_luna = FakeLLM(tool_calls=[{
+        "name": "AskTutor",
+        "args": {"query": "linear regression là gì"},
+        "id": "luna-call-1",
+    }])
+    monkeypatch.setattr(lang_graph_rag, "supervisor_llm", fake_luna)
+
+    result = asyncio.run(lang_graph_rag.node_supervisor({
+        "messages": [HumanMessage(content="linear regression là gì")]
+    }))
+
+    assert result["tool_calls"] == [{
+        "name": "AskTutor",
+        "args": {"query": "linear regression là gì"},
+    }]
 
 def test_jev_error_falls_back_to_luna_tool_call(monkeypatch):
     fake_luna = FakeLLM(tool_calls=[{

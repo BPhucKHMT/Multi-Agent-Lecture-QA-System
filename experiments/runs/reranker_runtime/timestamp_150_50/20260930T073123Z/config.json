@@ -1,0 +1,91 @@
+{
+  "dataset_version": "runtime_openvino_ablation_v1",
+  "strategy_id": "timestamp_150_50",
+  "split": "test",
+  "chunks_dir": "C:\\uit_HK5\\CS431\\final_project\\experiments\\data\\chunks\\timestamp_150_50",
+  "query_path": "C:\\uit_HK5\\CS431\\final_project\\experiments\\data\\ground_truth\\ground_truth_pilot.jsonl",
+  "qrels_path": "C:\\uit_HK5\\CS431\\final_project\\experiments\\data\\processed\\qrels_timestamp_150_50.jsonl",
+  "run_root": "C:\\uit_HK5\\CS431\\final_project\\experiments\\runs\\reranker_runtime",
+  "registry_path": "C:\\uit_HK5\\CS431\\final_project\\experiments\\runs\\registry.jsonl",
+  "candidate_top_n": 60,
+  "device": "cpu",
+  "require_completed_models": true,
+  "retriever": {
+    "embedding_model": "bge_m3-finetuned-v3",
+    "batch_size": 16,
+    "normalize_embeddings": true,
+    "retrieval_backend": "precomputed"
+  },
+  "latency_gates": {
+    "demo_target_p95_ms": 8000,
+    "demo_hard_cap_p95_ms": 15000
+  },
+  "candidate_pool_gates": {
+    "ndcg_at_10_max_drop": 0.005,
+    "mrr_at_10_max_drop": 0.01,
+    "recall_at_10_max_drop": 0.005,
+    "hit_at_5_max_drop": 0.005,
+    "p95_min_improvement": 0.2
+  },
+  "lanes": {
+    "production": {
+      "candidate_pool_sizes": [
+        24
+      ]
+    }
+  },
+  "metrics": {
+    "recall_at": [
+      10,
+      40
+    ],
+    "mrr_at": [
+      10
+    ],
+    "ndcg_at": [
+      10
+    ],
+    "hit_at": [
+      5
+    ],
+    "precision_at": [
+      1
+    ],
+    "map_at": [
+      10
+    ]
+  },
+  "models": [
+    {
+      "name": "no_rerank",
+      "type": "baseline",
+      "enabled": true,
+      "lanes": [
+        "production"
+      ]
+    },
+    {
+      "name": "runtime-openvino-b8",
+      "type": "runtime_backend",
+      "backend": "openvino",
+      "batch_size": 8,
+      "enabled": true,
+      "lanes": [
+        "production"
+      ]
+    },
+    {
+      "name": "runtime-openvino-b16",
+      "type": "runtime_backend",
+      "backend": "openvino",
+      "batch_size": 16,
+      "enabled": true,
+      "lanes": [
+        "production"
+      ]
+    }
+  ],
+  "candidate_source_path": "C:\\uit_HK5\\CS431\\final_project\\experiments\\runs\\hybrid_ablation\\hybrid_0_5_0_5\\timestamp_150_50\\experiments-runs-finetune-embedding-20260616-120132\\20260929T080723Z_cb4b49ac5516\\eval_results.json",
+  "query_limit": 20,
+  "query_offset": 0
+}

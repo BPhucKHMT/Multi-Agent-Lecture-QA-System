@@ -1,0 +1,52 @@
+dataset_version: runtime_openvino_ablation_v1
+strategy_id: timestamp_150_50
+split: test
+chunks_dir: experiments/data/chunks/timestamp_150_50
+query_path: experiments/data/ground_truth/ground_truth_pilot.jsonl
+qrels_path: experiments/data/processed/qrels_timestamp_150_50.jsonl
+run_root: experiments/runs/reranker_runtime
+registry_path: experiments/runs/registry.jsonl
+candidate_top_n: 60
+device: cpu
+require_completed_models: true
+retriever:
+  embedding_model: bge_m3-finetuned-v3
+  batch_size: 16
+  normalize_embeddings: true
+  retrieval_backend: precomputed
+latency_gates:
+  demo_target_p95_ms: 8000
+  demo_hard_cap_p95_ms: 15000
+candidate_pool_gates:
+  ndcg_at_10_max_drop: 0.005
+  mrr_at_10_max_drop: 0.010
+  recall_at_10_max_drop: 0.005
+  hit_at_5_max_drop: 0.005
+  p95_min_improvement: 0.20
+lanes:
+  production:
+    candidate_pool_sizes: [24, 32, 40, 48, 60]
+metrics:
+  recall_at: [10, 40]
+  mrr_at: [10]
+  ndcg_at: [10]
+  hit_at: [5]
+  precision_at: [1]
+  map_at: [10]
+models:
+  - name: no_rerank
+    type: baseline
+    enabled: true
+    lanes: [production]
+  - name: runtime-openvino-b8
+    type: runtime_backend
+    backend: openvino
+    batch_size: 8
+    enabled: true
+    lanes: [production]
+  - name: runtime-openvino-b16
+    type: runtime_backend
+    backend: openvino
+    batch_size: 16
+    enabled: true
+    lanes: [production]
