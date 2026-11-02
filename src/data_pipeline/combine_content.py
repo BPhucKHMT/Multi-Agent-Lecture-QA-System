@@ -1,9 +1,8 @@
-import os
 import json
 import re
 from pathlib import Path
 from difflib import SequenceMatcher
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any
 
 # Constants
 SIMILARITY_THRESHOLD = 0.85

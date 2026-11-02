@@ -2,7 +2,7 @@ import os
 import json
 import yaml
 from pathlib import Path
-from typing import List, Dict, Any
+from typing import List, Any
 from dotenv import load_dotenv
 from langchain.schema import Document
 

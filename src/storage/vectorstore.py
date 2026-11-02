@@ -1,4 +1,3 @@
-from typing import Union
 from langchain_chroma import Chroma
 from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain.schema import Document

@@ -1,9 +1,8 @@
-import os
 import json
 import torch
 import re
 from pathlib import Path
-from typing import List, Dict, Any
+from typing import Dict, Any
 from .llm_utils import correct_ocr_text
 
 class OCRProcessor:

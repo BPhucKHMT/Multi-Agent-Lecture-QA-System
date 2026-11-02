@@ -5,28 +5,28 @@ export type ChatRequest = {
   user_message: string;
 };
 
-export type ChatStreamTokenEvent = {
+type ChatStreamTokenEvent = {
   type: "token";
   content: string;
 };
 
-export type ChatStreamMetadataEvent = {
+type ChatStreamMetadataEvent = {
   type: "metadata";
   conversation_id: string;
   response: Partial<RagResponse>;
 };
 
-export type ChatStreamContextEvent = {
+type ChatStreamContextEvent = {
   type: "context";
   docs: any[];
 };
 
-export type ChatStreamStatusEvent = {
+type ChatStreamStatusEvent = {
   type: "status";
   status: string;
 };
 
-export type ChatStreamErrorEvent = {
+type ChatStreamErrorEvent = {
   type: "error";
   content: string;
 };

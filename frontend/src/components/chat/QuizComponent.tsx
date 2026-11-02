@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { CheckCircle2, XCircle, Info, ExternalLink, RotateCcw } from "lucide-react";
 import type { QuizQuestion } from "../../types/rag";

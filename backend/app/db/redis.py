@@ -58,17 +58,3 @@ def blacklist_jti(redis_client: redis.Redis, jti: str, ttl_seconds: int) -> None
 def is_jti_blacklisted(redis_client: redis.Redis, jti: str) -> bool:
     """Kiểm tra JTI có trong blacklist không."""
     return redis_client.exists(f"auth:revoked_jti:{jti}") == 1
-
-
-def check_rate_limit(
-    redis_client: redis.Redis, key: str, limit: int, window_seconds: int
-) -> bool:
-    """Kiểm tra key có vượt giới hạn request trong cửa sổ thời gian không.
-
-    Trả `True` khi đã vượt giới hạn, `False` khi request vẫn được phép đi tiếp.
-    Dùng Redis `INCR` + `EXPIRE` để giữ counter đơn giản và tự hết hạn.
-    """
-    count = redis_client.incr(key)
-    if count == 1:
-        redis_client.expire(key, window_seconds)
-    return count > limit

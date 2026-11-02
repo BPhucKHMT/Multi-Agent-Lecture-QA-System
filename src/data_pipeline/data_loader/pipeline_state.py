@@ -1,9 +1,8 @@
 import json
-import os
 import shutil
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List
 
 class PipelineState:
     """Track trạng thái pipeline + backup dữ liệu."""

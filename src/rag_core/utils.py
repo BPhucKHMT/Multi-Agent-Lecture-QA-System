@@ -1,4 +1,3 @@
-import json
 from src.rag_core.state import State
 
 def _extract_tool_args_from_state(state: State, tool_name: str) -> dict:

@@ -2,7 +2,7 @@ export type RagConfidence = "high" | "medium" | "low" | "zero";
 
 export type RagResponseType = "rag" | "direct" | "quiz" | "math" | "coding" | "error";
 
-export type QuizQuestionType = "multiple_choice" | "true_false" | "short_answer";
+type QuizQuestionType = "multiple_choice" | "true_false" | "short_answer";
 
 export interface QuizQuestion {
   question: string;
@@ -15,7 +15,7 @@ export interface QuizQuestion {
   timestamp: string;
 }
 
-export interface MathStep {
+interface MathStep {
   title: string;
   content: string;
 }

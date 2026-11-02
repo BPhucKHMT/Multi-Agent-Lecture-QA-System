@@ -1,11 +1,8 @@
 import asyncio
-import builtins
 import json
 import os
 import sys
-import hashlib
 import uuid
-import time
 import threading
 from types import SimpleNamespace
 import numpy as np
@@ -28,7 +25,6 @@ from backend.app.core.cache.semantic import (
     is_cache_lookup_allowed,
     normalize_query,
     same_intent,
-    keyword_overlap,
 )
 
 

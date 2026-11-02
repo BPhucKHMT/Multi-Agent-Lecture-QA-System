@@ -1,5 +1,3 @@
-import React from "react";
-
 export function ShieldIcon() {
   return (
     <svg viewBox="0 0 24 24" aria-hidden="true" className="h-6 w-6 text-cyan-900">

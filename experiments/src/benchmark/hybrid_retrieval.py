@@ -1,9 +1,8 @@
-import json
 import math
 import re
 from collections import Counter
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Protocol
+from typing import Any, Dict, Optional, Protocol
 
 from experiments.src.benchmark.embedding_benchmark import (
     append_registry,
