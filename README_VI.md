@@ -26,7 +26,6 @@ api-gpu -> FastAPI/RAG GPU local, http://localhost:8000
 redis-stack -> Redis Stack + RedisInsight, http://localhost:8001
 pipeline-cpu -> Data pipeline CPU, chạy khi cần ingest dữ liệu
 pipeline-gpu -> Data pipeline GPU, chạy khi cần ingest dữ liệu bằng GPU
-api-test -> môi trường chạy Python tests ổn định, kế thừa CPU runtime
 ```
 
 > Frontend và backend là **2 container riêng**, nhưng được quản lý chung trong `docker-compose.yaml`.
@@ -118,18 +117,15 @@ docker compose --profile pipeline-gpu run --rm pipeline-gpu
 
 Pipeline image chứa OCR/Whisper/video dependencies nặng, được tách riêng khỏi image deploy API.
 
-### 5. Chạy Python tests bằng Docker
+### 5. Chạy Python tests trong virtual environment local
 
-Build test target một lần sau khi dependency thay đổi; các session sau dùng lại image. Source và tests được bind-mount nên sửa code Python thông thường không cần build lại.
+Kích hoạt virtual environment Python 3.12 rồi chạy từ thư mục gốc repository:
 
-```powershell
-docker compose --profile test build api-test
-docker compose --profile test run --rm api-test
+```bash
+python3.12 -m pip install -r requirements.cpu.txt -r requirements.test.txt && python3.12 -m pytest -q tests
 ```
 
-Không bắt buộc dùng virtual environment trên host. Image CPU production không chứa `pytest`; test tooling được tách riêng trong target `test-cpu`.
-
-GitHub Actions (`.github/workflows/ci.yml`) chạy Python 3.12 CPU tests trong `tests/` và `experiments/tests/`, Vitest của frontend và production build trên mỗi push/pull request. CI dùng chế độ model offline, không cần khóa provider thật. Các kiểm thử reranker với model thật dùng cơ chế skip khi thiếu artifacts đã có; `PYTEST_ADDOPTS` cũng loại riêng `test_load_reranker_openvino_falls_back_to_onnx` vì kiểm tra artifacts hiện tại dẫn tới tải model trước khi vào backend được mock. Chạy `python -m pytest -q tests` tại máy local, không áp dụng cấu hình loại test của CI, để xem kết quả đầy đủ.
+GitHub Actions (`.github/workflows/ci.yml`) chạy Python 3.12 CPU tests trong `tests/` và `experiments/tests/`, Vitest của frontend và production build trên mỗi push/pull request. CI dùng chế độ model offline, không cần khóa provider thật. Các kiểm thử reranker với model thật dùng cơ chế skip khi thiếu artifacts đã có; `PYTEST_ADDOPTS` cũng loại riêng `test_load_reranker_openvino_falls_back_to_onnx` vì kiểm tra artifacts hiện tại dẫn tới tải model trước khi vào backend được mock. Lệnh local phía trên không áp dụng cấu hình loại test riêng của CI.
 
 ### 6. Build image riêng nếu cần đo size
 

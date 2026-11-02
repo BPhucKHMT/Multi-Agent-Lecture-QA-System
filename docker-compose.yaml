@@ -36,35 +36,6 @@ services:
           - api
     restart: unless-stopped
 
-  api-test:
-    profiles: ["test"]
-    build:
-      context: .
-      target: test-cpu
-    image: rag-qabot:test-cpu
-    env_file:
-      - .env
-    environment:
-      RAG_DEVICE: cpu
-      EXPERIENTIAL_API_KEY: ""
-      LANGFUSE_TRACING_ENABLED: ""
-      SEMANTIC_CACHE_ENABLED: "false"
-      SEMANTIC_CACHE_PREWARM_ENABLED: "false"
-      myAPIKey: "test-key"
-      TOKENIZERS_PARALLELISM: "false"
-    volumes:
-      - ./backend:/app/backend
-      - ./src:/app/src
-      - ./tests:/app/tests
-      - ./experiments:/app/experiments
-      - ./scripts:/app/scripts
-      - ./artifacts:/app/artifacts
-      - ./models:/app/models
-      - ./config.yaml:/app/config.yaml:ro
-      - hf_cache:/app/.cache/huggingface
-    command: ["python", "-m", "pytest", "-q", "tests"]
-    restart: "no"
-
   frontend:
     profiles: ["frontend"]
     build:
