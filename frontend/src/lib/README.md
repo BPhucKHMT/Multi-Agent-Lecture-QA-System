@@ -37,6 +37,21 @@ Chat streaming cần parse SSE event:
 - `error`;
 - `[DONE]`.
 
+### Làm mới phiên đăng nhập
+
+`client.ts` cung cấp `authenticatedFetch` dùng chung cho API JSON và `streamChat`.
+Khi nhận HTTP 401, client gửi `POST /api/v1/auth/refresh` với
+`{ "refresh_token": "..." }`, lưu cả `access_token` và `refresh_token` mới vào
+localStorage, rồi thử lại request gốc tối đa một lần. Các request đồng thời trong
+cùng trang dùng chung một refresh đang chạy; 401 đến muộn dùng token đã xoay
+thay vì xoay lại. Login, register và refresh không được tự động thử lại.
+
+Nếu thiếu refresh token hoặc refresh thất bại (HTTP, mạng, timeout, dữ liệu token
+không hợp lệ), client xóa token và phát sự kiện `auth:expired`.
+`ConversationStoreProvider` gọi `logout` hiện có để xóa hội thoại và trạng thái
+request, sau đó chuyển về `/login`. Kết quả refresh đang chờ không được khôi phục
+token nếu phiên đã bị đăng xuất hoặc thay đổi.
+
 ---
 
 ## Quy ước
