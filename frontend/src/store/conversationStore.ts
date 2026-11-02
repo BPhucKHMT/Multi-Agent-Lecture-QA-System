@@ -1,5 +1,7 @@
 import { createContext, createElement, useCallback, useContext, useMemo, useRef, useState, useEffect, type ReactNode } from "react";
 import { flushSync } from "react-dom";
+import { useNavigate } from "react-router-dom";
+import { AUTH_EXPIRED_EVENT } from "../lib/api/client";
 import { streamChat, fetchChatHistory, fetchChatSessions } from "../lib/api/chat";
 import type { ChatRequest } from "../types/api";
 import type { RagResponse } from "../types/rag";
@@ -107,6 +109,7 @@ function createConversationId(): string {
 }
 
 export function ConversationStoreProvider({ children }: { children: ReactNode }) {
+  const navigate = useNavigate();
   const [conversationId, setConversationId] = useState(() => createConversationId());
   const [messages, setMessages] = useState<ConversationMessage[]>([]);
   const [sessions, setSessions] = useState<ChatSession[]>([]);
@@ -348,6 +351,10 @@ export function ConversationStoreProvider({ children }: { children: ReactNode })
   }, [refreshSessions]);
 
   const logout = useCallback(() => {
+    requestTokenRef.current += 1;
+    inFlightLockRef.current = false;
+    setIsLoading(false);
+    setFailedPromptState(null);
     localStorage.removeItem("access_token");
     localStorage.removeItem("refresh_token");
     setMessages([]);
@@ -356,6 +363,15 @@ export function ConversationStoreProvider({ children }: { children: ReactNode })
     setError(null);
     setStreamingStatus(null);
   }, []);
+
+  useEffect(() => {
+    const handleAuthExpired = () => {
+      logout();
+      navigate("/login", { replace: true });
+    };
+    window.addEventListener(AUTH_EXPIRED_EVENT, handleAuthExpired);
+    return () => window.removeEventListener(AUTH_EXPIRED_EVENT, handleAuthExpired);
+  }, [logout, navigate]);
 
   const clearConversation = useCallback(() => {
     requestTokenRef.current += 1;
