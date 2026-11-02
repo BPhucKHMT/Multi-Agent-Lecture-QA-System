@@ -111,7 +111,7 @@ def _stub_quiz_output(monkeypatch, questions):
             return FixedPrompt()
 
     monkeypatch.setattr(quiz.resource_manager, "get_vector_retriever", lambda: _FakeRetriever())
-    monkeypatch.setattr(quiz.resource_manager, "get_quiz_reranker", lambda: _FakeReranker())
+    monkeypatch.setattr(quiz.resource_manager, "get_reranker", lambda: _FakeReranker())
     monkeypatch.setattr(quiz, "get_llm", lambda: object())
     monkeypatch.setattr(quiz, "JsonOutputParser", _FakeJsonOutputParser)
     monkeypatch.setattr(quiz, "ChatPromptTemplate", FixedChatPromptTemplate)
@@ -119,7 +119,7 @@ def _stub_quiz_output(monkeypatch, questions):
 
 def test_node_quiz_returns_structured_error_when_parser_and_fallback_fail(monkeypatch):
     monkeypatch.setattr(quiz.resource_manager, "get_vector_retriever", lambda: _FakeRetriever())
-    monkeypatch.setattr(quiz.resource_manager, "get_quiz_reranker", lambda: _FakeReranker())
+    monkeypatch.setattr(quiz.resource_manager, "get_reranker", lambda: _FakeReranker())
     monkeypatch.setattr(quiz, "get_llm", lambda: object())
     monkeypatch.setattr(quiz, "JsonOutputParser", _FakeJsonOutputParser)
     monkeypatch.setattr(quiz, "ChatPromptTemplate", _FakeChatPromptTemplate)
@@ -181,7 +181,7 @@ def test_node_quiz_honors_structured_settings_and_hides_excluded_fields(
             return FakePrompt()
 
     monkeypatch.setattr(quiz.resource_manager, "get_vector_retriever", lambda: CapturingRetriever())
-    monkeypatch.setattr(quiz.resource_manager, "get_quiz_reranker", lambda: CapturingReranker())
+    monkeypatch.setattr(quiz.resource_manager, "get_reranker", lambda: CapturingReranker())
     monkeypatch.setattr(quiz, "get_llm", lambda: object())
     monkeypatch.setattr(quiz, "JsonOutputParser", _FakeJsonOutputParser)
     monkeypatch.setattr(quiz, "ChatPromptTemplate", FakePromptTemplate)

@@ -62,7 +62,7 @@ def retrieve_lecture_context(query: str, top_k: int = 3) -> tuple[str, list]:
     """
     try:
         retriever = resource_manager.get_hybrid_retriever()
-        reranker = resource_manager.get_tutor_reranker()
+        reranker = resource_manager.get_reranker()
 
         if hasattr(retriever, "invoke"):
             docs = retriever.invoke(query)
