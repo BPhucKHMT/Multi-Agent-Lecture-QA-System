@@ -60,6 +60,7 @@ saved_conversations/
 .idea/
 .DS_Store
 Thumbs.db
+desktop.ini
 .sixth/
 .worktrees/
 .pytest_cache/
@@ -79,6 +80,7 @@ agent-skills/
 # Temporary, Test, & Result files
 test_cleaner.py
 temp.txt
+/src/notebook_baseline/0.26.0
 tests/result/
 analyze_edges.py
 analyze_streaming.py
