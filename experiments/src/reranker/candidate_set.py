@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union, Tuple
 
-from experiments.src.benchmark.embedding_benchmark import retrieve, stable_hash
+from experiments.src.benchmark.embedding_benchmark import retrieve
 from experiments.src.data.chunk_loader import load_chunks, load_parent_chunks
 from experiments.src.data.qrels_loader import load_dynamic_qrels, load_parent_qrels_from_child_qrels
 from experiments.src.evaluation.metrics import mean_metrics

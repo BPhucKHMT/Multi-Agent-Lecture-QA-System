@@ -1,6 +1,6 @@
-import React, { useState, type FormEvent } from "react";
+import { useState, type FormEvent } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { ShieldIcon, MailIcon, LockIcon, EyeIcon, SparkIcon, UserIcon } from "../components/shared/Icons";
+import { MailIcon, LockIcon, EyeIcon, SparkIcon, UserIcon } from "../components/shared/Icons";
 
 export default function RegisterPage() {
   const [username, setUsername] = useState("");

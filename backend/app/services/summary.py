@@ -4,7 +4,7 @@ Refactored cho backend structure mới, sẵn sàng cho Redis cache.
 """
 import logging
 from pathlib import Path
-from typing import Dict, Optional
+from typing import Dict
 import os
 
 from langchain_core.messages import HumanMessage

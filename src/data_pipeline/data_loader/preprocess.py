@@ -16,7 +16,7 @@ Cách dùng:
 
 from __future__ import annotations
 from pathlib import Path
-from typing import Dict, Any, List, Optional, Tuple
+from typing import Optional, Tuple
 import json
 import argparse
 import re

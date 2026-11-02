@@ -1,5 +1,4 @@
 import cv2
-import os
 import json
 from pathlib import Path
 from typing import List, Dict, Any
@@ -44,7 +43,6 @@ class KeyframeExtractor:
                     out_path = output_dir / f"{f_idx:06d}.webp"
                     # OpenCV imwrite has issues with Unicode paths on Windows
                     # Workaround: imencode then write to file
-                    import numpy as np
                     ret_enc, buffer = cv2.imencode(".webp", frame, [cv2.IMWRITE_WEBP_QUALITY, 80])
                     if ret_enc:
                         with open(out_path, "wb") as f:
