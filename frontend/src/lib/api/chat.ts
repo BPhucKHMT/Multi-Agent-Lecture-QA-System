@@ -1,4 +1,4 @@
-import { apiClient, API_BASE_URL } from "./client";
+import { apiClient, authenticatedFetch } from "./client";
 import type { ChatRequest, ChatStreamEvent } from "../../types/api";
 import type { RagConfidence, RagResponse, RagResponseType } from "../../types/rag";
 
@@ -49,13 +49,9 @@ export async function streamChat(
 ): Promise<void> {
 
   try {
-    const token = localStorage.getItem("access_token");
-    const response = await fetch(`${API_BASE_URL}/api/v1/chat/stream`, {
+    const response = await authenticatedFetch("/api/v1/chat/stream", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     });
 
