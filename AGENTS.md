@@ -1,293 +1,63 @@
-# AGENTS.md — Hướng dẫn cho AI Agent làm việc với dự án RAG QABot
+# Repository Guidelines
 
-> Tài liệu này mô tả kiến trúc, quy ước, và hướng dẫn cho các AI coding agent (Copilot, Gemini, Claude, v.v.) khi đọc hiểu và chỉnh sửa codebase.
+## Project Overview
 
----
+PUQ RAG QABot answers Vietnamese UIT course questions using lecture/video retrieval and a LangGraph multi-agent supervisor. The application is a FastAPI service (`backend/`), a React/TypeScript SPA (`frontend/`), and a Python RAG/ingestion engine (`src/`). PostgreSQL stores users and conversations; Redis Stack supports token revocation, rate limits, and semantic caching; Chroma stores lecture embeddings.
 
-Khi thực hiện bất kì plan trong docs nào cũng phải update lại kết quả đã thực hiện vào đúng phần docs đó.
-Ví dụ: nếu đang làm plan trong `Change_Generation.md` thì sau khi hoàn thành mỗi checklist item, phải cập nhật vào phần `Checklist triển khai` trong file đó. Không cập nhật vào đây.
+## Architecture & Data Flow
 
-## 📌 Tổng quan dự án
+- `frontend/src/lib/api/chat.ts` posts an access-token-authenticated request to `POST /api/v1/chat/stream` and parses SSE `token`, `status`, `context`, `metadata`, and `error` events.
+- `backend/app/api/v1/endpoints/chat.py` injects authentication, SQLAlchemy session, binary Redis client, and rate limiting. `backend/app/services/chat.py` loads/saves PostgreSQL history, checks Redis semantic cache, streams `workflow.astream_events(...)`, and persists the final answer.
+- `src/rag_core/lang_graph_rag.py` routes **one tool/agent per turn**: Jev (`src/generation/jev_router.py`) first, GPT-6 Luna tool calling on failure, then a simple fallback. The first tool call selects tutor, quiz, coding, math, or direct. Graph state lives in `src/rag_core/state.py`; coding and math are subgraphs.
+- Tutor uses `src/rag_core/offline_rag.py`: query expansion → hybrid Chroma/BM25 retrieval (`src/retrieval/`) → reranking → cited answer. Quiz also retrieves lecture context. `src/rag_core/resource_manager.py` owns shared, lazily initialized heavy retrievers, vector DB, and separate tutor/quiz rerankers; reuse them rather than constructing models per request.
+- `src/data_pipeline/data_loader/pipeline.py` ingests playlists, transcripts, and visual content into `artifacts/` and the Chroma index. `config.yaml` selects ingestion settings; `src/shared/config.py:get_path` resolves `PUQ_*` artifact path overrides.
 
-**RAG QABot** (PUQ Q&A) là hệ thống hỏi đáp tự động cho các môn học tại UIT, sử dụng kiến trúc **Retrieval-Augmented Generation (RAG)** kết hợp với **Multi-Agent Supervisor**.
+## Key Directories
 
-- **Ngôn ngữ chính**: Python 3.12+
-- **Frontend**: React + Vite + TailwindCSS (`frontend/`)
-- **Backend**: FastAPI (`backend/app/main.py`)
-- **LLM**: Experiential Labs Jev (`jev-latest`, typed `/v1/systemone`) là Supervisor chính; GPT-6 Luna qua LangChain `ChatOpenAI` là fallback và phục vụ các agent
-- **Vector DB**: ChromaDB (persist tại `artifacts/database_semantic/`)
-- **Embedding**: BAAI/bge-m3 (HuggingFace) hoặc OpenAI `text-embedding-3-small`
-- **Reranker**: BAAI/bge-reranker-base (CrossEncoder)
-- **Orchestration**: LangGraph (Multi-Agent Supervisor workflow)
-- **Ngôn ngữ giao tiếp**: Tiếng Việt (comments, prompts, UI)
+- `backend/app/`: API v1 routes, Pydantic schemas, auth dependencies, chat service, DB models/cache, and application lifecycle; `backend/alembic/` holds migrations.
+- `src/rag_core/`, `src/retrieval/`, `src/generation/`, `src/storage/`: graph/agents, search/reranking, LLM clients, and Chroma access.
+- `src/data_pipeline/`: ingestion and indexing; `artifacts/`: generated transcripts, chunks, videos, vector DB, and other runtime data, not source code.
+- `frontend/src/`: React routes/components, Context-based conversation state, typed API client, and co-located tests.
+- `tests/`: Python unit/API/RAG tests; `scripts/`: live supervisor checks and benchmarks; `experiments/`: offline retrieval/evaluation work; `docs/`: research and implementation plans.
 
----
+## Development Commands
 
-## 🏗️ Kiến trúc hệ thống
+Run from the repository root unless noted:
 
-Hệ thống được thiết kế theo mô hình **Multi-Agent Supervisor** sử dụng LangGraph để điều phối các chuyên gia khác nhau xử lý yêu cầu người dùng.
-
-```mermaid
-graph TD
-    User([User/Browser]) --> API[FastAPI Backend]
-    API --> Supervisor{Supervisor Agent}
-
-    subgraph "Specialized Agents (Workers)"
-        Supervisor -->|AskTutor| Tutor[Tutor Agent]
-        Supervisor -->|CodeAssistant| Coding[Coding Agent]
-        Supervisor -->|MathSolver| Math[Math Agent]
-        Supervisor -->|GenerateQuiz| Quiz[Quiz Agent]
-        Supervisor -->|AskGeneral| Direct[Direct Agent]
-    end
-
-    %% Tutor Agent Detail
-    Tutor --> HybridSearch[Hybrid Search: Vector + BM25]
-    HybridSearch --> Reranker[BGE Reranker]
-    Reranker --> LLM_Tutor[LLM Generation]
-
-    %% Coding Agent Detail
-    subgraph "Coding Subgraph"
-        Coding --> GenCode[Generate Code]
-        GenCode --> ClassifyCode{Classify: Heavy/Light}
-        ClassifyCode -->|Light| ExecCode[Execute Sandbox]
-        ExecCode -->|Error| FixCode[Fix Code]
-        FixCode --> ClassifyCode
-        ClassifyCode -->|Heavy| ExplainCode[Explain Only]
-    end
-
-    %% Math Agent Detail
-    subgraph "Math Subgraph"
-        Math --> GenSympy[Generate Sympy Code]
-        GenSympy --> VerifySympy[Execute & Verify]
-        VerifySympy --> DeriveMath[Derive Step-by-Step]
-    end
-
-    %% Exit
-    LLM_Tutor --> END([Final Response])
-    format_response --> END
-    DeriveMath --> END
-    Quiz --> END
-    Direct --> END
+```text
+pip install -r requirements.txt
+python -m uvicorn backend.app.main:app --host 0.0.0.0 --port 8000 --reload
+npm --prefix frontend ci
+npm --prefix frontend run dev
+python -m src.data_pipeline.data_loader.pipeline
+pytest -q tests
+pytest -q tests/rag_core/test_lang_graph_rag.py
+npm --prefix frontend run test
+npm --prefix frontend run build
 ```
 
-### Chi tiết các Agent chuyên trách
+`npm --prefix frontend run build` runs `tsc -b && vite build`. On Windows, `.\dev.ps1 up` starts the CPU API, frontend, Redis, and monitoring with Docker Compose; `.\dev.ps1 up -NoMonitoring` omits monitoring, `-Gpu` selects GPU, and `.\dev.ps1 down` stops the stack. Alternatively: `docker compose --profile cpu --profile frontend up --build`. Apply migrations using `alembic -c backend/alembic.ini upgrade head` when needed. There is no configured repository-wide Python lint or type-check command, nor an npm lint script.
 
-1. **`Supervisor`**: "Bộ não" điều phối, sử dụng Tool Calling để phân loại câu hỏi và ủy quyền cho Agent phù hợp. Nó cũng thực hiện điều hướng cứng (Deterministic Steering) dựa trên pattern để tăng tốc.
-2. **`Tutor` (RAG Core)**: Chuyên gia về kiến thức bài giảng. Sử dụng quy trình RAG chuẩn: Tìm kiếm Hybrid (Vector + Keyword) -> Tái xếp hạng (Reranker) -> Tổng hợp câu trả lời kèm citation.
-3. **`Coding`**: Chuyên gia lập trình. Có khả năng tự sửa lỗi (Self-correction) bằng cách chạy code trong sandbox, bắt lỗi và yêu cầu LLM sửa lại cho đến khi thành công hoặc đạt giới hạn thử lại.
-4. **`Math`**: Chuyên gia toán học. Sử dụng thư viện Sympy để giải toán chính xác thay vì chỉ dựa vào suy luận của LLM, sau đó trình bày lại các bước giải bằng LaTeX.
-5. **`Quiz`**: Chuyên gia đánh giá. Trích xuất ngữ cảnh từ bài giảng để tạo ra các câu hỏi trắc nghiệm tương tác.
-6. **`Direct`**: Xử lý các câu hỏi xã giao, chào hỏi hoặc kiến thức tổng quát không cần tra cứu dữ liệu chuyên ngành.
+## Code Conventions & Common Patterns
 
-### LangGraph Workflow (Multi-Agent)
+- Python modules in `backend/` and `src/` use absolute imports (`from src.rag_core.state import State`); identifiers use `snake_case`/`PascalCase`. Comments, docstrings, prompts, and user-facing text are Vietnamese. Keep changes scoped and update the affected tests/contracts rather than duplicating an existing pattern.
+- FastAPI uses `Depends(...)` for user, SQLAlchemy, Redis, and rate-limit dependencies. Async chat streams emit SSE; synchronous ML initialization/work is offloaded to worker threads so it does not block the event loop. Background prewarm and external integrations log failures explicitly.
+- Preserve the shared response contract: `text`, `video_url`, `title`, `filename`, `start_timestamp`, `end_timestamp`, `confidence`, `type` (plus agent-specific data). Citation markers `[0]`, `[1]`, ... in `text` index **equal-length, aligned** metadata arrays consumed by `frontend/src/components/chat/MarkdownRenderer.tsx`.
+- Tag final streamed model calls `final_answer` or `final_answer_json`; `backend/app/services/chat.py` filters out untagged/intermediate tokens such as `internal_query`. Use the binary Redis client for vector semantic cache; the text client serves auth/rate-limit operations.
+- Frontend state uses React Context and hooks (`frontend/src/store/conversationStore.ts`); chat transport and response normalization live in `frontend/src/lib/api/`. Keep the TypeScript API/SSE contracts aligned with Python responses.
+- When implementing a plan in `docs/`, record checklist progress and verification **in that same plan file**, not in this guide.
 
-1. **`Supervisor`**: Phân loại yêu cầu người dùng (Chào hỏi, Học tập, Lập trình, Toán học, Quiz).
-2. **`Tutor`**: Chạy pipeline RAG để trả lời kiến thức từ bài giảng.
-3. **`Coding`**: Chuyên trách giải quyết các bài toán lập trình, có khả năng chạy code sandbox.
-4. **`Math`**: Giải quyết các bài toán công thức, logic toán học.
-5. **`Quiz`**: Tạo câu hỏi kiểm tra kiến thức dựa trên ngữ cảnh video.
+## Important Files
 
----
+`backend/app/main.py` (lifespan/API entry), `backend/app/services/chat.py` (stream/cache/history), `backend/app/core/config.py` (service settings), `src/rag_core/lang_graph_rag.py` (routing), `src/rag_core/state.py` (graph contract), `src/rag_core/resource_manager.py` (heavy resources), `src/rag_core/offline_rag.py` (retrieval), `frontend/src/lib/api/chat.ts` (SSE consumer), `frontend/src/store/conversationStore.ts` (UI state), `.env.example` (required configuration), and `docker-compose.yaml`/`dev.ps1` (local stack). See `backend/README.md`, `frontend/README.md`, and `src/README.md` for subsystem detail; verify commands against entry points because some older docs contain obsolete paths.
 
-## 📂 Cấu trúc thư mục & trách nhiệm module
+## Runtime/Tooling Preferences
 
-```
-final_project/
-├── frontend/                       # ⚛️ React Frontend (Vite + TS)
-├── src/
-│   ├── api/                        # 🔌 Backend API (FastAPI)
-│   │   ├── server.py               # Entry point
-│   │   ├── router.py               # API Endpoints (/chat, /videos)
-│   │   └── services/               # Logic nghiệp vụ (chat_service, summary_service)
-│   │
-│   ├── rag_core/                   # 🧠 Orchestration & Agents
-│   │   ├── lang_graph_rag.py       # LangGraph definition & Supervisor
-│   │   ├── agents/                 # Định nghĩa các chuyên gia (tutor, coding, math, quiz)
-│   │   ├── tools/                  # Công cụ cho agents (sandbox, retrieval)
-│   │   └── state.py                # Graph State definition
-│   │
-│   ├── retrieval/                  # 🔍 Retrieval components
-│   │   ├── hybrid_search.py        # EnsembleRetriever (BM25 + Vector)
-│   │   ├── keyword_search.py       # BM25 keyword search
-│   │   ├── reranking.py            # CrossEncoder reranker
-│   │   └── text_splitters/         # Logic chia nhỏ văn bản (Semantic/Recursive)
-│   │
-│   ├── data_pipeline/              # 📥 Data ingestion (Crawl → Process → Embed)
-│   │   └── pipeline.py             # End-to-end pipeline
-│   │
-│   ├── storage/                    # 📦 Vector DB management
-│   │   └── vectorstore.py          # ChromaDB wrapper
-│   │
-│   └── generation/                 # 🤖 LLM Factory
-│       └── llm_model.py            # Khởi tạo ChatOpenAI
-│
-├── artifacts/                      # 🗂️ Runtime artifacts (Nằm ngoài src)
-│   ├── data/                       # Transcript raw/processed
-│   ├── database_semantic/          # ChromaDB persistent storage
-│   ├── videos/                     # Metadata & Thumbnails video
-│   └── chunks/                     # Cached text chunks
-│
-├── config.yaml                     # Danh sách playlist YouTube
-└── .env                            # Cấu hình API Keys
-```
+- Python 3.12 is the CPU Docker base; use `pip` with root `requirements.txt` locally, or the CPU/GPU/runtime/pipeline requirement variants for container targets. Frontend uses Node 22 in Docker and **npm** (`frontend/package-lock.json`; Docker uses `npm ci`), not Bun/Yarn.
+- Start from `.env.example`; supply `DATABASE_URL`, `REDIS_URL`, `JWT_SECRET`, and provider keys for live integrations. Keep secrets out of commits. `PUQ_*` variables redirect runtime artifacts. For host-run Vite, set `VITE_API_PROXY_TARGET=http://localhost:8000` (or `VITE_API_BASE_URL`), since the default proxy hostname resolves only inside Docker.
+- `docker-compose.observability.yaml` adds optional Prometheus/Grafana monitoring; `dev.ps1` includes it by default and expects Grafana credentials when monitoring is enabled.
 
----
+## Testing & QA
 
-## 🔑 Biến môi trường (`.env`)
-
-| Biến | Mục đích |
-|------|----------|
-| `myAPIKey` | OpenAI API key (Bắt buộc) |
-| `OPENAI_MODEL` | Model chính (mặc định `gpt-6-luna`) |
-| `OPENAI_SUPERVISOR_MODEL` | Model dự phòng của Supervisor (mặc định `gpt-6-luna`) |
-| `EXPERIENTIAL_API_KEY` | API key server-side của Experiential Labs (`xpl_...`) cho Jev |
-| `YOUTUBE_API_KEY` | Dùng khi crawl playlist mới |
-| `PUQ_DATA_DIR` | Đường dẫn `artifacts/data` |
-| `PUQ_VECTOR_DB_DIR` | Đường dẫn `artifacts/database_semantic` |
-
----
-
-## ⚙️ Quy ước code
-
-### Ngôn ngữ & phong cách
-- **Comments và docstrings**: Viết bằng **tiếng Việt**.
-- **Tên biến/hàm**: Tiếng Anh, snake_case.
-- **Tên class**: PascalCase.
-- **Import style**: Absolute imports (`from src.rag_core.state import State`).
-
-### Format response từ RAG
-Hệ thống sử dụng streaming JSON. Kết quả cuối cùng thường bao gồm:
-```python
-{
-    "text": str,              # Nội dung Markdown
-    "video_url": List[str],   # Citation links
-    "type": "rag" | "direct" | "coding" | "math"
-}
-```
-
----
-
-## 🧪 Cách chạy & test
-
-### Chạy development
-```bash
-# Terminal 1 — Backend
-uvicorn src.api.server:app --host 0.0.0.0 --port 8000 --reload
-
-# Terminal 2 — Frontend
-cd frontend
-npm run dev
-```
-
-### Cập nhật dữ liệu
-```bash
-python -m src.data_pipeline.pipeline
-```
-
----
-
-## ⚠️ Lưu ý khi chỉnh sửa
-
-### Không nên thay đổi
-- **Cấu trúc State**: `src/rag_core/state.py` ảnh hưởng đến toàn bộ các Agent.
-- **Prompt System**: Các prompt trong `agents/` đã được tối ưu hóa cho tiếng Việt.
-
-### Cần lưu ý
-- **JsonStreamCleaner**: Trong `chat_service.py` xử lý việc tách JSON ra khỏi stream văn bản của LLM.
-- **Supervisor Routing**: Logic quyết định Agent nào xử lý nằm trong `lang_graph_rag.py`.
-
----
-
-## 🔧 Patterns thường gặp
-
-### Thêm Agent mới
-1. Định nghĩa Agent logic trong `src/rag_core/agents/{agent_name}.py`.
-2. Thêm Agent vào supervisor routing trong `src/rag_core/lang_graph_rag.py`.
-3. Định nghĩa các tool cần thiết trong `src/rag_core/tools/`.
-
-### Cập nhật Retrieval logic
-1. Sửa đổi trong `src/retrieval/hybrid_search.py` để thay đổi cách tìm kiếm.
-2. Điều chỉnh reranker trong `src/retrieval/reranking.py`.
-
-### Thêm data source mới
-1. Tạo fetcher mới trong `src/data_pipeline/`.
-2. Cập nhật `pipeline.py` để tích hợp nguồn dữ liệu mới.
-
----
-
-## 📊 Hiệu năng & giới hạn
-
-- **RAM**: Backend + embedding models cần ~4GB.
-- **Response time**: ~5-15s tùy thuộc vào OpenAI API và độ phức tạp của câu hỏi.
-- **Request timeout**: Frontend timeout 360s.
-
----
-
-## 📁 Files quan trọng nhất
-
-1. `src/rag_core/lang_graph_rag.py` — Trung tâm điều phối hệ thống.
-2. `src/api/services/chat_service.py` — Xử lý luồng stream và hội thoại.
-3. `src/rag_core/agents/` — Chứa logic của từng "chuyên gia".
-4. `src/retrieval/hybrid_search.py` — Logic tìm kiếm dữ liệu.
-
----
-
-# 1. Think Before Coding
-
-**Don't assume. Don't hide confusion. Surface tradeoffs.**
-
-Before implementing:
-- State your assumptions explicitly. If uncertain, ask.
-- If multiple interpretations exist, present them - don't pick silently.
-- If a simpler approach exists, say so. Push back when warranted.
-- If something is unclear, stop. Name what's confusing. Ask.
-
-## 2. Simplicity First
-
-**Minimum code that solves the problem. Nothing speculative.**
-
-- No features beyond what was asked.
-- No abstractions for single-use code.
-- No "flexibility" or "configurability" that wasn't requested.
-- No error handling for impossible scenarios.
-- If you write 200 lines and it could be 50, rewrite it.
-
-Ask yourself: "Would a senior engineer say this is overcomplicated?" If yes, simplify.
-
-## 3. Surgical Changes
-
-**Touch only what you must. Clean up only your own mess.**
-
-When editing existing code:
-- Don't "improve" adjacent code, comments, or formatting.
-- Don't refactor things that aren't broken.
-- Match existing style, even if you'd do it differently.
-- If you notice unrelated dead code, mention it - don't delete it.
-
-When your changes create orphans:
-- Remove imports/variables/functions that YOUR changes made unused.
-- Don't remove pre-existing dead code unless asked.
-
-The test: Every changed line should trace directly to the user's request.
-
-## 4. Goal-Driven Execution
-
-**Define success criteria. Loop until verified.**
-
-Transform tasks into verifiable goals:
-- "Add validation" → "Write tests for invalid inputs, then make them pass"
-- "Fix the bug" → "Write a test that reproduces it, then make it pass"
-- "Refactor X" → "Ensure tests pass trước và sau"
-
-For multi-step tasks, state a brief plan:
-```
-1. [Step] → verify: [check]
-2. [Step] → verify: [check]
-3. [Step] → verify: [check]
-```
-
-Strong success criteria let you loop independently. Weak criteria ("make it work") require constant clarification.
-
----
-
-**These guidelines are working if:** fewer unnecessary changes in diffs, fewer rewrites due to overcomplication, và clarifying questions come before implementation ra mắt sau mistakes.
+- Python: `pytest -q tests` or a targeted file/case, e.g. `pytest -q tests/rag_core/test_lang_graph_rag.py::test_workflow_routes_quiz_from_supervisor_agent_tool_step`. Tests use local `monkeypatch` fixtures, in-memory DB/Redis/LLM fakes, `httpx.MockTransport`, and `asyncio.run(...)` or `@pytest.mark.anyio` for async paths; avoid live provider calls in ordinary unit tests.
+- Frontend: `npm --prefix frontend run test` runs co-located Vitest tests; `npm --prefix frontend run build` type-checks and bundles. No configured coverage threshold or repository-wide linter. Live routing smoke/latency scripts in `scripts/` require provider credentials and are separate from the default test suite.

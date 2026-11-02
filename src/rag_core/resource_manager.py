@@ -2,6 +2,7 @@
 
 import threading
 import logging
+from src.shared.metrics import RAG_PREWARM_READY
 
 _LOCK = threading.RLock()
 
@@ -10,9 +11,8 @@ _vector_retriever = None
 _documents = None
 _bm25_retriever = None
 _hybrid_retriever = None
-# Jina khởi tạo tokenizer lần đầu trong compute_score; không chia sẻ model giữa các nhánh rerank đồng thời.
-_tutor_reranker = None
-_quiz_reranker = None
+# Reranker đa backend (OpenVINO / ONNX / TensorRT / PyTorch) dùng chung một singleton thread-safe.
+_reranker = None
 _rag_core = None
 
 logger = logging.getLogger(__name__)
@@ -59,10 +59,9 @@ def _build_hybrid_retriever():
 
 
 def _build_reranker():
-    from src.retrieval.reranking import CrossEncoderReranker
+    from src.retrieval.reranking import load_reranker
 
-    return CrossEncoderReranker(device=_get_device())
-
+    return load_reranker(device=_get_device())
 
 def _build_rag_core():
     from src.generation.llm_model import get_llm, get_internal_llm
@@ -74,7 +73,7 @@ def _build_rag_core():
     return Offline_RAG(
         streaming_llm,
         get_hybrid_retriever(),
-        get_tutor_reranker(),
+        get_reranker(),
         llm_internal=internal_llm,
     )
 
@@ -124,22 +123,14 @@ def get_hybrid_retriever():
     return _hybrid_retriever
 
 
-def get_tutor_reranker():
-    global _tutor_reranker
-    if _tutor_reranker is None:
+def get_reranker():
+    global _reranker
+    if _reranker is None:
         with _LOCK:
-            if _tutor_reranker is None:
-                _tutor_reranker = _build_reranker()
-    return _tutor_reranker
+            if _reranker is None:
+                _reranker = _build_reranker()
+    return _reranker
 
-
-def get_quiz_reranker():
-    global _quiz_reranker
-    if _quiz_reranker is None:
-        with _LOCK:
-            if _quiz_reranker is None:
-                _quiz_reranker = _build_reranker()
-    return _quiz_reranker
 
 
 def get_rag_core():
@@ -152,9 +143,20 @@ def get_rag_core():
 
 
 def prewarm_all_resources():
-    logger.info("[prewarm] Step 1/2: build RAG core")
-    get_rag_core()
-    logger.info("[prewarm] Step 2/2: build quiz reranker")
-    get_vector_retriever()
-    get_quiz_reranker()
-    logger.info("[prewarm] All resources initialized")
+    RAG_PREWARM_READY.set(0)
+    try:
+        logger.info("[prewarm] Step 1/2: build RAG core")
+        get_rag_core()
+        logger.info("[prewarm] Step 2/2: build vector retriever & reranker")
+        retriever = get_vector_retriever()
+        reranker = get_reranker()
+        retriever.invoke("khởi động hệ thống")
+        reranker.score_pairs(
+            "khởi động hệ thống",
+            ["Tài liệu khởi động cho bộ tái xếp hạng."],
+        )
+        RAG_PREWARM_READY.set(1)
+        logger.info("[prewarm] All resources initialized")
+    except Exception:
+        RAG_PREWARM_READY.set(0)
+        raise

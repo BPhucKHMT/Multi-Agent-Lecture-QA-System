@@ -239,7 +239,7 @@ async def node_quiz(state: State):
         return {"response": _quiz_error_response("Không xác định được số lựa chọn yêu cầu.")}
 
     retriever = resource_manager.get_vector_retriever()
-    reranker = resource_manager.get_quiz_reranker()
+    reranker = resource_manager.get_reranker()
     from langchain_core.runnables import RunnableLambda
 
     with measure_rag_stage("retrieval"):

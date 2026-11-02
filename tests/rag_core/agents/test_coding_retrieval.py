@@ -49,7 +49,7 @@ def test_retrieve_lecture_context_returns_empty_on_no_docs(monkeypatch):
             return []
 
     monkeypatch.setattr(coding_retrieval.resource_manager, "get_hybrid_retriever", lambda: _FakeRetriever())
-    monkeypatch.setattr(coding_retrieval.resource_manager, "get_tutor_reranker", lambda: object())
+    monkeypatch.setattr(coding_retrieval.resource_manager, "get_reranker", lambda: object())
 
     assert coding_retrieval.retrieve_lecture_context("query không khớp") == ("", [])
 

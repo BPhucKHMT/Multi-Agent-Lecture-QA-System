@@ -16,20 +16,57 @@ chữ ra frontend mà không có độ trễ nào nữa.
 """
 
 
+from contextlib import nullcontext
 from pydantic import BaseModel
 from langchain_core.prompts import ChatPromptTemplate
-from langchain_core.runnables import RunnableLambda
 from typing import List
 import json as json_lib
 import re
 import asyncio
 import logging
+import os
 import time
 
 
-from src.shared.metrics import measure_rag_stage
+from src.shared.metrics import (
+    RAG_QUERY_EXPANSION_DECISIONS,
+    RAG_RERANK_INPUT_DOCUMENTS,
+    measure_rag_stage,
+)
+from src.shared.observability import get_langfuse_client
 
 logger = logging.getLogger(__name__)
+
+DEFAULT_RERANK_CANDIDATE_LIMIT = 24
+
+
+def _rag_observation(name: str):
+    client = get_langfuse_client()
+    return (
+        client.start_as_current_observation(as_type="span", name=name)
+        if client is not None
+        else nullcontext()
+    )
+
+def _context_top_k() -> int:
+    try:
+        value = int(os.getenv("RAG_CONTEXT_TOP_K", "5"))
+    except ValueError:
+        return 5
+    return value if 1 <= value <= 20 else 5
+
+
+def _rerank_candidate_limit() -> int:
+    try:
+        value = int(
+            os.getenv(
+                "RAG_RERANK_CANDIDATE_LIMIT",
+                str(DEFAULT_RERANK_CANDIDATE_LIMIT),
+            )
+        )
+    except ValueError:
+        return DEFAULT_RERANK_CANDIDATE_LIMIT
+    return value if value >= 10 else DEFAULT_RERANK_CANDIDATE_LIMIT
 
 
 class TutorOutput(BaseModel):
@@ -120,13 +157,24 @@ LUÔN LUÔN đặt key "text" ở vị trí ĐẦU TIÊN trong JSON object để
             pass
         return [query]
 
-    async def get_context(self, query: str, chat_history: str = ""):
+    async def get_context(
+        self,
+        query: str,
+        chat_history: str = "",
+        expand_query: bool = True,
+    ):
         """Bước chuẩn bị context: Chạy song song, KHÔNG stream."""
         total_start = time.perf_counter()
 
         expand_start = time.perf_counter()
-        with measure_rag_stage("query_expansion"):
-            queries = await self.generate_queries(query, chat_history)
+        should_expand = expand_query is not False
+        decision = "expand" if should_expand else "skip"
+        RAG_QUERY_EXPANSION_DECISIONS.labels(decision=decision).inc()
+        if should_expand:
+            with measure_rag_stage("query_expansion"):
+                queries = await self.generate_queries(query, chat_history)
+        else:
+            queries = [query]
         expand_elapsed = time.perf_counter() - expand_start
         logger.info(
             "[TUTOR_TIMING] query_expansion=%.2fs query_count=%d",
@@ -135,18 +183,28 @@ LUÔN LUÔN đặt key "text" ở vị trí ĐẦU TIÊN trong JSON object để
         )
 
         search_start = time.perf_counter()
-        with measure_rag_stage("retrieval"):
-            search_tasks = []
-            for q in queries:
-                if hasattr(self.retriever, "ainvoke"):
-                    search_tasks.append(self.retriever.ainvoke(q))
-                else:
-                    search_tasks.append(
-                        asyncio.to_thread(self.retriever.get_relevant_documents, q)
-                    )
+        with _rag_observation("hybrid_retrieval") as observation:
+            with measure_rag_stage("retrieval"):
+                search_tasks = []
+                for q in queries:
+                    if hasattr(self.retriever, "ainvoke"):
+                        search_tasks.append(self.retriever.ainvoke(q))
+                    else:
+                        search_tasks.append(
+                            asyncio.to_thread(
+                                self.retriever.get_relevant_documents, q
+                            )
+                        )
 
-            results = await asyncio.gather(*search_tasks)
-            result_counts = [len(docs) for docs in results]
+                results = await asyncio.gather(*search_tasks)
+                result_counts = [len(docs) for docs in results]
+            if observation is not None:
+                observation.update(
+                    metadata={
+                        "query_count": len(queries),
+                        "raw_docs": sum(result_counts),
+                    }
+                )
         search_elapsed = time.perf_counter() - search_start
         logger.info(
             "[TUTOR_TIMING] retrieve=%.2fs query_count=%d docs_per_query=%s total_raw_docs=%d",
@@ -157,18 +215,25 @@ LUÔN LUÔN đặt key "text" ở vị trí ĐẦU TIÊN trong JSON object để
         )
 
         dedupe_start = time.perf_counter()
-        with measure_rag_stage("dedupe"):
-            all_docs = []
-            for docs in results:
-                all_docs.extend(docs[:15])
+        with _rag_observation("dedupe") as observation:
+            with measure_rag_stage("dedupe"):
+                all_docs = []
+                for docs in results:
+                    all_docs.extend(docs[:15])
 
-            unique_docs = []
-            seen_content = set()
-            for doc in all_docs:
-                content_hash = hash(doc.page_content)
-                if content_hash not in seen_content:
-                    unique_docs.append(doc)
-                    seen_content.add(content_hash)
+                unique_docs = []
+                seen_content = set()
+                for doc in all_docs:
+                    if doc.page_content not in seen_content:
+                        unique_docs.append(doc)
+                        seen_content.add(doc.page_content)
+            if observation is not None:
+                observation.update(
+                    metadata={
+                        "capped_docs": len(all_docs),
+                        "unique_docs": len(unique_docs),
+                    }
+                )
         dedupe_elapsed = time.perf_counter() - dedupe_start
         logger.info(
             "[TUTOR_TIMING] dedupe=%.2fs capped_docs=%d unique_docs=%d",
@@ -178,25 +243,53 @@ LUÔN LUÔN đặt key "text" ở vị trí ĐẦU TIÊN trong JSON object để
         )
 
         rerank_start = time.perf_counter()
+        rerank_candidates = unique_docs[:_rerank_candidate_limit()]
+        rerank_backend = str(getattr(self.reranker, "backend", "none"))
+        if rerank_backend not in {
+            "openvino",
+            "onnx",
+            "onnx_cuda",
+            "tensorrt",
+            "torch_fp16",
+            "torch_bf16",
+            "torch_cpu",
+            "none",
+        }:
+            rerank_backend = "none"
+        RAG_RERANK_INPUT_DOCUMENTS.labels(backend=rerank_backend).observe(
+            len(rerank_candidates)
+        )
 
-        async def _run_rerank(docs):
-            return await asyncio.to_thread(self.reranker.rerank, docs, query)
-
-        rerank_chain = RunnableLambda(_run_rerank).with_config(run_name="rag_rerank")
-        with measure_rag_stage("rerank"):
-            reranked = await rerank_chain.ainvoke(unique_docs)
-            reranked = reranked[:10]
+        with _rag_observation("rag_rerank") as observation:
+            with measure_rag_stage("rerank"):
+                reranked = await asyncio.to_thread(
+                    self.reranker.rerank,
+                    rerank_candidates,
+                    query,
+                )
+                reranked = reranked[:_context_top_k()]
+            if observation is not None:
+                observation.update(
+                    metadata={
+                        "rerank_input_docs": len(rerank_candidates),
+                        "rerank_output_docs": len(reranked),
+                        "rerank_backend": rerank_backend,
+                    }
+                )
         rerank_elapsed = time.perf_counter() - rerank_start
         logger.info(
             "[TUTOR_TIMING] rerank=%.2fs input_docs=%d output_docs=%d",
             rerank_elapsed,
-            len(unique_docs),
+            len(rerank_candidates),
             len(reranked),
         )
 
         format_start = time.perf_counter()
-        with measure_rag_stage("format"):
-            context = self.format_doc(reranked)
+        with _rag_observation("format_context") as observation:
+            with measure_rag_stage("format"):
+                context = self.format_doc(reranked)
+            if observation is not None:
+                observation.update(metadata={"context_chars": len(context)})
         format_elapsed = time.perf_counter() - format_start
         total_elapsed = time.perf_counter() - total_start
         logger.info(

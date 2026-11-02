@@ -38,8 +38,23 @@ SAFE_ATTRIBUTES = frozenset(
         "langfuse.observation.metadata.response_type",
         "langfuse.observation.metadata.answer_chars",
         "langfuse.observation.metadata.citation_count",
-        "langfuse.observation.metadata.cache",
+        "langfuse.observation.metadata.llm_input_tokens",
+        "langfuse.observation.metadata.llm_output_tokens",
+        "langfuse.observation.metadata.llm_total_tokens",
+        "langfuse.observation.metadata.llm_generation_count",
+        "langfuse.observation.metadata.unpriced_external_calls",
+        "langfuse.observation.metadata.query_count",
+        "langfuse.observation.metadata.raw_docs",
+        "langfuse.observation.metadata.capped_docs",
+        "langfuse.observation.metadata.unique_docs",
+        "langfuse.observation.metadata.rerank_input_docs",
+        "langfuse.observation.metadata.rerank_output_docs",
+        "langfuse.observation.metadata.context_chars",
+        "langfuse.observation.metadata.cost_coverage",
+        "langfuse.observation.metadata.expand_query",
+        "langfuse.observation.metadata.rerank_backend",
         "langfuse.observation.metadata.outcome",
+        "langfuse.observation.metadata.cache",
         "langfuse.trace.name",
         "langfuse.trace.tags",
         "langfuse.trace.metadata.request_id",
@@ -66,8 +81,27 @@ _ALLOWED_ROUTES = frozenset(
 )
 _ALLOWED_CACHE = frozenset({"hit", "miss", "disabled"})
 _ALLOWED_OUTCOMES = frozenset({"success", "error", "cancelled"})
-_ALLOWED_RESPONSE_TYPES = frozenset({"rag", "quiz", "math", "coding", "direct", "error"})
-_COUNT_FIELDS = frozenset({"answer_chars", "citation_count"})
+_ALLOWED_RESPONSE_TYPES = frozenset(
+    {"rag", "quiz", "math", "coding", "direct", "error"}
+)
+_COUNT_FIELDS = frozenset(
+    {
+        "answer_chars",
+        "citation_count",
+        "llm_input_tokens",
+        "llm_output_tokens",
+        "llm_total_tokens",
+        "llm_generation_count",
+        "unpriced_external_calls",
+        "query_count",
+        "raw_docs",
+        "capped_docs",
+        "unique_docs",
+        "rerank_input_docs",
+        "rerank_output_docs",
+        "context_chars",
+    }
+)
 
 # Chỉ che credential/token theo tên trường hoặc dạng Bearer. Regex này không
 # phát hiện PII tự do; không được xem việc bật full output là chính sách PII.
@@ -246,6 +280,21 @@ def _safe_attribute_value(key: str, value: Any) -> bool:
                 and not isinstance(parsed, bool)
                 and 0 <= parsed <= 10_000_000
             )
+        if field == "cost_coverage":
+            return parsed in {"full", "partial", "none"}
+        if field == "expand_query":
+            return isinstance(parsed, bool)
+        if field == "rerank_backend":
+            return parsed in {
+                "openvino",
+                "onnx",
+                "onnx_cuda",
+                "tensorrt",
+                "torch_fp16",
+                "torch_bf16",
+                "torch_cpu",
+                "none",
+            }
         if field == "model":
             return parsed == "jev-latest"
         if field == "route":
@@ -256,7 +305,6 @@ def _safe_attribute_value(key: str, value: Any) -> bool:
             return parsed in _ALLOWED_OUTCOMES
         if field == "response_type":
             return parsed in _ALLOWED_RESPONSE_TYPES
-        return False
     if key == "langfuse.trace.name":
         return _safe_text(value, max_length=128)
     if key == "langfuse.trace.tags":

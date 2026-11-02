@@ -27,6 +27,13 @@ COPY . .
 EXPOSE 8000
 CMD ["uvicorn", "backend.app.main:app", "--host", "0.0.0.0", "--port", "8000"]
 
+FROM prod-cpu AS test-cpu
+
+COPY requirements.test.txt ./
+RUN pip install -r requirements.test.txt
+
+CMD ["python", "-m", "pytest", "-q", "tests"]
+
 FROM prod-cpu AS pipeline-cpu
 
 RUN apt-get update \

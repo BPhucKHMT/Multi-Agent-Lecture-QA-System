@@ -7,13 +7,16 @@ Cache này dùng exact SHA-256 trước, sau đó mới dùng vector search + gu
 
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import json
 import logging
 import re
 import time
 import uuid
+from contextlib import nullcontext
 from dataclasses import dataclass
+from functools import lru_cache
 from typing import Any, Optional
 
 import numpy as np
@@ -27,8 +30,23 @@ except ModuleNotFoundError:
 from redis.commands.search.query import Query
 
 from backend.app.core.config import settings
+from src.shared.observability import get_langfuse_client
 
 logger = logging.getLogger(__name__)
+
+@lru_cache(maxsize=4)
+def _get_openai_embeddings(model_name: str, api_key: str):
+    return OpenAIEmbeddings(model=model_name, openai_api_key=api_key)
+
+
+@lru_cache(maxsize=4)
+def _get_local_embeddings(model_name: str, device: str):
+    from langchain_community.embeddings import HuggingFaceEmbeddings
+
+    return HuggingFaceEmbeddings(
+        model_name=model_name,
+        model_kwargs={"device": device},
+    )
 
 CONTEXT_DEPENDENT_PATTERNS = (
     "câu trên",
@@ -114,25 +132,27 @@ class SemanticCache:
 
     def __init__(self, redis_client: redis.Redis):
         self.redis = redis_client
-        model_name = settings.SEMANTIC_CACHE_EMBEDDING_MODEL
-        
-        # Nếu cấu hình model OpenAI thì dùng OpenAIEmbeddings
-        if "text-embedding" in model_name or "openai" in model_name.lower():
-            from langchain_openai import OpenAIEmbeddings
-            self.embeddings = OpenAIEmbeddings(
-                model=model_name,
-                openai_api_key=settings.OPENAI_API_KEY,
+        self.model_name = settings.SEMANTIC_CACHE_EMBEDDING_MODEL
+        self._uses_openai_embeddings = (
+            "text-embedding" in self.model_name
+            or "openai" in self.model_name.lower()
+        )
+
+        if self._uses_openai_embeddings:
+            self.embeddings = _get_openai_embeddings(
+                self.model_name,
+                settings.OPENAI_API_KEY,
             )
         else:
-            # Sử dụng model local (như BGE-M3) chạy trên GPU/CPU để MIỄN PHÍ 100%
-            from langchain_community.embeddings import HuggingFaceEmbeddings
             import torch
+
             device = "cuda" if torch.cuda.is_available() else "cpu"
-            logger.info("🧠 Khởi tạo local Semantic Cache Embeddings (%s) trên %s...", model_name, device)
-            self.embeddings = HuggingFaceEmbeddings(
-                model_name=model_name,
-                model_kwargs={"device": device}
+            logger.info(
+                "🧠 Khởi tạo local Semantic Cache Embeddings (%s) trên %s...",
+                self.model_name,
+                device,
             )
+            self.embeddings = _get_local_embeddings(self.model_name, device)
 
     def ensure_index(self) -> None:
         """Tạo Redis Stack index nếu chưa tồn tại."""
@@ -161,8 +181,8 @@ class SemanticCache:
         definition = IndexDefinition(prefix=[self.item_prefix], index_type=IndexType.HASH)
         self.redis.ft(self.index_name).create_index(schema, definition=definition)
 
-    async def get(self, prompt: str) -> Optional[dict[str, Any]]:
-        """Tìm response cache theo exact key, sau đó dùng semantic vector search."""
+    def _get_sync(self, prompt: str) -> Optional[dict[str, Any]]:
+        """Tìm response cache đồng bộ để chạy ngoài event loop."""
         try:
             normalized = normalize_query(prompt)
             exact_hit = self._get_exact(normalized)
@@ -196,6 +216,9 @@ class SemanticCache:
             logger.warning("Semantic cache lookup failed: %s", exc)
             return None
 
+    async def get(self, prompt: str) -> Optional[dict[str, Any]]:
+        return await asyncio.to_thread(self._get_sync, prompt)
+
     async def set(
         self,
         prompt: str,
@@ -203,7 +226,7 @@ class SemanticCache:
         expire: Optional[int] = None,
     ) -> None:
         """Lưu Q/A cache nếu vượt quality/cacheability filter."""
-        self.set_sync(prompt, response, expire)
+        await asyncio.to_thread(self.set_sync, prompt, response, expire)
 
     def set_sync(
         self,
@@ -302,8 +325,34 @@ class SemanticCache:
         return candidates
 
     def _embed(self, prompt: str) -> np.ndarray:
-        embedding = self.embeddings.embed_query(prompt)
-        return np.asarray(embedding, dtype=np.float32)
+        if not self._uses_openai_embeddings:
+            embedding = self.embeddings.embed_query(prompt)
+            return np.asarray(embedding, dtype=np.float32)
+
+        client = get_langfuse_client()
+        observation = (
+            client.start_as_current_observation(
+                as_type="embedding",
+                name="semantic_cache_embedding",
+                model=self.model_name,
+            )
+            if client is not None
+            else nullcontext()
+        )
+        with observation as current:
+            response = self.embeddings.client.create(
+                input=[prompt],
+                model=self.model_name,
+            )
+            vector = np.asarray(response.data[0].embedding, dtype=np.float32)
+            if current is not None:
+                current.update(
+                    usage_details={
+                        "input": int(response.usage.prompt_tokens),
+                        "total": int(response.usage.total_tokens),
+                    }
+                )
+        return vector
 
     def _exact_key(self, normalized_prompt: str) -> str:
         digest = hashlib.sha256(normalized_prompt.encode("utf-8")).hexdigest()

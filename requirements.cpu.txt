@@ -2,3 +2,4 @@
 torch>=2.6
 --extra-index-url https://pypi.org/simple
 -r requirements.runtime.txt
+openvino>=2026.1
