@@ -26,6 +26,7 @@ api-gpu -> FastAPI/RAG GPU local, http://localhost:8000
 redis-stack -> Redis Stack + RedisInsight, http://localhost:8001
 pipeline-cpu -> Data pipeline CPU, chạy khi cần ingest dữ liệu
 pipeline-gpu -> Data pipeline GPU, chạy khi cần ingest dữ liệu bằng GPU
+api-test -> môi trường chạy Python tests ổn định, kế thừa CPU runtime
 ```
 
 > Frontend và backend là **2 container riêng**, nhưng được quản lý chung trong `docker-compose.yaml`.
@@ -117,7 +118,18 @@ docker compose --profile pipeline-gpu run --rm pipeline-gpu
 
 Pipeline image chứa OCR/Whisper/video dependencies nặng, được tách riêng khỏi image deploy API.
 
-### 5. Build image riêng nếu cần đo size
+### 5. Chạy Python tests bằng Docker
+
+Build test target một lần sau khi dependency thay đổi; các session sau dùng lại image. Source và tests được bind-mount nên sửa code Python thông thường không cần build lại.
+
+```powershell
+docker compose --profile test build api-test
+docker compose --profile test run --rm api-test
+```
+
+Không bắt buộc dùng virtual environment trên host. Image CPU production không chứa `pytest`; test tooling được tách riêng trong target `test-cpu`.
+
+### 6. Build image riêng nếu cần đo size
 
 CPU runtime:
 
@@ -525,14 +537,26 @@ Toàn bộ pipeline benchmark nằm trong `experiments/`. Xem [experiments/READM
 | C19 | `semantic` | `bge_m3-finetuned-v3` | 0.9033 | 0.7387 | 0.5355 |
 | C22 | `parent_child_180s_45s` | `bge_m3-finetuned-v3` | 0.9067 | 0.6723 | 0.5494 |
 
+#### Tối ưu hóa suy luận CPU (CPU Inference Acceleration)
+
+Để hệ thống chạy mượt trên các máy tính/server không có GPU rời, mô hình Jina Reranker v2 được tối ưu hóa đa runtime:
+
+| Runtime / Precision | Mean Latency | P50 Latency | P95 Latency | Tăng tốc (Mean) |
+|---|---:|---:|---:|---:|
+| **PyTorch CPU FP32** *(Gốc)* | 52.12 s | 54.01 s | 59.52 s | 1.0x *(Gốc)* |
+| **ONNX Runtime INT8** | 3.53 s | **0.66 s** | 9.33 s | 14.8x |
+| **OpenVINO Runtime INT8** | **1.91 s** | 1.85 s | **2.22 s** | **27.3x** |
+
+Các số trên chỉ dùng để đối chiếu độ trễ của benchmark 20 query, pool 10. Kết quả so khớp thứ hạng của lượt chạy đó đã bị loại vì phát hiện backend tối ưu từng bỏ qua query; chất lượng sau khi sửa query được ghi riêng trong báo cáo CPU reranker bên dưới.
+
 ### Báo cáo đánh giá chi tiết
 
 - [End-to-end retrieval benchmark (22 configs)](experiments/docs/evaluation/end_to_end_retrieval.md) — bảng kết quả đầy đủ, phân tích winner
 - [So sánh embedding models (7 models)](experiments/docs/evaluation/embedding.md) — BGE-M3 variants, multilingual-e5-large, halong_embedding
 - [So sánh reranker models (6 models)](experiments/docs/evaluation/reranker.md) — Jina v2 thắng, phân tích latency
+- [Tối ưu hóa suy luận Reranker CPU (OpenVINO vs ONNX INT8)](docs/reranker-cpu-int8-openvino-research.md) — phân tích chi tiết CPU acceleration, benchmark 3-way, độ trễ p50/p95, dung lượng model
 - [QA quality metrics (BERTScore + RAGAS)](experiments/docs/evaluation/qa_metrics.md) — faithfulness, context precision/recall, answer relevancy
 - [**Báo cáo Ablation Study**](docs/ablation_report.md) — 4 giai đoạn bóc tách: embedding → reranker → chunking (E2E) → chất lượng sinh. Giải thích lý do chọn C21 làm cấu hình production.
-
 ### Đối chiếu & Xác minh Kết quả (Audit Trail)
 
 Để xác minh tính trung thực và chính xác của toàn bộ số liệu được công bố trong các báo cáo thử nghiệm, bạn có thể đối chiếu trực tiếp với các tệp kết quả thô (`metrics.json` và `eval_results.json`) được lưu vết đầy đủ trong thư mục `experiments/runs/`:
