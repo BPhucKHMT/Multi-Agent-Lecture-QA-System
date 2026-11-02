@@ -34,6 +34,7 @@ export async function withTimeout<TResponse>(
 function refreshAccessToken(): Promise<void> {
   if (refreshInFlight) return refreshInFlight;
   const refreshToken = localStorage.getItem("refresh_token");
+  let invalidateSession = !refreshToken;
 
   refreshInFlight = (async () => {
     try {
@@ -47,7 +48,9 @@ function refreshAccessToken(): Promise<void> {
         }),
         resolveTimeoutMs(),
       );
+      invalidateSession = response.status === 401 || response.status === 403;
       if (!response.ok) throw new Error(`Token refresh failed with status ${response.status}`);
+      invalidateSession = true;
       const tokens = await response.json();
       if (
         typeof tokens.access_token !== "string" || !tokens.access_token ||
@@ -61,7 +64,7 @@ function refreshAccessToken(): Promise<void> {
       localStorage.setItem("access_token", tokens.access_token);
       localStorage.setItem("refresh_token", tokens.refresh_token);
     } catch (error) {
-      if (localStorage.getItem("refresh_token") === refreshToken) {
+      if (invalidateSession && localStorage.getItem("refresh_token") === refreshToken) {
         localStorage.removeItem("access_token");
         localStorage.removeItem("refresh_token");
         window.dispatchEvent(new Event(AUTH_EXPIRED_EVENT));

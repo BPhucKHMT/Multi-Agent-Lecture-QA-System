@@ -41,6 +41,8 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  vi.useRealTimers();
+  vi.unstubAllEnvs();
   vi.unstubAllGlobals();
 });
 
@@ -67,15 +69,16 @@ describe("automatic token refresh", () => {
     ]);
   });
 
-  it.each(["rejected", "network", "invalid response", "missing token"])(
-    "clears credentials and triggers logout when refresh fails: %s",
+  it.each(["rejected", "forbidden", "invalid response", "invalid JSON", "missing token"])(
+    "clears credentials and triggers logout when the session cannot be refreshed: %s",
     async (failure) => {
       if (failure === "missing token") storage.delete("refresh_token");
       const logout = vi.fn();
       events.addEventListener("auth:expired", logout);
       const fetchMock = vi.fn(async (url: string) => {
         if (url.endsWith("/auth/refresh")) {
-          if (failure === "network") throw new TypeError("Failed to fetch");
+          if (failure === "forbidden") return new Response(null, { status: 403 });
+          if (failure === "invalid JSON") return new Response("invalid JSON");
           if (failure === "invalid response") return Response.json({ access_token: "access-new" });
           return new Response(null, { status: 401 });
         }
@@ -91,6 +94,49 @@ describe("automatic token refresh", () => {
         .toHaveLength(failure === "missing token" ? 0 : 1);
     },
   );
+
+  it.each(["network", "abort", "server error"])(
+    "preserves credentials without logging out on a transient refresh failure: %s",
+    async (failure) => {
+      const logout = vi.fn();
+      events.addEventListener("auth:expired", logout);
+      const fetchMock = vi.fn(async (url: string) => {
+        if (url.endsWith("/auth/refresh")) {
+          if (failure === "network") throw new TypeError("Failed to fetch");
+          if (failure === "abort") throw new DOMException("Aborted", "AbortError");
+          return new Response(null, { status: 503 });
+        }
+        return new Response(null, { status: 401 });
+      });
+      vi.stubGlobal("fetch", fetchMock);
+
+      await expect(apiClient.get("/api/v1/chat/history")).rejects.toThrow();
+      expect(storage.get("access_token")).toBe("access-old");
+      expect(storage.get("refresh_token")).toBe("refresh-old");
+      expect(logout).not.toHaveBeenCalled();
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+    },
+  );
+
+  it("preserves credentials when the refresh request times out", async () => {
+    vi.useFakeTimers();
+    vi.stubEnv("VITE_API_TIMEOUT_MS", "1000");
+    const logout = vi.fn();
+    events.addEventListener("auth:expired", logout);
+    vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
+      if (!url.endsWith("/auth/refresh")) return new Response(null, { status: 401 });
+      return new Promise<Response>((_, reject) => {
+        init?.signal?.addEventListener("abort", () => reject(new DOMException("Aborted", "AbortError")));
+      });
+    }));
+    const rejection = expect(apiClient.get("/api/v1/chat/history")).rejects.toThrow("timed out");
+
+    await vi.advanceTimersByTimeAsync(1000);
+    await rejection;
+    expect(storage.get("access_token")).toBe("access-old");
+    expect(storage.get("refresh_token")).toBe("refresh-old");
+    expect(logout).not.toHaveBeenCalled();
+  });
 
   it("shares one in-flight refresh between two concurrent API 401s", async () => {
     const refresh = deferred<Response>();

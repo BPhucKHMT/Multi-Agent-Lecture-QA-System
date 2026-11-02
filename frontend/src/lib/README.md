@@ -46,8 +46,10 @@ localStorage, rồi thử lại request gốc tối đa một lần. Các reques
 cùng trang dùng chung một refresh đang chạy; 401 đến muộn dùng token đã xoay
 thay vì xoay lại. Login, register và refresh không được tự động thử lại.
 
-Nếu thiếu refresh token hoặc refresh thất bại (HTTP, mạng, timeout, dữ liệu token
-không hợp lệ), client xóa token và phát sự kiện `auth:expired`.
+Nếu thiếu refresh token, endpoint refresh từ chối phiên bằng HTTP 401/403 hoặc
+trả dữ liệu token không hợp lệ, client xóa token và phát sự kiện `auth:expired`.
+Lỗi mạng, timeout/abort hoặc lỗi server khi refresh được trả về cho caller nhưng
+giữ nguyên cặp token để không đăng xuất người dùng vì sự cố tạm thời.
 `ConversationStoreProvider` gọi `logout` hiện có để xóa hội thoại và trạng thái
 request, sau đó chuyển về `/login`. Kết quả refresh đang chờ không được khôi phục
 token nếu phiên đã bị đăng xuất hoặc thay đổi.
