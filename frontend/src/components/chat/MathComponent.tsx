@@ -1,4 +1,3 @@
-import React from "react";
 import { motion } from "framer-motion";
 import { Target, Lightbulb, CheckCircle2, AlertCircle, Calculator } from "lucide-react";
 import type { MathData } from "../../types/rag";

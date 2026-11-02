@@ -1,4 +1,3 @@
-import atexit
 import tempfile
 import subprocess
 import ast

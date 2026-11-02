@@ -1,4 +1,4 @@
-import React, { type ReactNode } from "react";
+import { type ReactNode } from "react";
 import { BrowserRouter } from "react-router-dom";
 import { ConversationStoreProvider } from "../store/conversationStore";
 

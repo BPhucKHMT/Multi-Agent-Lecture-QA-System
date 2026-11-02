@@ -28,7 +28,6 @@ api-gpu -> FastAPI/RAG local GPU, http://localhost:8000
 redis-stack -> Redis Stack + RedisInsight, http://localhost:8001
 pipeline-cpu -> CPU data pipeline, used when ingesting data
 pipeline-gpu -> GPU data pipeline, used when ingesting data with GPU support
-api-test -> reproducible Python test runner based on the CPU runtime image
 ```
 
 > Frontend and backend run as **two separate containers**, managed together by `docker-compose.yaml`.
@@ -122,18 +121,15 @@ docker compose --profile pipeline-gpu run --rm pipeline-gpu
 
 The pipeline image contains heavy OCR/Whisper/video dependencies and is separated from the API deployment image.
 
-### 5. Run Python tests in Docker
+### 5. Run Python tests in a local virtual environment
 
-Build the test target once after dependency changes, then reuse it in later sessions. Source and tests are bind-mounted, so normal Python edits do not require rebuilding.
+Activate a Python 3.12 virtual environment, then run from the repository root:
 
-```powershell
-docker compose --profile test build api-test
-docker compose --profile test run --rm api-test
+```bash
+python3.12 -m pip install -r requirements.cpu.txt -r requirements.test.txt && python3.12 -m pytest -q tests
 ```
 
-The host virtual environment is optional for this workflow. The production CPU image does not include `pytest`; test tooling is isolated in the `test-cpu` target.
-
-GitHub Actions (`.github/workflows/ci.yml`) runs Python 3.12 CPU tests in `tests/` and `experiments/tests/`, plus frontend Vitest and the production build, on every push and pull request. CI uses offline model settings and no live provider credentials. Real-model reranker checks use their existing missing-artifact skips; `PYTEST_ADDOPTS` also deselects `test_load_reranker_openvino_falls_back_to_onnx`, whose existing artifact check reaches model loading before its mocked backends. Run `python -m pytest -q tests` locally without that CI-only deselection to see the full result.
+GitHub Actions (`.github/workflows/ci.yml`) runs Python 3.12 CPU tests in `tests/` and `experiments/tests/`, plus frontend Vitest and the production build, on every push and pull request. CI uses offline model settings and no live provider credentials. Real-model reranker checks use their existing missing-artifact skips; `PYTEST_ADDOPTS` also deselects `test_load_reranker_openvino_falls_back_to_onnx`, whose existing artifact check reaches model loading before its mocked backends. The local command above does not apply that CI-only deselection.
 
 ### 6. Build standalone images for size checks
 

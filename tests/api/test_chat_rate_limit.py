@@ -1,6 +1,5 @@
 import os
 import sys
-import time
 import asyncio
 from pathlib import Path
 import pytest

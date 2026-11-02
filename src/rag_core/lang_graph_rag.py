@@ -16,7 +16,7 @@ Response cuối cùng được backend stream về frontend và lưu vào Postgr
 
 
 from langgraph.graph import StateGraph, START, END
-from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
+from langchain_core.messages import HumanMessage, AIMessage
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.tools import tool
 from langchain_core.runnables import RunnableConfig
@@ -25,14 +25,13 @@ import httpx
 
 from src.shared.metrics import AGENT_NODE_DURATION, SUPERVISOR_FALLBACKS
 
-from typing import List, Optional, Union
+from typing import Optional
 import logging
 import json
 import time
-import asyncio
 import inspect
 
-from src.generation.llm_model import get_supervisor_llm, get_llm
+from src.generation.llm_model import get_supervisor_llm
 from src.generation.jev_router import JEV_MODEL, route_with_jev
 from src.rag_core.state import State
 from src.rag_core.agents.tutor import node_tutor
@@ -196,28 +195,6 @@ def _coerce_tool_args(raw_args) -> dict:
             pass
         return {"query": raw_args}
     return {}
-
-
-def _extract_tool_calls_from_intermediate_steps(intermediate_steps) -> Optional[List[dict]]:
-    if not isinstance(intermediate_steps, list):
-        return None
-
-    normalized = []
-    for step in intermediate_steps:
-        if not isinstance(step, tuple) or not step:
-            continue
-        action = step[0]
-        tool_name = getattr(action, "tool", None)
-        tool_input = _coerce_tool_args(getattr(action, "tool_input", {}))
-        if not tool_name:
-            continue
-        if tool_name == "GenerateQuiz":
-            if "num_questions" not in tool_input and "number_of_questions" in tool_input:
-                tool_input["num_questions"] = tool_input.get("number_of_questions")
-        normalized.append({"name": tool_name, "args": tool_input})
-    if not normalized:
-        return None
-    return list(reversed(normalized))
 
 
 def jev_fallback_reason(error: Exception) -> str:

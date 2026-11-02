@@ -1,8 +1,7 @@
 import subprocess
-import os
 import json
 from pathlib import Path
-from typing import Dict, Any, List
+from typing import Dict, Any
 import cv2
 
 class VideoDownloader:
@@ -40,7 +39,7 @@ class VideoDownloader:
             
         print(f"🎬 Đang tải playlist vào: {output_dir}")
         try:
-            result = subprocess.run(cmd, check=True, capture_output=True, text=True, encoding='utf-8', errors='ignore')
+            subprocess.run(cmd, check=True, capture_output=True, text=True, encoding='utf-8', errors='ignore')
             return {"status": "success", "output": output_dir}
         except subprocess.CalledProcessError as e:
             print(f"❌ Lỗi tải video: {e.stderr}")

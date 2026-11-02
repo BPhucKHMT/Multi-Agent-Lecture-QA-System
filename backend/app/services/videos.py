@@ -14,8 +14,6 @@ from typing import Any, Dict, List
 
 logger = logging.getLogger(__name__)
 
-VIDEO_EXTENSIONS = {".mp4", ".mkv", ".webm", ".mov", ".avi"}
-
 _VIDEO_ID_NAMESPACE = uuid.UUID("f3f5771b-ec86-4f13-9ef2-8f8ca7617d58")
 
 
@@ -39,40 +37,6 @@ def _stable_video_uuid(key: str) -> uuid.UUID:
 def _optional_url(value: str | None) -> str | None:
     normalized = (value or "").strip()
     return normalized or None
-
-
-@lru_cache(maxsize=1)
-def _load_video_metadata_map() -> Dict[str, Dict[str, str]]:
-    videos_dir = os.getenv("PUQ_VIDEOS_DIR", "artifacts/videos")
-    videos_root = Path(videos_dir)
-    mapping: Dict[str, Dict[str, str]] = {}
-    if not videos_root.exists() or not videos_root.is_dir():
-        return mapping
-
-    for metadata_file in videos_root.glob("*/metadata.json"):
-        course_name = metadata_file.parent.name
-        try:
-            payload = json_lib.loads(metadata_file.read_text(encoding="utf-8"))
-        except Exception:
-            continue
-        for video in payload.get("videos", []):
-            title = str(video.get("title", "")).strip()
-            video_url = str(video.get("url", "")).strip()
-            video_id = str(video.get("video_id", "")).strip()
-            if not title:
-                continue
-            normalized_title = _normalize_text(_normalize_video_title(title))
-            if not normalized_title:
-                continue
-            key = f"{course_name.lower()}::{normalized_title}"
-            mapping[key] = {
-                "video_url": video_url,
-                "video_id": video_id,
-                "thumbnail_url": f"https://i.ytimg.com/vi/{video_id}/hqdefault.jpg"
-                if video_id
-                else "",
-            }
-    return mapping
 
 
 @lru_cache(maxsize=1)

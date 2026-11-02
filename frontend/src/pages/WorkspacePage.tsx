@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import ChatInput from "../components/chat/ChatInput";
 import MessageList from "../components/chat/MessageList";
 import ConversationSidebar from "../components/sidebar/ConversationSidebar";
-import { useConversationStore, type ConversationMessage } from "../store/conversationStore";
+import { useConversationStore } from "../store/conversationStore";
 import { getVideos, summarizeVideo } from "../lib/api/videos";
 import type { VideoItem } from "../types/api";
 import type { AppSection, DiscussionContext } from "../types/app";
@@ -35,10 +35,8 @@ const SummaryLoading = () => (
 );
 
 function SummaryHubPanel({
-  messages,
   onDiscussInChat,
 }: {
-  messages: ConversationMessage[];
   onDiscussInChat: (context: DiscussionContext) => void;
 }) {
   const [videos, setVideos] = useState<VideoItem[]>([]);
@@ -61,8 +59,6 @@ function SummaryHubPanel({
     if (isRailHovered) return pane === "summary" ? "flex-[6.5]" : "flex-[3.5]";
     return pane === "summary" ? "flex-[7.5]" : "flex-[2.5]";
   };
-
-  const { isLoading, error, clearError, sendPrompt, retryLastFailedPrompt, canRetryLastFailedPrompt, addMessage, streamingStatus } = useConversationStore();
 
   useEffect(() => {
     let mounted = true;
@@ -461,7 +457,6 @@ export default function WorkspacePage() {
                 className="h-full p-6"
               >
                 <SummaryHubPanel
-                  messages={messages}
                   onDiscussInChat={(context) => {
                     setSummaryContext(context);
                     // Inject summary vào Chatspace như tin nhắn AI đầu tiên

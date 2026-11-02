@@ -3,12 +3,6 @@
 from __future__ import annotations
 
 import os
-from typing import Any
-
-
-def get_env(name: str, default: Any = None) -> Any:
-    """Đọc biến môi trường theo key, trả về default nếu không tồn tại."""
-    return os.getenv(name, default)
 
 
 def get_path(name: str) -> str:
