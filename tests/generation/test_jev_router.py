@@ -11,6 +11,12 @@ def _choice(value):
     return {"type": "choice", "choice": value, "probabilities": {value: 1}}
 
 
+def _tutor_answers(expansion="skip"):
+    return {
+        "route": _choice("AskTutor"),
+        "query_expansion": _choice(expansion),
+    }
+
 def _noul(value):
     return {"type": "noul", "noul": value}
 
@@ -129,6 +135,26 @@ def test_jev_request_metrics_classify_timeout_without_counting_missing_key(monke
     assert requests_metric.inc_calls == 1
 
 
+def test_jev_request_metrics_record_success(monkeypatch):
+    requests_metric, duration_metric = _record_jev_metrics(monkeypatch)
+    _mock_experiential(
+        monkeypatch,
+        {"answers": {"route": _choice("AskGeneral")}},
+    )
+
+    decision = asyncio.run(
+        jev_router.route_with_jev(
+            "xin chào",
+            [],
+            {"AskGeneral": "Chào hỏi"},
+        )
+    )
+
+    assert decision["name"] == "AskGeneral"
+    assert requests_metric.labels_calls == [{"outcome": "success"}]
+    assert duration_metric.labels_calls == [{"outcome": "success"}]
+
+
 def _quiz_answers(
     question_type="multiple_choice",
     num_questions="unspecified",
@@ -148,6 +174,53 @@ def _quiz_answers(
         "omit_answers": _noul(omit_answers),
         "omit_explanations": _noul(omit_explanations),
     }
+
+@pytest.mark.parametrize(
+    ("choice", "expected"),
+    [("skip", False), ("expand", True)],
+)
+def test_tutor_route_maps_query_expansion_in_same_jev_request(
+    monkeypatch, choice, expected
+):
+    requests, _clients = _mock_experiential(
+        monkeypatch,
+        {"answers": _tutor_answers(choice)},
+    )
+
+    decision = asyncio.run(jev_router.route_with_jev(
+        "decision tree là gì",
+        [],
+        {"AskTutor": "Kiến thức bài giảng"},
+    ))
+
+    assert decision == {
+        "name": "AskTutor",
+        "args": {
+            "query": "decision tree là gì",
+            "expand_query": expected,
+        },
+    }
+    assert len(requests) == 1
+    payload = json.loads(requests[0].content)
+    assert payload["questions"]["query_expansion"]["type"] == "choice"
+    assert set(payload["questions"]["query_expansion"]["criteria"]) == {
+        "skip",
+        "expand",
+    }
+
+
+def test_tutor_route_requires_query_expansion_answer(monkeypatch):
+    _mock_experiential(
+        monkeypatch,
+        {"answers": {"route": _choice("AskTutor")}},
+    )
+
+    with pytest.raises(ValueError, match="query_expansion"):
+        asyncio.run(jev_router.route_with_jev(
+            "CNN là gì",
+            [],
+            {"AskTutor": "Kiến thức bài giảng"},
+        ))
 
 
 def test_experiential_systemone_maps_quiz_answers_and_noul_flags(monkeypatch):
@@ -192,6 +265,7 @@ def test_experiential_systemone_maps_quiz_answers_and_noul_flags(monkeypatch):
     }
     assert set(payload["questions"]) == {
         "route",
+        "query_expansion",
         "num_questions",
         "difficulty",
         "language",

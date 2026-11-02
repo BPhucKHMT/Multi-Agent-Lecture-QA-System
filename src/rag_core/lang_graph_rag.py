@@ -49,7 +49,7 @@ llm = get_supervisor_llm()
 
 
 @tool("AskTutor")
-def ask_tutor_tool(query: str) -> str:
+def ask_tutor_tool(query: str, expand_query: bool = True) -> str:
     """Dùng khi người dùng hỏi lý thuyết môn học cần truy hồi tri thức."""
     return query
 
