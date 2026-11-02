@@ -17,6 +17,18 @@ $ErrorActionPreference = 'Stop'
 $device = if ($Gpu) { 'gpu' } else { 'cpu' }
 $api = if ($Gpu) { 'api-gpu' } else { 'api-cpu' }
 
+function Test-WindowsExporter {
+    try {
+        $response = Invoke-WebRequest `
+            -Uri 'http://127.0.0.1:9182/health' `
+            -UseBasicParsing `
+            -TimeoutSec 2
+        return $response.StatusCode -eq 200
+    } catch {
+        return $false
+    }
+}
+
 # Dung duong dan tuyet doi de lenh chay duoc tu moi thu muc.
 Push-Location $PSScriptRoot
 try {
@@ -73,6 +85,25 @@ try {
 
     & docker compose @composeArgs
     $code = $LASTEXITCODE
+
+    $prometheusConfig = if ($env:PUQ_PROMETHEUS_CONFIG) {
+        $env:PUQ_PROMETHEUS_CONFIG
+    } else {
+        'prometheus.yml'
+    }
+    if (
+        $Action -in @('up', 'status') -and
+        -not $NoMonitoring -and
+        $prometheusConfig -ieq 'prometheus-windows.yml'
+    ) {
+        if (Test-WindowsExporter) {
+            Write-Host '[OK] windows_exporter: http://127.0.0.1:9182'
+        } else {
+            Write-Host '[WARN] windows_exporter is unavailable; Grafana CPU/RAM/GPU panels will be empty.' -ForegroundColor Yellow
+            Write-Host 'Run once from Administrator PowerShell:' -ForegroundColor Yellow
+            Write-Host '  .\scripts\setup-windows-exporter.ps1 -Action Install' -ForegroundColor Yellow
+        }
+    }
 } finally {
     Pop-Location
 }
