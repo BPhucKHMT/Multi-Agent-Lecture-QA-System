@@ -1,0 +1,60 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  python:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      RAG_DEVICE: cpu
+      myAPIKey: test-key
+      DATABASE_URL: postgresql://test:test@127.0.0.1:5432/test
+      EXPERIENTIAL_API_KEY: ""
+      LANGFUSE_TRACING_ENABLED: ""
+      SEMANTIC_CACHE_ENABLED: "false"
+      SEMANTIC_CACHE_PREWARM_ENABLED: "false"
+      TOKENIZERS_PARALLELISM: "false"
+      HF_HUB_OFFLINE: "1"
+      TRANSFORMERS_OFFLINE: "1"
+      # Test fallback cũ cần artifacts local ngay cả khi mock backend.
+      PYTEST_ADDOPTS: --deselect=tests/retrieval/test_reranker_backends.py::test_load_reranker_openvino_falls_back_to_onnx
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: |
+            requirements.cpu.txt
+            requirements.runtime.txt
+            requirements.test.txt
+      - name: Install Python dependencies
+        run: python -m pip install -r requirements.cpu.txt -r requirements.test.txt
+      - name: Run Python tests
+        run: python -m pytest -q tests experiments/tests
+
+  frontend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install frontend dependencies
+        run: npm ci
+      - name: Run Vitest
+        run: npm run test
+      - name: Build frontend
+        run: npm run build

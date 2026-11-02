@@ -129,6 +129,8 @@ docker compose --profile test run --rm api-test
 
 Không bắt buộc dùng virtual environment trên host. Image CPU production không chứa `pytest`; test tooling được tách riêng trong target `test-cpu`.
 
+GitHub Actions (`.github/workflows/ci.yml`) chạy Python 3.12 CPU tests trong `tests/` và `experiments/tests/`, Vitest của frontend và production build trên mỗi push/pull request. CI dùng chế độ model offline, không cần khóa provider thật. Các kiểm thử reranker với model thật dùng cơ chế skip khi thiếu artifacts đã có; `PYTEST_ADDOPTS` cũng loại riêng `test_load_reranker_openvino_falls_back_to_onnx` vì kiểm tra artifacts hiện tại dẫn tới tải model trước khi vào backend được mock. Chạy `python -m pytest -q tests` tại máy local, không áp dụng cấu hình loại test của CI, để xem kết quả đầy đủ.
+
 ### 6. Build image riêng nếu cần đo size
 
 CPU runtime:

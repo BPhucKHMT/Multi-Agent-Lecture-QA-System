@@ -121,4 +121,7 @@ report/SE365 Template Report.pdf
 
 # Design & System
 design-system/
-.github/
+/.github/*
+!/.github/workflows/
+/.github/workflows/*
+!/.github/workflows/ci.yml
