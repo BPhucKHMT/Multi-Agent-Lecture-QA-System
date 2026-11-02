@@ -17,7 +17,15 @@ class _EmptyOutputChain:
 
 
 class _FakeRagCore:
-    async def get_context(self, _query, chat_history=""):
+    def __init__(self):
+        self.context_calls = []
+
+    async def get_context(self, query, chat_history="", expand_query=True):
+        self.context_calls.append({
+            "query": query,
+            "chat_history": chat_history,
+            "expand_query": expand_query,
+        })
         return "[]"
 
     def get_answer_chain(self):
@@ -36,6 +44,45 @@ def test_node_tutor_handles_empty_output_with_clear_error(monkeypatch):
     assert result["response"]["type"] == "error"
     assert "output rỗng" in result["response"]["text"]
 
+
+def test_node_tutor_passes_expansion_decision_to_rag_core(monkeypatch):
+    rag_core = _FakeRagCore()
+    monkeypatch.setattr(tutor.resource_manager, "get_rag_core", lambda: rag_core)
+
+    asyncio.run(tutor.node_tutor({
+        "messages": [HumanMessage(content="decision tree là gì")],
+        "tool_calls": [{
+            "name": "AskTutor",
+            "args": {
+                "query": "decision tree là gì",
+                "expand_query": False,
+            },
+        }],
+    }))
+
+    assert rag_core.context_calls[0]["expand_query"] is False
+
+
+def test_node_tutor_does_not_expose_internal_exception_details(monkeypatch):
+    class FailingRagCore:
+        async def get_context(self, *_args, **_kwargs):
+            raise RuntimeError("secret-token-canary")
+
+    monkeypatch.setattr(
+        tutor.resource_manager,
+        "get_rag_core",
+        lambda: FailingRagCore(),
+    )
+
+    result = asyncio.run(
+        tutor.node_tutor(
+            {"messages": [HumanMessage(content="decision tree là gì")]}
+        )
+    )
+
+    assert result["response"]["type"] == "error"
+    assert result["response"]["text"] == "Không thể xử lý câu hỏi lúc này."
+    assert "secret-token-canary" not in result["response"]["text"]
 
 def test_sync_citation_metadata_backfills_missing_entries_from_context():
     response = {
